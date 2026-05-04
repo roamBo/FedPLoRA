@@ -19,6 +19,7 @@ from utils import (
     get_fedplora_shared_param_names,
     get_trainable_param_names,
     is_fedplora_agg,
+    is_fedplora_oneshot_agg,
     is_fedplora_shared_param_name,
     is_lora_a_param_name,
     is_lora_b_param_name,
@@ -353,5 +354,134 @@ def aggregate_models_gp_lora(global_model, client_models, args):
             A_ortho = Q.transpose(0, 1).contiguous()
             global_dict[kA] = A_ortho.to(dtype=global_dict[kA].dtype)
 
+    global_model.load_state_dict(global_dict)
+    return global_model
+
+
+def aggregate_models_fedplora_oneshot(global_model, client_models, args):
+    """
+    FedPLoRA-Oneshot server aggregation.
+
+    One-shot setting:
+    - clients train once from the same shared initialization;
+    - the server receives only LoRA A, task-head weights and row statistics;
+    - private LoRA B matrices remain local;
+    - A rows with severe cross-domain conflict are gated toward the initial
+      shared A instead of being force-averaged.
+
+    This differs from multi-round FedPLoRA: there is no server momentum and no
+    dependence on a previous aggregated model. The initial A acts as the only
+    shared coordinate system.
+    """
+    if not is_fedplora_oneshot_agg(getattr(args, "agg_type", None)):
+        raise ValueError("aggregate_models_fedplora_oneshot requires FedPLoRA-Oneshot")
+
+    global_dict = global_model.state_dict()
+    client_states = [_upload_package_state(m) for m in client_models]
+    client_row_importance = [_upload_package_row_importance(m) for m in client_models]
+
+    client_sizes = [_upload_package_client_size(m) for m in client_models]
+    if all(x is None for x in client_sizes):
+        client_sizes = getattr(args, "_gp_lora_client_sizes", None)
+    if client_sizes is None:
+        weights = np.ones(len(client_states), dtype=np.float64) / len(client_states)
+    else:
+        sizes = np.asarray(client_sizes, dtype=np.float64)
+        weights = sizes / sizes.sum()
+
+    init_A = getattr(args, "_gp_lora_initial_A", None)
+    if not isinstance(init_A, dict) or not init_A:
+        init_A = {
+            k: v.detach().cpu().clone()
+            for k, v in global_dict.items()
+            if is_lora_a_param_name(k)
+        }
+
+    eps = 1e-8
+    consensus_power = float(getattr(args, "oneshot_consensus_power", 2.0))
+    conflict_threshold = float(getattr(args, "oneshot_conflict_threshold", 0.35))
+    keep_init_on_conflict = bool(getattr(args, "oneshot_keep_init_on_conflict", True))
+    orthogonalize = bool(getattr(args, "oneshot_orthogonalize", False))
+
+    row_conflict_stats = {}
+
+    for k in global_dict.keys():
+        if is_task_head_param_name(k) and all(k in state for state in client_states):
+            global_dict[k] = sum(
+                weights[i] * client_states[i][k].float()
+                for i in range(len(client_states))
+            ).to(dtype=global_dict[k].dtype)
+        elif is_lora_a_param_name(k):
+            A_ref = init_A.get(k, None)
+            if A_ref is None:
+                continue
+            A_ref_f = A_ref.float()
+            A_ref_dir = A_ref_f / A_ref_f.norm(dim=1, keepdim=True).clamp_min(eps)
+
+            A_acc = torch.zeros_like(global_dict[k].float())
+            w_sum = torch.zeros((global_dict[k].shape[0], 1), dtype=torch.float32)
+            norm_acc = torch.zeros((global_dict[k].shape[0], 1), dtype=torch.float32)
+            signed_dirs = []
+
+            for i in range(len(client_states)):
+                Ai = client_states[i][k].float()
+                A_norm = Ai.norm(dim=1, keepdim=True).clamp_min(eps)
+                A_dir = Ai / A_norm
+                ref = A_ref_dir.to(device=A_dir.device, dtype=A_dir.dtype)
+                dots_to_ref = (A_dir * ref).sum(dim=1)
+                sign = torch.where(dots_to_ref >= 0, 1.0, -1.0).unsqueeze(1)
+                A_dir = A_dir * sign
+                signed_dirs.append(A_dir.cpu())
+
+                consensus = dots_to_ref.abs().clamp_min(eps)
+                imp = client_row_importance[i].get(k, None)
+                if imp is None:
+                    imp = torch.ones(Ai.shape[0], dtype=A_dir.dtype)
+                else:
+                    imp = imp.to(dtype=A_dir.dtype)
+
+                row_weight = (
+                    float(weights[i])
+                    * imp.clamp_min(eps)
+                    * torch.pow(consensus, consensus_power)
+                )
+                A_acc = A_acc + row_weight.unsqueeze(1).cpu() * A_dir.cpu()
+                w_sum = w_sum + row_weight.unsqueeze(1).cpu()
+                norm_acc = norm_acc + row_weight.unsqueeze(1).cpu() * A_norm.cpu()
+
+            if torch.any(w_sum <= 0):
+                continue
+
+            stacked = torch.stack(signed_dirs, dim=0)
+            row_mean_dir = stacked.mean(dim=0)
+            row_mean_norm = row_mean_dir.norm(dim=1)
+            row_conflict = (1.0 - row_mean_norm).clamp(0.0, 1.0)
+            row_gate = (1.0 - row_conflict).clamp(0.0, 1.0).pow(consensus_power)
+
+            A_mean = A_acc / w_sum.clamp_min(eps)
+            A_mean = A_mean / A_mean.norm(dim=1, keepdim=True).clamp_min(eps)
+            A_scale = norm_acc / w_sum.clamp_min(eps)
+            if keep_init_on_conflict:
+                conflict_mask = (row_conflict > conflict_threshold).unsqueeze(1)
+                gated = row_gate.unsqueeze(1) * A_mean + (
+                    1.0 - row_gate.unsqueeze(1)
+                ) * A_ref_dir.cpu()
+                A_mean = torch.where(conflict_mask, gated, A_mean)
+
+            if orthogonalize:
+                Q, _ = torch.linalg.qr(A_mean.transpose(0, 1), mode="reduced")
+                A_mean = Q.transpose(0, 1).contiguous()
+
+            A_mean = A_mean / A_mean.norm(dim=1, keepdim=True).clamp_min(eps)
+            A_mean = A_mean * A_scale
+            global_dict[k] = A_mean.to(dtype=global_dict[k].dtype)
+            row_conflict_stats[k] = {
+                "mean_conflict": float(row_conflict.mean().item()),
+                "max_conflict": float(row_conflict.max().item()),
+                "conflict_rows": int((row_conflict > conflict_threshold).sum().item()),
+                "total_rows": int(row_conflict.numel()),
+            }
+
+    setattr(args, "_fedplora_oneshot_conflict_stats", row_conflict_stats)
     global_model.load_state_dict(global_dict)
     return global_model

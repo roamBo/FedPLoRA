@@ -106,6 +106,15 @@ parser.add_argument(
     default=0.5,
     help="Server-side momentum when updating the global A basis in FedPLoRA.",
 )
+parser.add_argument("--oneshot_align_lambda", type=float, default=0.02)
+parser.add_argument("--oneshot_prox_lambda", type=float, default=0.002)
+parser.add_argument("--oneshot_orth_lambda", type=float, default=1e-4)
+parser.add_argument("--oneshot_consensus_power", type=float, default=2.0)
+parser.add_argument("--oneshot_conflict_threshold", type=float, default=0.35)
+parser.add_argument("--oneshot_keep_init_on_conflict", action="store_true", default=True)
+parser.add_argument("--oneshot_no_keep_init_on_conflict", action="store_false", dest="oneshot_keep_init_on_conflict")
+parser.add_argument("--oneshot_orthogonalize", action="store_true", default=False)
+parser.add_argument("--oneshot_no_orthogonalize", action="store_false", dest="oneshot_orthogonalize")
 
 args = parser.parse_args()
 
@@ -149,6 +158,12 @@ def _print_round_metrics_gp_lora(
 
 
 def federated_learning(task):
+    if is_fedplora_oneshot_agg(args.agg_type) and args.rounds != 1:
+        print(
+            f"[setup] FedPLoRA-Oneshot uses exactly one communication round; "
+            f"override --rounds {args.rounds} -> 1"
+        )
+        args.rounds = 1
 
     train_data, val_data, test_data = load_and_preprocess_data(task)
 
@@ -202,6 +217,12 @@ def federated_learning(task):
 
     if is_fedplora_agg(args.agg_type):
         init_gp_lora_adapters(global_model)
+        if is_fedplora_oneshot_agg(args.agg_type):
+            args._gp_lora_initial_A = {
+                k: v.detach().cpu().clone()
+                for k, v in global_model.state_dict().items()
+                if is_lora_a_param_name(k)
+            }
         for m in client_models:
             m.load_state_dict(global_model.state_dict())
 
@@ -246,9 +267,14 @@ def federated_learning(task):
                 build_fedplora_upload_package(client_models[i], client_sizes[i])
                 for i in range(args.num_clients)
             ]
-            global_model = aggregate_models_gp_lora(
-                global_model, client_uploads, args
-            )
+            if is_fedplora_oneshot_agg(args.agg_type):
+                global_model = aggregate_models_fedplora_oneshot(
+                    global_model, client_uploads, args
+                )
+            else:
+                global_model = aggregate_models_gp_lora(
+                    global_model, client_uploads, args
+                )
             global_state = {
                 k: v.detach().cpu().clone()
                 for k, v in global_model.state_dict().items()
