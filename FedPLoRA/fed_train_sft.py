@@ -17,6 +17,7 @@ from data_utils import (
 from fed_agg import (
     aggregate_models_ffa,
     aggregate_models_fedex,
+    aggregate_models_fedplora_oneshot,
     aggregate_models_gp_lora,
     aggregate_models_normal,
     build_fedplora_upload_package,
@@ -36,6 +37,7 @@ from utils import (
     get_fedplora_shared_param_names,
     get_trainable_param_names,
     is_fedplora_agg,
+    is_fedplora_oneshot_agg,
     is_fedplora_shared_param_name,
     is_lora_a_param_name,
     restore_logging,
@@ -86,6 +88,15 @@ parser.add_argument("--gp_prox_lambda", type=float, default=0.001)
 parser.add_argument("--gp_orth_lambda", type=float, default=1e-4)
 parser.add_argument("--gp_consensus_power", type=float, default=2.0)
 parser.add_argument("--gp_agg_momentum", type=float, default=0.5)
+parser.add_argument("--oneshot_align_lambda", type=float, default=0.02, help="FedPLoRA-Oneshot B_i A compatibility regularization weight")
+parser.add_argument("--oneshot_prox_lambda", type=float, default=0.002, help="FedPLoRA-Oneshot A-to-initial-shared-basis proximal regularization weight")
+parser.add_argument("--oneshot_orth_lambda", type=float, default=1e-4, help="FedPLoRA-Oneshot row orthogonality regularization weight")
+parser.add_argument("--oneshot_consensus_power", type=float, default=2.0, help="FedPLoRA-Oneshot row conflict gate sharpness")
+parser.add_argument("--oneshot_conflict_threshold", type=float, default=0.35, help="Rows above this conflict score are blended back toward initial A")
+parser.add_argument("--oneshot_keep_init_on_conflict", action="store_true", default=True, help="Blend high-conflict rows toward initial A in FedPLoRA-Oneshot")
+parser.add_argument("--oneshot_no_keep_init_on_conflict", action="store_false", dest="oneshot_keep_init_on_conflict")
+parser.add_argument("--oneshot_orthogonalize", action="store_true", default=False, help="QR-orthogonalize one-shot aggregated A rows; off by default to keep B_i/A row coordinates compatible")
+parser.add_argument("--oneshot_no_orthogonalize", action="store_false", dest="oneshot_orthogonalize")
 
 args = parser.parse_args()
 
@@ -236,6 +247,13 @@ def _write_metrics_file(path, payload):
 
 
 def federated_sft(args):
+    if is_fedplora_oneshot_agg(args.agg_type) and args.rounds != 1:
+        print(
+            f"[setup] FedPLoRA-Oneshot uses exactly one communication round; "
+            f"override --rounds {args.rounds} -> 1"
+        )
+        args.rounds = 1
+
     benchmark, split_dir = build_or_load_benchmark(args)
     print(f"[benchmark] loaded from {split_dir}")
     print(f"[benchmark] domains={sorted(benchmark['domain_stats'].keys())}")
@@ -270,6 +288,12 @@ def federated_sft(args):
 
     if is_fedplora_agg(args.agg_type):
         init_gp_lora_adapters(global_model)
+        if is_fedplora_oneshot_agg(args.agg_type):
+            args._gp_lora_initial_A = {
+                k: v.detach().cpu().clone()
+                for k, v in global_model.state_dict().items()
+                if is_lora_a_param_name(k)
+            }
         client_store = _ensure_sequential_fedplora_local_states(
             global_model, client_ids, args
         )
@@ -337,7 +361,12 @@ def federated_sft(args):
                 build_fedplora_upload_package(client_states_for_agg[i], client_sizes[i])
                 for i in range(args.num_clients)
             ]
-            global_model = aggregate_models_gp_lora(global_model, uploads, args)
+            if is_fedplora_oneshot_agg(args.agg_type):
+                global_model = aggregate_models_fedplora_oneshot(
+                    global_model, uploads, args
+                )
+            else:
+                global_model = aggregate_models_gp_lora(global_model, uploads, args)
         else:
             raise ValueError(f"Unknown agg_type: {args.agg_type}")
 
@@ -391,6 +420,9 @@ def federated_sft(args):
                 "worst_domain_loss": worst_domain,
                 "best_worst_domain_loss": best_worst_domain,
                 "domain_metrics": domain_metrics,
+                "oneshot_conflict_stats": getattr(
+                    args, "_fedplora_oneshot_conflict_stats", None
+                ),
             }
         )
 

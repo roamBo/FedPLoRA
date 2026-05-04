@@ -5,8 +5,26 @@ import json
 import sys
 
 
+def _norm_agg_type(agg_type):
+    return (agg_type or "").lower().replace("-", "_")
+
+
+def is_fedplora_oneshot_agg(agg_type):
+    return _norm_agg_type(agg_type) in {
+        "fedplora_oneshot",
+        "fedplora_one_shot",
+        "oneshot_fedplora",
+    }
+
+
 def is_fedplora_agg(agg_type):
-    return (agg_type or "").lower() in {"gp_lora", "fedplora"}
+    return _norm_agg_type(agg_type) in {
+        "gp_lora",
+        "fedplora",
+        "fedplora_oneshot",
+        "fedplora_one_shot",
+        "oneshot_fedplora",
+    }
 
 
 def is_lora_param_name(key):
@@ -127,7 +145,10 @@ def estimate_round_communication_bytes(
 
     agg_type = (agg_type or "normal").lower()
 
-    if is_fedplora_agg(agg_type):
+    if is_fedplora_oneshot_agg(agg_type):
+        down = lora_a + task_head
+        up = lora_a + task_head + gp_stats
+    elif is_fedplora_agg(agg_type):
         down = lora_a + task_head
         up = lora_a + task_head + gp_stats
     elif agg_type == "ffa":

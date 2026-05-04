@@ -47,7 +47,7 @@ from data_utils import *
 import os
 from copy import deepcopy
 import json
-from utils import is_fedplora_agg
+from utils import is_fedplora_agg, is_fedplora_oneshot_agg
 
 
 def _fedplora_regularization_losses(model, args):
@@ -107,18 +107,27 @@ def _add_fedplora_regularization(loss, model, args):
         return loss
 
     reg = _fedplora_regularization_losses(model, args)
+    if is_fedplora_oneshot_agg(getattr(args, "agg_type", None)):
+        align_lambda = float(
+            getattr(args, "oneshot_align_lambda", getattr(args, "gp_align_lambda", 0.01))
+        )
+        prox_lambda = float(
+            getattr(args, "oneshot_prox_lambda", getattr(args, "gp_prox_lambda", 0.001))
+        )
+        orth_lambda = float(
+            getattr(args, "oneshot_orth_lambda", getattr(args, "gp_orth_lambda", 0.0001))
+        )
+    else:
+        align_lambda = float(getattr(args, "gp_align_lambda", 0.01))
+        prox_lambda = float(getattr(args, "gp_prox_lambda", 0.001))
+        orth_lambda = float(getattr(args, "gp_orth_lambda", 0.0001))
+
     if reg.get("align") is not None:
-        loss = loss + (
-            float(getattr(args, "gp_align_lambda", 0.01)) * reg["align"]
-        )
+        loss = loss + (align_lambda * reg["align"])
     if reg.get("prox") is not None:
-        loss = loss + (
-            float(getattr(args, "gp_prox_lambda", 0.001)) * reg["prox"]
-        )
+        loss = loss + (prox_lambda * reg["prox"])
     if reg.get("orth") is not None:
-        loss = loss + (
-            float(getattr(args, "gp_orth_lambda", 0.0001)) * reg["orth"]
-        )
+        loss = loss + (orth_lambda * reg["orth"])
     return loss
 
 
