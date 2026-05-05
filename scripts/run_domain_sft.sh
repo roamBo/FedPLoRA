@@ -1,7 +1,17 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-MODEL_PATH="${MODEL_PATH:-Qwen/Qwen3-14B}"
+_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+_REPO_ROOT="$(cd "${_SCRIPT_DIR}/.." && pwd)"
+cd "${_REPO_ROOT}"
+if [[ -f "${_REPO_ROOT}/configs/domain_sft_pilot.env" ]]; then
+  set -a
+  # shellcheck disable=SC1091
+  source "${_REPO_ROOT}/configs/domain_sft_pilot.env"
+  set +a
+fi
+
+MODEL_PATH="${MODEL_PATH:-/data/yaominghao/gb/models/Meta-Llama-3.1-8B}"
 BENCHMARK_DIR="${BENCHMARK_DIR:-data/domain_benchmark/seed_42}"
 AGG_TYPE="${AGG_TYPE:-fedplora}"
 CUDA_DEVICES="${CUDA_DEVICES:-0,1}"

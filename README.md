@@ -568,42 +568,35 @@ CUDA_VISIBLE_DEVICES=0,1 python tasks/fed_train_sft.py \
 
 #### 11.3.1 单次实验（pilot）
 
-在仓库根目录执行（将 `cd` 换成你的克隆路径）：
+`scripts/run_domain_sft.sh` 会**自动** `cd` 到仓库根目录，并若存在则 **source `configs/domain_sft_pilot.env`**（无需先手动 `source`）。直接执行：
 
 ```bash
-cd /path/to/FedPLoRA
-source configs/domain_sft_pilot.env
-bash scripts/run_domain_sft.sh
+bash /path/to/FedPLoRA/scripts/run_domain_sft.sh
 ```
 
-`domain_sft_pilot.env` 中已设置 `MODEL_PATH=/data/yaominghao/gb/models/Meta-Llama-3.1-8B`、`AGG_TYPE=fedplora` 等；若需覆盖：
+`domain_sft_pilot.env` 中已设置 `MODEL_PATH=/data/yaominghao/gb/models/Meta-Llama-3.1-8B`、`AGG_TYPE=fedplora` 等。若需临时覆盖环境变量，仍可在命令前导出（会覆盖 env 文件中的同名字段）：
 
 ```bash
-cd /path/to/FedPLoRA
 MODEL_PATH=/data/yaominghao/gb/models/Meta-Llama-3.1-8B \
 AGG_TYPE=fedplora \
 CUDA_DEVICES=0,1 \
 ROUNDS=20 \
 BATCH_SIZE=1 \
-bash scripts/run_domain_sft.sh
+bash /path/to/FedPLoRA/scripts/run_domain_sft.sh
 ```
 
 #### 11.3.2 自动批量 baseline（推荐顺序）
 
-[scripts/run_domain_sft_baselines.sh](scripts/run_domain_sft_baselines.sh) 当前顺序为：**先 `fedplora-oneshot`，再 `fedplora`**，随后 `normal`、`ffa`、`fedex`（后三项在脚本里顺序可任意调整）。
+[scripts/run_domain_sft_baselines.sh](scripts/run_domain_sft_baselines.sh) 同样会 **cd 到仓库根** 并自动 **source `configs/domain_sft_baselines.env`**。当前顺序为：**先 `fedplora-oneshot`，再 `fedplora`**，随后 `normal`、`ffa`、`fedex`（后三项在脚本里顺序可任意调整）。
 
 ```bash
-cd /path/to/FedPLoRA
-source configs/domain_sft_baselines.env
-bash scripts/run_domain_sft_baselines.sh
+bash /path/to/FedPLoRA/scripts/run_domain_sft_baselines.sh
 ```
 
-`domain_sft_baselines.env` 中已写入同一 `MODEL_PATH`。需要临时改 GPU 或轮数时：
+`domain_sft_baselines.env` 中已写入 `MODEL_PATH`。需要临时改 GPU 或轮数时：
 
 ```bash
-cd /path/to/FedPLoRA
-source configs/domain_sft_baselines.env
-CUDA_DEVICES=0,1 ROUNDS=10 bash scripts/run_domain_sft_baselines.sh
+CUDA_DEVICES=0,1 ROUNDS=10 bash /path/to/FedPLoRA/scripts/run_domain_sft_baselines.sh
 ```
 
 训练结束后，每轮 `domain_macro_loss` 等指标会写入：
