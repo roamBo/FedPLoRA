@@ -48,8 +48,8 @@ import os
 from copy import deepcopy
 import json
 from utilities.utils import (
-    is_fedplora_agg,
-    is_gp_lora_multiround_agg,
+    is_fedplora_multiround_agg,
+    is_fedplora_oneshot_agg,
     is_lora_a2_agg,
     is_yoco_agg,
 )
@@ -62,9 +62,9 @@ def _fedplora_regularization_losses(model, args):
     - proximity of A_local to the broadcast global A
     - row-orthogonality for A as a stable shared basis
     """
-    if not is_gp_lora_multiround_agg(getattr(args, "agg_type", None)):
+    if not is_fedplora_multiround_agg(getattr(args, "agg_type", None)):
         return {}
-    A_global = getattr(args, "_gp_lora_global_A", None)
+    A_global = getattr(args, "_fedplora_global_A", None)
     if not isinstance(A_global, dict) or not A_global:
         return {}
 
@@ -108,7 +108,7 @@ def _fedplora_regularization_losses(model, args):
 
 
 def _add_fedplora_regularization(loss, model, args):
-    if not is_gp_lora_multiround_agg(getattr(args, "agg_type", None)):
+    if not is_fedplora_multiround_agg(getattr(args, "agg_type", None)):
         return loss
 
     reg = _fedplora_regularization_losses(model, args)
@@ -139,7 +139,8 @@ def _apply_lora_a2_freeze(model, args):
 
 
 def _add_yoco_sparse(loss, model, args):
-    if not is_yoco_agg(getattr(args, "agg_type", None)):
+    agg = getattr(args, "agg_type", None)
+    if not (is_yoco_agg(agg) or is_fedplora_oneshot_agg(agg)):
         return loss
     lam = float(getattr(args, "yoco_sparse_lambda", 1e-4))
     for _n, p in model.named_parameters():

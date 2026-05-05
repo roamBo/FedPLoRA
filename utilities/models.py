@@ -107,9 +107,9 @@ def create_peft_model(num_labels, args):
     return model
 
 
-def init_gp_lora_adapters(model):
+def init_fedplora_adapters(model):
     """
-    GP-LoRA adapter init (matches PEFT LoRA defaults): Kaiming-uniform lora_A,
+    FedP-LoRA adapter init (matches PEFT LoRA defaults): Kaiming-uniform lora_A,
     zeros for lora_B.
 
     If **both** A and B are all-zero, the LoRA branch output is always zero and

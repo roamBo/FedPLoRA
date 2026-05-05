@@ -10,15 +10,24 @@ def _norm_agg_type(agg_type):
 
 
 def is_fedplora_agg(agg_type):
-    """GLUE/E2E legacy: FedP-LoRA multi-round (gp_lora) / fedplora only."""
-    return _norm_agg_type(agg_type) in {"gp_lora", "fedplora"}
+    """Multi-round FedP-LoRA: sign-aligned A agg + local FedP regularizers."""
+    return _norm_agg_type(agg_type) == "fedplora"
+
+
+def is_fedplora_oneshot_agg(agg_type):
+    """
+    FedP-LoRA communication pattern (upload A + heads, keep B local) + YOCO one-shot:
+    exactly one federated round; server uses PCWA on A (see methods/yoco.py);
+    local training uses YOCO sparse prior on A (train_eval --yoco_sparse_lambda).
+    """
+    return _norm_agg_type(agg_type) == "fedplora_oneshot"
 
 
 def is_lora_a_disk_agg(agg_type):
     """Domain SFT: server holds A (+ heads), clients keep B on disk/memory."""
     return _norm_agg_type(agg_type) in {
-        "gp_lora",
         "fedplora",
+        "fedplora_oneshot",
         "fedsa_lora",
         "fedsa",
         "yoco",
@@ -26,9 +35,9 @@ def is_lora_a_disk_agg(agg_type):
     }
 
 
-def is_gp_lora_multiround_agg(agg_type):
-    """FedPLoRA-style weighted A aggregation + local regularizers (train_eval)."""
-    return _norm_agg_type(agg_type) in {"gp_lora", "fedplora"}
+def is_fedplora_multiround_agg(agg_type):
+    """Multi-round FedP-LoRA server aggregate + local FedP regularizers (train_eval)."""
+    return _norm_agg_type(agg_type) == "fedplora"
 
 
 def is_fedsa_lora_agg(agg_type):
@@ -177,7 +186,7 @@ def estimate_round_communication_bytes(
 
     agg_type = _norm_agg_type(agg_type) or "normal"
 
-    if is_gp_lora_multiround_agg(agg_type):
+    if is_fedplora_multiround_agg(agg_type):
         down = lora_a + task_head
         up = lora_a + task_head + gp_stats
     elif is_lora_a_disk_agg(agg_type):

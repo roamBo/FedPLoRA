@@ -28,12 +28,12 @@ from methods.fedsa_lora import aggregate_models_fedsa_lora
 from methods.flora import aggregate_models_flora
 from methods.hetlora import aggregate_models_hetlora
 from methods.lora_a2 import aggregate_models_lora_a2
-from methods.fedp_lora import aggregate_models_gp_lora, build_fedplora_upload_package
+from methods.fedp_lora import aggregate_models_fedplora, build_fedplora_upload_package
 from methods.yoco import aggregate_models_yoco
 from utilities.models import (
     create_peft_causal_lm_model,
     create_peft_causal_lm_ffa_model,
-    init_gp_lora_adapters,
+    init_fedplora_adapters,
 )
 from utilities.state_dict_ops import (
     broadcast_fedplora_shared_state,
@@ -50,8 +50,9 @@ from utilities.utils import (
     is_flora_agg,
     is_fedalt_agg,
     is_fedsa_lora_agg,
+    is_fedplora_oneshot_agg,
     is_fedplora_shared_param_name,
-    is_gp_lora_multiround_agg,
+    is_fedplora_multiround_agg,
     is_hetlora_agg,
     is_lora_a2_agg,
     is_lora_a_disk_agg,
@@ -70,7 +71,7 @@ parser.add_argument("--build_benchmark", action="store_true", help="Build benchm
 parser.add_argument("--benchmark_output_dir", type=str, default="data/domain_benchmark", help="Where to save built benchmark")
 parser.add_argument("--num_clients_per_domain", type=int, default=5, help="Clients per domain when building benchmark")
 parser.add_argument("--min_samples_per_client", type=int, default=50, help="Minimum samples per client when building benchmark")
-parser.add_argument("--agg_type", type=str, default="gp_lora", help="Aggregation type")
+parser.add_argument("--agg_type", type=str, default="fedplora", help="Aggregation type")
 parser.add_argument("--rounds", type=int, default=10)
 parser.add_argument("--num_clients", type=int, default=0, help="If 0, infer from benchmark")
 parser.add_argument("--local_epochs", type=int, default=1)
@@ -311,8 +312,9 @@ def _write_metrics_file(path, payload):
 
 
 def federated_sft(args):
-    if is_yoco_agg(args.agg_type) and args.rounds != 1:
-        print("[setup] YOCO is one-shot: forcing --rounds 1")
+    if (is_yoco_agg(args.agg_type) or is_fedplora_oneshot_agg(args.agg_type)) and args.rounds != 1:
+        tag = "YOCO" if is_yoco_agg(args.agg_type) else "fedplora-oneshot (FedP-LoRA + YOCO)"
+        print(f"[setup] {tag} is one-shot: forcing --rounds 1")
         args.rounds = 1
 
     benchmark, split_dir = build_or_load_benchmark(args)
@@ -353,7 +355,7 @@ def federated_sft(args):
     )
 
     if is_lora_a_disk_agg(args.agg_type):
-        init_gp_lora_adapters(global_model)
+        init_fedplora_adapters(global_model)
         client_store = _ensure_sequential_fedplora_local_states(
             global_model, client_ids, args
         )
@@ -383,14 +385,14 @@ def federated_sft(args):
             )
 
         if is_lora_a_disk_agg(args.agg_type):
-            args._gp_lora_client_sizes = client_sizes
+            args._fedplora_client_sizes = client_sizes
             shared_names = get_fedplora_shared_param_names(global_model)
             gp_global_state = {
                 k: v.detach().cpu().clone()
                 for k, v in global_model.state_dict().items()
                 if k in shared_names
             }
-            args._gp_lora_global_A = {
+            args._fedplora_global_A = {
                 k: v.detach().cpu().clone()
                 for k, v in gp_global_state.items()
                 if is_lora_a_param_name(k)
@@ -448,9 +450,9 @@ def federated_sft(args):
             )
         elif args.agg_type == "ffa":
             global_model = aggregate_models_ffa(global_model, client_states_for_agg)
-        elif is_gp_lora_multiround_agg(args.agg_type):
-            global_model = aggregate_models_gp_lora(global_model, fedplora_uploads, args)
-        elif is_yoco_agg(args.agg_type):
+        elif is_fedplora_multiround_agg(args.agg_type):
+            global_model = aggregate_models_fedplora(global_model, fedplora_uploads, args)
+        elif is_yoco_agg(args.agg_type) or is_fedplora_oneshot_agg(args.agg_type):
             global_model = aggregate_models_yoco(global_model, fedplora_uploads, args)
         elif is_fedsa_lora_agg(args.agg_type) or is_fedalt_agg(args.agg_type):
             global_model = aggregate_models_fedsa_lora(global_model, fedplora_uploads, args)

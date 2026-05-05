@@ -1,6 +1,7 @@
 """
-YOCO (NeurIPS 2025): one-shot; PCWA on client A matrices (conventional PCA weights on flattened A).
-Local L1-on-A regularizer is applied in utilities/train_eval (see --yoco_sparse_lambda).
+YOCO-style one-shot aggregation: PCWA on client LoRA A (PCA on stacked flattened A).
+Used for agg_type=yoco and for fedplora-oneshot (FedP upload + this server rule).
+Local L1-on-A regularizer: utilities/train_eval._add_yoco_sparse (--yoco_sparse_lambda).
 """
 
 import numpy as np

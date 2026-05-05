@@ -18,7 +18,7 @@ def aggregate_models_lora_a2(global_model, client_models, args):
         return global_model
 
     client_sizes = getattr(args, "_runtime_client_sizes", None) or getattr(
-        args, "_gp_lora_client_sizes", None
+        args, "_fedplora_client_sizes", None
     )
     if client_sizes is None:
         weights = np.ones(n, dtype=np.float64) / n

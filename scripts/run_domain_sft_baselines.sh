@@ -17,7 +17,8 @@ TARGET_MODULES="${TARGET_MODULES:-q_proj,k_proj,v_proj,o_proj,up_proj,down_proj,
 CLIENT_STATE_DIR="${CLIENT_STATE_DIR:-artifacts/domain_client_states}"
 TRUST_REMOTE_CODE="${TRUST_REMOTE_CODE:-0}"
 
-METHODS=("gp_lora" "normal" "ffa" "fedex")
+# 前两条：fedplora-oneshot（单轮）、fedplora（多轮）；其余顺序可任意
+METHODS=("fedplora-oneshot" "fedplora" "normal" "ffa" "fedex")
 
 for AGG_TYPE in "${METHODS[@]}"; do
   echo "[run] agg_type=${AGG_TYPE}"
@@ -40,7 +41,7 @@ for AGG_TYPE in "${METHODS[@]}"; do
     --gradient_checkpointing
   )
 
-  if [[ "${AGG_TYPE}" == "gp_lora" ]]; then
+  if [[ "${AGG_TYPE}" == "fedplora" || "${AGG_TYPE}" == "fedplora-oneshot" ]]; then
     CMD+=(--save_client_state_to_disk)
   fi
 

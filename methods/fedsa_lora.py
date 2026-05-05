@@ -15,7 +15,7 @@ def aggregate_models_fedsa_lora(global_model, client_uploads, args):
     client_states = [M.upload_package_state(m) for m in client_uploads]
     client_sizes = [M.upload_package_client_size(m) for m in client_uploads]
     if all(x is None for x in client_sizes):
-        client_sizes = getattr(args, "_gp_lora_client_sizes", None)
+        client_sizes = getattr(args, "_fedplora_client_sizes", None)
     if client_sizes is None:
         weights = np.ones(len(client_states), dtype=np.float64) / max(len(client_states), 1)
     else:

@@ -3,7 +3,7 @@ set -euo pipefail
 
 MODEL_PATH="${MODEL_PATH:-Qwen/Qwen3-14B}"
 BENCHMARK_DIR="${BENCHMARK_DIR:-data/domain_benchmark/seed_42}"
-AGG_TYPE="${AGG_TYPE:-gp_lora}"
+AGG_TYPE="${AGG_TYPE:-fedplora}"
 CUDA_DEVICES="${CUDA_DEVICES:-0,1}"
 ROUNDS="${ROUNDS:-10}"
 LOCAL_EPOCHS="${LOCAL_EPOCHS:-1}"

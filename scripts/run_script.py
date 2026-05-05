@@ -55,7 +55,7 @@ def _write_manifest_row(fp, row: Dict) -> None:
 
 def build_glue_commands(args) -> List[Dict]:
     glue_tasks = ["cola", "mrpc", "rte", "stsb", "sst2", "qnli"]
-    methods = ["normal", "fedex", "ffa", "gp_lora"]
+    methods = ["normal", "fedex", "ffa", "fedplora"]
 
     jobs = []
     for task in glue_tasks:
@@ -119,7 +119,7 @@ def build_glue_commands(args) -> List[Dict]:
 
 
 def build_e2e_commands(args) -> List[Dict]:
-    methods = ["normal", "fedex", "ffa", "gp_lora"]
+    methods = ["normal", "fedex", "ffa", "fedplora"]
     jobs = []
     for agg in methods:
         cmd = [

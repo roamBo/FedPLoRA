@@ -1,5 +1,5 @@
 """
-FedP-LoRA (project FedPLoRA / gp_lora): upload LoRA A + heads + row stats; aggregate A only; B stays local.
+FedP-LoRA (FedPLoRA): upload LoRA A + heads + row stats; aggregate A only; B stays local.
 
 See utilities.state_dict_ops for local/shared state movement.
 """
@@ -48,7 +48,7 @@ def build_fedplora_upload_package(model, client_size=None):
     }
 
 
-def aggregate_models_gp_lora(global_model, client_models, args):
+def aggregate_models_fedplora(global_model, client_models, args):
     """
     Server aggregation: sign-aligned weighted A rows, momentum, QR re-orthogonalization.
     """
@@ -58,7 +58,7 @@ def aggregate_models_gp_lora(global_model, client_models, args):
 
     client_sizes = [M.upload_package_client_size(m) for m in client_models]
     if all(x is None for x in client_sizes):
-        client_sizes = getattr(args, "_gp_lora_client_sizes", None)
+        client_sizes = getattr(args, "_fedplora_client_sizes", None)
     if client_sizes is None:
         weights = np.ones(len(client_states), dtype=np.float64) / len(client_states)
     else:

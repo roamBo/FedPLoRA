@@ -25,11 +25,19 @@ from utilities.data_utils import *
 from methods.fedavg_normal import aggregate_models_normal
 from methods.fedex import aggregate_models_fedex
 from methods.ffa_lora import aggregate_models_ffa
-from methods.fedp_lora import aggregate_models_gp_lora, build_fedplora_upload_package
+from methods.fedp_lora import aggregate_models_fedplora, build_fedplora_upload_package
+from methods.yoco import aggregate_models_yoco
 from utilities.models import *
 from utilities.state_dict_ops import broadcast_fedplora_shared_state
 from utilities.train_eval import *
-from utilities.utils import is_fedplora_agg, restore_logging, setup_run_logging
+from utilities.utils import (
+    is_fedplora_agg,
+    is_fedplora_oneshot_agg,
+    is_fedplora_shared_param_name,
+    is_lora_a_param_name,
+    restore_logging,
+    setup_run_logging,
+)
 
 parser = argparse.ArgumentParser(description="Federated Learning with LoRA")
 
@@ -131,23 +139,27 @@ def federated_learning(task):
         else:
             client_models.append(create_peft_gpt2_model_e2e(args))
 
-    if is_fedplora_agg(args.agg_type):
-        init_gp_lora_adapters(global_model)
+    if is_fedplora_agg(args.agg_type) or is_fedplora_oneshot_agg(args.agg_type):
+        init_fedplora_adapters(global_model)
         for m in client_models:
             m.load_state_dict(global_model.state_dict())
+
+    if is_fedplora_oneshot_agg(args.agg_type) and args.rounds != 1:
+        print("[setup] fedplora-oneshot: forcing --rounds 1")
+        args.rounds = 1
 
     for round in range(args.rounds):
         print(f"Round {round + 1}/{args.rounds}")
 
         # Broadcast
-        if is_fedplora_agg(args.agg_type):
-            args._gp_lora_client_sizes = client_sizes
+        if is_fedplora_agg(args.agg_type) or is_fedplora_oneshot_agg(args.agg_type):
+            args._fedplora_client_sizes = client_sizes
             gp_global_state = {
                 k: v.detach().cpu().clone()
                 for k, v in global_model.state_dict().items()
                 if is_fedplora_shared_param_name(k)
             }
-            args._gp_lora_global_A = {
+            args._fedplora_global_A = {
                 k: v.detach().cpu().clone()
                 for k, v in gp_global_state.items()
                 if is_lora_a_param_name(k)
@@ -158,7 +170,7 @@ def federated_learning(task):
         # Train on clients
         for client in range(args.num_clients):
             client_model = client_models[client]
-            if is_fedplora_agg(args.agg_type):
+            if is_fedplora_agg(args.agg_type) or is_fedplora_oneshot_agg(args.agg_type):
                 broadcast_fedplora_shared_state(client_model, gp_global_state)
             else:
                 client_model.load_state_dict(global_model.state_dict())
@@ -173,12 +185,15 @@ def federated_learning(task):
             global_model = aggregate_models_fedex(
                 global_model, client_models, args
             )
-        elif is_fedplora_agg(args.agg_type):
+        elif is_fedplora_agg(args.agg_type) or is_fedplora_oneshot_agg(args.agg_type):
             client_uploads = [
                 build_fedplora_upload_package(client_models[i], client_sizes[i])
                 for i in range(args.num_clients)
             ]
-            global_model = aggregate_models_gp_lora(global_model, client_uploads, args)
+            if is_fedplora_oneshot_agg(args.agg_type):
+                global_model = aggregate_models_yoco(global_model, client_uploads, args)
+            else:
+                global_model = aggregate_models_fedplora(global_model, client_uploads, args)
             global_state = {
                 k: v.detach().cpu().clone()
                 for k, v in global_model.state_dict().items()

@@ -40,7 +40,7 @@
 
 1. **GLUE 联邦分类**
    - 文件：[tasks/fed_train_glue.py](tasks/fed_train_glue.py)
-   - 支持方法：`normal`、`ffa`、`fedex`、`gp_lora`
+   - 支持方法：`normal`、`ffa`、`fedex`、`fedplora`
    - 支持 IID 和 Dirichlet non-IID 划分
 
 2. **E2E-NLG 联邦生成**
@@ -378,7 +378,7 @@ python -m py_compile \
 CUDA_VISIBLE_DEVICES=0 python tasks/fed_train_glue.py \
   --model roberta-base \
   --task cola \
-  --agg_type gp_lora \
+  --agg_type fedplora \
   --num_clients 3 \
   --lora_r 4 \
   --rounds 10 \
@@ -393,7 +393,7 @@ CUDA_VISIBLE_DEVICES=0 python tasks/fed_train_glue.py \
 CUDA_VISIBLE_DEVICES=0 python tasks/fed_train_glue.py \
   --model roberta-base \
   --task cola \
-  --agg_type gp_lora \
+  --agg_type fedplora \
   --num_clients 3 \
   --lora_r 4 \
   --rounds 10 \
@@ -409,7 +409,7 @@ CUDA_VISIBLE_DEVICES=0 python tasks/fed_train_glue.py \
 
 ```bash
 CUDA_VISIBLE_DEVICES=0 python tasks/fed_train_e2e.py \
-  --agg_type gp_lora \
+  --agg_type fedplora \
   --rounds 6 \
   --num_clients 3 \
   --local_epochs 5 \
@@ -505,7 +505,7 @@ cat data/domain_benchmark/seed_42/clients.json | head
 CUDA_VISIBLE_DEVICES=0,1 python tasks/fed_train_sft.py \
   --model ../../models/qwen3-14b \
   --benchmark_dir data/domain_benchmark/seed_42 \
-  --agg_type gp_lora \
+  --agg_type fedplora \
   --rounds 10 \
   --local_epochs 1 \
   --lr 2e-4 \
@@ -523,7 +523,7 @@ CUDA_VISIBLE_DEVICES=0,1 python tasks/fed_train_sft.py \
 说明：
 
 - `fed_train_sft.py` 现在默认按 **顺序客户端训练** 工作
-- 对 `gp_lora` 而言，GPU 上只保留一份模型；每个 client 的本地 `B` 保存在 CPU 或磁盘中
+- 对 `fedplora` 而言，GPU 上只保留一份模型；每个 client 的本地 `B` 保存在 CPU 或磁盘中
 - `--save_client_state_to_disk` 更适合 `35~70 clients` 的主实验
 - 如果模型需要自定义代码，可以加 `--trust_remote_code`
 
@@ -537,7 +537,7 @@ CUDA_VISIBLE_DEVICES=0,1 python tasks/fed_train_sft.py \
   --benchmark_output_dir data/domain_benchmark \
   --num_clients_per_domain 5 \
   --min_samples_per_client 50 \
-  --agg_type gp_lora \
+  --agg_type fedplora \
   --rounds 10 \
   --local_epochs 1 \
   --lr 2e-4 \
@@ -555,33 +555,61 @@ CUDA_VISIBLE_DEVICES=0,1 python tasks/fed_train_sft.py \
 
 已补充主实验脚本：
 
-- [scripts/run_domain_sft.sh](scripts/run_domain_sft.sh)
-- [configs/domain_sft_pilot.env](configs/domain_sft_pilot.env)
+- [scripts/run_domain_sft.sh](scripts/run_domain_sft.sh)（单次跑一个 `AGG_TYPE`）
+- [scripts/run_domain_sft_baselines.sh](scripts/run_domain_sft_baselines.sh)（按固定顺序自动串行多种 `AGG_TYPE`）
+- [configs/domain_sft_pilot.env](configs/domain_sft_pilot.env)（单机 pilot 默认环境）
+- [configs/domain_sft_baselines.env](configs/domain_sft_baselines.env)（批量 baseline 默认环境）
 
-使用方式：
+默认模型目录已配置为（可按机器修改 env 文件或命令行覆盖）：
+
+`/data/yaominghao/gb/models/Meta-Llama-3.1-8B`
+
+**聚合类型说明**：多轮 **`fedplora`** 为 **FedP-LoRA**（客户端按 FedP 协议上传 LoRA `A` 与可训练头、行统计；服务端 `aggregate_models_fedplora`；本地带对齐/近端/正交正则）。`fedplora-oneshot` 为 **FedP-LoRA 通信形态 + YOCO 单次聚合**：仍只上传 `A` 与头（`B` 留在客户端 / 磁盘），但联邦轮数强制为 1，服务端走 `aggregate_models_yoco`（PCWA 聚合 `A`），本地训练启用与独立 `yoco` 相同的 **LoRA `A` 稀疏先验**（`--yoco_sparse_lambda`）。二者不是同一条聚合代码路径。
+
+#### 11.3.1 单次实验（pilot）
+
+在仓库根目录执行（将 `cd` 换成你的克隆路径）：
 
 ```bash
-# 例如（按你当前项目路径）
-cd /data/yaominghao/gb/FedPDLoRA/FedPLoRA
+cd /path/to/FedPLoRA
 source configs/domain_sft_pilot.env
 bash scripts/run_domain_sft.sh
 ```
 
-训练结束后，每轮 `domain_macro_loss` 会自动保存到：
-
-```text
-artifacts/sft_metrics/
-```
-
-你也可以临时覆盖变量：
+`domain_sft_pilot.env` 中已设置 `MODEL_PATH=/data/yaominghao/gb/models/Meta-Llama-3.1-8B`、`AGG_TYPE=fedplora` 等；若需覆盖：
 
 ```bash
-MODEL_PATH=../../models/qwen3-32b \
-AGG_TYPE=gp_lora \
+cd /path/to/FedPLoRA
+MODEL_PATH=/data/yaominghao/gb/models/Meta-Llama-3.1-8B \
+AGG_TYPE=fedplora \
 CUDA_DEVICES=0,1 \
 ROUNDS=20 \
 BATCH_SIZE=1 \
 bash scripts/run_domain_sft.sh
+```
+
+#### 11.3.2 自动批量 baseline（推荐顺序）
+
+[scripts/run_domain_sft_baselines.sh](scripts/run_domain_sft_baselines.sh) 当前顺序为：**先 `fedplora-oneshot`，再 `fedplora`**，随后 `normal`、`ffa`、`fedex`（后三项在脚本里顺序可任意调整）。
+
+```bash
+cd /path/to/FedPLoRA
+source configs/domain_sft_baselines.env
+bash scripts/run_domain_sft_baselines.sh
+```
+
+`domain_sft_baselines.env` 中已写入同一 `MODEL_PATH`。需要临时改 GPU 或轮数时：
+
+```bash
+cd /path/to/FedPLoRA
+source configs/domain_sft_baselines.env
+CUDA_DEVICES=0,1 ROUNDS=10 bash scripts/run_domain_sft_baselines.sh
+```
+
+训练结束后，每轮 `domain_macro_loss` 等指标会写入：
+
+```text
+artifacts/sft_metrics/
 ```
 
 ### 11.4 运行 baseline
@@ -689,7 +717,7 @@ huggingface-cli login
 CUDA_VISIBLE_DEVICES=0,1 python tasks/fed_train_sft.py \
   --model /path/to/models/Qwen3-14B \
   --benchmark_dir data/domain_benchmark/seed_42 \
-  --agg_type gp_lora \
+  --agg_type fedplora \
   --rounds 10 \
   --local_epochs 1 \
   --lr 2e-4 \
@@ -795,7 +823,7 @@ python scripts/merge_domain_jsonl.py \
 
 - 验证方法逻辑
 - 验证通信统计
-- 验证 `gp_lora` 行为正常
+- 验证 `fedplora` 行为正常
 
 ### E2. E2E-NLG sanity
 
@@ -809,7 +837,7 @@ python scripts/merge_domain_jsonl.py \
 目标：
 
 - 作为主结果表
-- 比较 `gp_lora` 与 `normal/ffa/fedex`
+- 比较 `fedplora` 与 `normal/ffa/fedex`
 
 建议：
 
@@ -914,7 +942,7 @@ python -m py_compile \
 CUDA_VISIBLE_DEVICES=0 python tasks/fed_train_glue.py \
   --model roberta-base \
   --task cola \
-  --agg_type gp_lora \
+  --agg_type fedplora \
   --num_clients 3 \
   --lora_r 4 \
   --rounds 10 \
@@ -929,7 +957,7 @@ CUDA_VISIBLE_DEVICES=0 python tasks/fed_train_glue.py \
 
 ```bash
 CUDA_VISIBLE_DEVICES=0 python tasks/fed_train_e2e.py \
-  --agg_type gp_lora \
+  --agg_type fedplora \
   --rounds 6 \
   --num_clients 3 \
   --local_epochs 5 \
@@ -992,7 +1020,7 @@ python scripts/build_domain_benchmark.py \
 CUDA_VISIBLE_DEVICES=0,1 python tasks/fed_train_sft.py \
   --model Qwen/Qwen3-14B \
   --benchmark_dir data/domain_benchmark/seed_42 \
-  --agg_type gp_lora \
+  --agg_type fedplora \
   --rounds 10 \
   --local_epochs 1 \
   --lr 2e-4 \
@@ -1087,7 +1115,7 @@ CUDA_VISIBLE_DEVICES=0,1 python tasks/fed_train_sft.py \
 CUDA_VISIBLE_DEVICES=0,1 python tasks/fed_train_sft.py \
   --model Qwen/Qwen3-32B \
   --benchmark_dir data/domain_benchmark/seed_42 \
-  --agg_type gp_lora \
+  --agg_type fedplora \
   --rounds 20 \
   --local_epochs 1 \
   --lr 1e-4 \
@@ -1106,7 +1134,7 @@ CUDA_VISIBLE_DEVICES=0,1 python tasks/fed_train_sft.py \
 CUDA_VISIBLE_DEVICES=0,1 python tasks/fed_train_sft.py \
   --model mistralai/Mistral-Small-24B-Instruct-2501 \
   --benchmark_dir data/domain_benchmark/seed_42 \
-  --agg_type gp_lora \
+  --agg_type fedplora \
   --rounds 20 \
   --local_epochs 1 \
   --lr 1e-4 \
@@ -1191,7 +1219,7 @@ CUDA_VISIBLE_DEVICES=0,1 python tasks/fed_train_sft.py \
 
 - 面向 domain benchmark 的 JSONL 构建
 - 面向 causal LLM 的联邦 SFT 训练入口
-- 支持 `gp_lora`、`normal`、`ffa`、`fedex`
+- 支持 `fedplora`、`normal`、`ffa`、`fedex`
 
 后续建议继续补：
 
@@ -1221,7 +1249,7 @@ CUDA_VISIBLE_DEVICES=0,1 python tasks/fed_train_sft.py \
 
 1. 准备 `data/raw/domain_7_all.jsonl`
 2. 执行 benchmark 自动构建
-3. 用 `Qwen/Qwen3-14B` 跑 `gp_lora`
+3. 用 `Qwen/Qwen3-14B` 跑 `fedplora`
 4. 再跑 `normal`、`ffa`、`fedex`
 
 对应命令：
@@ -1245,7 +1273,7 @@ python scripts/build_domain_benchmark.py \
 CUDA_VISIBLE_DEVICES=0,1 python tasks/fed_train_sft.py \
   --model Qwen/Qwen3-14B \
   --benchmark_dir data/domain_benchmark/seed_42 \
-  --agg_type gp_lora \
+  --agg_type fedplora \
   --rounds 10 \
   --local_epochs 1 \
   --lr 2e-4 \
@@ -1278,3 +1306,33 @@ CUDA_VISIBLE_DEVICES=0,1 python tasks/fed_train_sft.py \
 - FedPLoRA 主实验入口
 - baseline 对照入口
 - 可继续扩展的完整骨架
+
+---
+
+## 附录：FedP-LoRA 多轮 vs FedP-LoRA–YOCO 单次（`fedplora-oneshot`）
+
+### 本仓库中的实现对应关系
+
+| 项目 | `fedplora`（多轮 FedP-LoRA） | `fedplora-oneshot`（FedP + YOCO 单次） |
+|------|------------------------------------------|----------------------------------------|
+| 联邦轮数 | 由 `--rounds` 指定，可多轮 | 入口强制 **1 轮**（真 one-shot 通信模式） |
+| 客户端上传内容 | LoRA `A`、可训练任务头、由私有 `B` 推导的行重要度（与 `build_fedplora_upload_package` 一致） | **相同**（沿用 FedP-LoRA 的低通信上传协议） |
+| LoRA `B` | 各客户端本地保留（域 SFT 下可落盘） | 同上 |
+| 服务端聚合 | `methods/fedp_lora.py`：`aggregate_models_fedplora`（符号对齐、动量、QR 等） | `methods/yoco.py`：`aggregate_models_yoco`（对堆叠后的客户端 `A` 做 **PCWA**：主方向上的加权融合） |
+| 本地训练额外项 | `utilities/train_eval.py`：FedP 对齐 / 近端 / 正交（依赖广播的全局 `A`） | **不**使用上述 FedP 多轮正则；启用 **YOCO 式 `A` 的 L1 稀疏项**（与 `agg_type=yoco` 共用 `--yoco_sparse_lambda`） |
+| 独立 `yoco` 模式 | — | `agg_type=yoco` 与 `fedplora-oneshot` 在**聚合与稀疏先验**上一致；`fedplora-oneshot` 显式表达「在 FedP 上传协议下做 YOCO 单次」的研究设定 |
+
+入口逻辑见 `tasks/fed_train_sft.py`（`is_fedplora_multiround_agg` vs `is_fedplora_oneshot_agg` / `is_yoco_agg`）、`utilities/utils.py`（`is_fedplora_oneshot_agg`）、`utilities/train_eval.py`（`_add_yoco_sparse` 对 `fedplora-oneshot` 生效）。
+
+### 与 NeurIPS 2025 YOCO 论文的对应（目标算法 vs 当前代码）
+
+论文 *You Only Communicate Once: One-shot Federated Low-rank Adaptation of MLLM*（YOCO）的核心脉络可概括为：
+
+1. **动机**：真 one-shot FL 中各客户端从同一预训练权重出发，用预训练权重作为**隐式全局监督**，缓解异质数据带来的冲突；实证上**对 LoRA `B` 的方向（符号）约束**比对幅度约束更有效，且**仅约束 `B`** 优于同时约束 `A`、`B`。
+2. **SVD 先验初始化**：对预训练权重矩阵 \(W\) 做 SVD，构造秩-\(r\) 的 \(A^0,B^0\) 使 \(A^0 B^0 \approx W\)，并取 \(B^s=\mathrm{sign}(B^0)\) 作为符号目标。
+3. **本地总损失**：\(L = L_{\text{task}} + R_{\text{sign}} + R_{\text{sparse}}\)。其中 \(R_{\text{sign}}\) 用 \(\tanh(\gamma B)\) 光滑逼近符号，使 \(B\) 与 \(B^s\) 一致；\(R_{\text{sparse}}=\lambda\|A\|_1\) 鼓励客户端 **`A` 稀疏**、保留个性化。
+4. **服务端**：对 **`B`** 做数据集规模加权平均；对 **`A`** 做 **PCWA**（将各客户端展平后的 `A` 堆叠，在主成分子空间内加权再重构），得到 \(A_g,B_g\)，全局增量 \(\Delta W_g=B_g A_g\)，与冻结的 \(W\) 组合用于推理；**仅一轮**上传与下发。
+
+**本仓库当前已对齐的部分**：单轮协议；FedP 式「只上传 `A`+头、`B` 本地」与 YOCO 的「\(B\) 本地学习再参与全局」在**通信结构**上一致；**PCWA 聚合 `A`**（`aggregate_models_yoco`）；**本地对 `A` 的 L1 稀疏正则**（`--yoco_sparse_lambda`，`--yoco_pcwa_components` 控制主方向数）。
+
+**尚未从论文全文落地的部分**（若要与论文完全一致，可作为后续工作）：基于 **SVD 的 LoRA 初始化**、仅作用于 **`B` 的符号一致性损失 \(R_{\text{sign}}\)**（及 \(\gamma,\beta\) 等超参）、服务端对 **`B` 的显式加权平均**（当前域 SFT 上传包不含 `B`，全局 `B` 不通过 FedAvg 式合并；与论文「上传 \(A_i,B_i\)」的叙述在实现细节上需按需扩展上传与聚合）。在扩展前，可将 `fedplora-oneshot` 理解为 **FedP 通信约束下的 YOCO 风格 one-shot：PCWA + `A` 稀疏先验**，并与多轮 `fedplora` 在代码上已明确分离。

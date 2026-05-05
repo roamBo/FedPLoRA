@@ -23,7 +23,8 @@ from utilities.data_utils import *
 from methods.fedavg_normal import aggregate_models_normal
 from methods.fedex import aggregate_models_fedex
 from methods.ffa_lora import aggregate_models_ffa
-from methods.fedp_lora import aggregate_models_gp_lora, build_fedplora_upload_package
+from methods.fedp_lora import aggregate_models_fedplora, build_fedplora_upload_package
+from methods.yoco import aggregate_models_yoco
 from utilities.models import *
 from utilities.state_dict_ops import broadcast_fedplora_shared_state
 from utilities.train_eval import *
@@ -121,7 +122,7 @@ parser.add_argument(
 args = parser.parse_args()
 
 
-def _print_round_metrics_gp_lora(
+def _print_round_metrics_fedplora(
     round_idx, args, pfl, n1, n2, max_pfl_m1, max_pfl_m2
 ):
     """Terminal line: PFL client-mean metric1/metric2 + per-client (same semantics as calculate_metrics)."""
@@ -211,24 +212,28 @@ def federated_learning(task):
 
         client_models.append(client_model)
 
-    if is_fedplora_agg(args.agg_type):
-        init_gp_lora_adapters(global_model)
+    if is_fedplora_agg(args.agg_type) or is_fedplora_oneshot_agg(args.agg_type):
+        init_fedplora_adapters(global_model)
         for m in client_models:
             m.load_state_dict(global_model.state_dict())
+
+    if is_fedplora_oneshot_agg(args.agg_type) and args.rounds != 1:
+        print("[setup] fedplora-oneshot: forcing --rounds 1")
+        args.rounds = 1
 
     for round_idx in range(args.rounds):
         print(f"Round {round_idx + 1}/{args.rounds}")
 
         gp_global_state = None
 
-        if is_fedplora_agg(args.agg_type):
-            args._gp_lora_client_sizes = client_sizes
+        if is_fedplora_agg(args.agg_type) or is_fedplora_oneshot_agg(args.agg_type):
+            args._fedplora_client_sizes = client_sizes
             gp_global_state = {
                 k: v.detach().cpu().clone()
                 for k, v in global_model.state_dict().items()
                 if is_fedplora_shared_param_name(k)
             }
-            args._gp_lora_global_A = {
+            args._fedplora_global_A = {
                 k: v.detach().cpu().clone()
                 for k, v in gp_global_state.items()
                 if is_lora_a_param_name(k)
@@ -238,7 +243,7 @@ def federated_learning(task):
             client_model = client_models[i]
             args._tqdm_desc = f"R{round_idx + 1}/{args.rounds} client{i + 1}/{args.num_clients}"
 
-            if is_fedplora_agg(args.agg_type):
+            if is_fedplora_agg(args.agg_type) or is_fedplora_oneshot_agg(args.agg_type):
                 broadcast_fedplora_shared_state(client_model, gp_global_state)
             else:
                 client_model.load_state_dict(global_model.state_dict())
@@ -252,14 +257,17 @@ def federated_learning(task):
             global_model = aggregate_models_fedex(
                 global_model, client_models, args
             )
-        elif is_fedplora_agg(args.agg_type):
+        elif is_fedplora_agg(args.agg_type) or is_fedplora_oneshot_agg(args.agg_type):
             client_uploads = [
                 build_fedplora_upload_package(client_models[i], client_sizes[i])
                 for i in range(args.num_clients)
             ]
-            global_model = aggregate_models_gp_lora(
-                global_model, client_uploads, args
-            )
+            if is_fedplora_oneshot_agg(args.agg_type):
+                global_model = aggregate_models_yoco(global_model, client_uploads, args)
+            else:
+                global_model = aggregate_models_fedplora(
+                    global_model, client_uploads, args
+                )
             global_state = {
                 k: v.detach().cpu().clone()
                 for k, v in global_model.state_dict().items()
@@ -270,7 +278,7 @@ def federated_learning(task):
         elif args.agg_type == "ffa":
             global_model = aggregate_models_ffa(global_model, client_models)
 
-        if is_fedplora_agg(args.agg_type):
+        if is_fedplora_agg(args.agg_type) or is_fedplora_oneshot_agg(args.agg_type):
             pfl = evaluate_pfl_clients(
                 client_models,
                 val_dataloader,
@@ -285,7 +293,7 @@ def federated_learning(task):
             if pfl_m2 is not None and pfl_m2 > max_pfl_m2:
                 max_pfl_m2 = pfl_m2
 
-            _print_round_metrics_gp_lora(
+            _print_round_metrics_fedplora(
                 round_idx,
                 args,
                 pfl,
