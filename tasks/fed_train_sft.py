@@ -17,6 +17,7 @@ from utilities.data_utils import (
     build_domain_benchmark_from_jsonl,
     create_domain_client_dataloaders,
     create_domain_eval_dataloader,
+    group_rows_by_client,
     group_rows_by_domain,
     load_domain_sft_benchmark,
 )
@@ -123,6 +124,21 @@ parser.add_argument(
     type=int,
     default=0,
     help="If > 0, cap batches per eval forward pass (per client×domain). 0 = full eval. Does not affect training.",
+)
+parser.add_argument(
+    "--eval_personalization_metrics",
+    action="store_true",
+    help="Also report client-local test loss (in-domain) and off-domain test loss for personalization analysis.",
+)
+parser.add_argument(
+    "--fedplora_ablation_no_consensus",
+    action="store_true",
+    help="FedPLoRA server only: disable sign-alignment and consensus-based row reweighting in aggregate_models_fedplora.",
+)
+parser.add_argument(
+    "--fedplora_ablation_no_momentum",
+    action="store_true",
+    help="FedPLoRA server only: disable EMA-style blending with previous global A (gp_agg_momentum ignored for A).",
 )
 
 args = parser.parse_args()
@@ -295,6 +311,164 @@ def _evaluate_domain_macro_sequential(global_model, client_ids, client_store, do
     return metrics, macro, worst
 
 
+def _client_id_to_home_domain(clients_manifest):
+    return {int(c["client_id"]): str(c["domain"]) for c in clients_manifest}
+
+
+def _evaluate_personalization_metrics(
+    global_model,
+    client_ids,
+    client_store,
+    benchmark,
+    tokenizer,
+    args,
+):
+    """
+    In-domain: mean LM loss on each client's test_local, then macro over clients.
+    Off-domain: for each client, mean loss on held-out test_domain splits of domains != home domain.
+    In-domain (domain test): each client on test_domain rows of its home domain only (sanity vs test_local).
+    """
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    eval_cap = int(getattr(args, "eval_max_batches", 0) or 0)
+    shared_state = {
+        k: v.detach().cpu().clone()
+        for k, v in global_model.state_dict().items()
+        if is_fedplora_shared_param_name(k, get_trainable_param_names(global_model))
+    }
+    id2home = _client_id_to_home_domain(benchmark["clients"])
+    by_client_local = group_rows_by_client(benchmark["test_local"])
+    by_domain_test = group_rows_by_domain(benchmark["test_domain"])
+
+    local_losses = []
+    for client_id in client_ids:
+        rows = by_client_local.get(int(client_id), [])
+        if not rows:
+            continue
+        dl = create_domain_eval_dataloader(rows, tokenizer, args)
+        broadcast_fedplora_shared_state(global_model, shared_state)
+        local_state = _get_client_local_state(client_store, client_id)
+        load_fedplora_local_state(global_model, local_state)
+        local_losses.append(
+            compute_lm_loss(global_model, dl, device, max_batches=eval_cap)
+        )
+    client_local_macro = (
+        float(np.mean(local_losses)) if local_losses else float("nan")
+    )
+
+    off_losses = []
+    for client_id in client_ids:
+        home = id2home.get(int(client_id))
+        if not home:
+            continue
+        for domain, rows in sorted(by_domain_test.items()):
+            if domain == home or not rows:
+                continue
+            dl = create_domain_eval_dataloader(rows, tokenizer, args)
+            broadcast_fedplora_shared_state(global_model, shared_state)
+            local_state = _get_client_local_state(client_store, client_id)
+            load_fedplora_local_state(global_model, local_state)
+            off_losses.append(
+                compute_lm_loss(global_model, dl, device, max_batches=eval_cap)
+            )
+    off_domain_macro = float(np.mean(off_losses)) if off_losses else float("nan")
+
+    in_dom_dt_losses = []
+    for client_id in client_ids:
+        home = id2home.get(int(client_id))
+        if not home:
+            continue
+        rows = by_domain_test.get(home, [])
+        if not rows:
+            continue
+        dl = create_domain_eval_dataloader(rows, tokenizer, args)
+        broadcast_fedplora_shared_state(global_model, shared_state)
+        local_state = _get_client_local_state(client_store, client_id)
+        load_fedplora_local_state(global_model, local_state)
+        in_dom_dt_losses.append(
+            compute_lm_loss(global_model, dl, device, max_batches=eval_cap)
+        )
+    in_domain_domain_test_macro = (
+        float(np.mean(in_dom_dt_losses)) if in_dom_dt_losses else float("nan")
+    )
+
+    return {
+        "client_local_macro_loss": client_local_macro,
+        "off_domain_macro_loss": off_domain_macro,
+        "in_domain_domain_test_macro_loss": in_domain_domain_test_macro,
+    }
+
+
+def _evaluate_personalization_metrics_full_state(
+    global_model,
+    eval_store,
+    eval_client_ids,
+    benchmark,
+    tokenizer,
+    args,
+):
+    """Personalization metrics for full-state clients (normal / ffa / fedex / flora, etc.)."""
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    eval_cap = int(getattr(args, "eval_max_batches", 0) or 0)
+    id2home = _client_id_to_home_domain(benchmark["clients"])
+    by_client_local = group_rows_by_client(benchmark["test_local"])
+    by_domain_test = group_rows_by_domain(benchmark["test_domain"])
+
+    local_losses = []
+    for idx in eval_client_ids:
+        rows = by_client_local.get(int(idx), [])
+        if not rows:
+            continue
+        dl = create_domain_eval_dataloader(rows, tokenizer, args)
+        state = _get_client_local_state(eval_store, idx)
+        load_partial_state_dict(global_model, state)
+        local_losses.append(
+            compute_lm_loss(global_model, dl, device, max_batches=eval_cap)
+        )
+    client_local_macro = (
+        float(np.mean(local_losses)) if local_losses else float("nan")
+    )
+
+    off_losses = []
+    for idx in eval_client_ids:
+        home = id2home.get(int(idx))
+        if not home:
+            continue
+        for domain, rows in sorted(by_domain_test.items()):
+            if domain == home or not rows:
+                continue
+            dl = create_domain_eval_dataloader(rows, tokenizer, args)
+            state = _get_client_local_state(eval_store, idx)
+            load_partial_state_dict(global_model, state)
+            off_losses.append(
+                compute_lm_loss(global_model, dl, device, max_batches=eval_cap)
+            )
+    off_domain_macro = float(np.mean(off_losses)) if off_losses else float("nan")
+
+    in_dom_dt_losses = []
+    for idx in eval_client_ids:
+        home = id2home.get(int(idx))
+        if not home:
+            continue
+        rows = by_domain_test.get(home, [])
+        if not rows:
+            continue
+        dl = create_domain_eval_dataloader(rows, tokenizer, args)
+        state = _get_client_local_state(eval_store, idx)
+        load_partial_state_dict(global_model, state)
+        in_dom_dt_losses.append(
+            compute_lm_loss(global_model, dl, device, max_batches=eval_cap)
+        )
+    in_domain_domain_test_macro = (
+        float(np.mean(in_dom_dt_losses)) if in_dom_dt_losses else float("nan")
+    )
+
+    return {
+        "client_local_macro_loss": client_local_macro,
+        "off_domain_macro_loss": off_domain_macro,
+        "in_domain_domain_test_macro_loss": in_domain_domain_test_macro,
+    }
+
+
 def _metrics_path(args, split_dir):
     split_tag = os.path.basename(os.path.normpath(split_dir))
     model_tag = os.path.basename(os.path.normpath(args.model.rstrip("/")))
@@ -367,6 +541,11 @@ def federated_sft(args):
     metrics_history = {
         "args": vars(args).copy(),
         "benchmark_dir": split_dir,
+        "communication": {
+            "agg_type": args.agg_type,
+            "down_bytes_per_client": int(comm_info["down_bytes_per_client"]),
+            "up_bytes_per_client": int(comm_info["up_bytes_per_client"]),
+        },
         "rounds": [],
     }
 
@@ -469,6 +648,7 @@ def federated_sft(args):
             raise ValueError(f"Unknown agg_type: {args.agg_type}")
 
         print(f"[round {round_idx + 1}] aggregation done; running evaluation ...", flush=True)
+        pfl_block = {}
         if is_lora_a_disk_agg(args.agg_type):
             domain_metrics, domain_macro, worst_domain = _evaluate_domain_macro_sequential(
                 global_model,
@@ -478,6 +658,15 @@ def federated_sft(args):
                 tokenizer,
                 args,
             )
+            if getattr(args, "eval_personalization_metrics", False):
+                pfl_block = _evaluate_personalization_metrics(
+                    global_model,
+                    client_ids,
+                    client_store,
+                    benchmark,
+                    tokenizer,
+                    args,
+                )
         else:
             state_dir = os.path.join(args.client_state_dir, f"eval_seed_{args.seed}")
             os.makedirs(state_dir, exist_ok=True)
@@ -511,6 +700,15 @@ def federated_sft(args):
             domain_metrics = metrics
             domain_macro = float(np.mean(list(metrics.values()))) if metrics else float("nan")
             worst_domain = float(max(metrics.values())) if metrics else float("nan")
+            if getattr(args, "eval_personalization_metrics", False):
+                pfl_block = _evaluate_personalization_metrics_full_state(
+                    global_model,
+                    eval_store,
+                    eval_client_ids,
+                    benchmark,
+                    tokenizer,
+                    args,
+                )
         best_domain_macro = min(best_domain_macro, domain_macro)
         best_worst_domain = min(best_worst_domain, worst_domain)
         metrics_str = " | ".join(
@@ -522,17 +720,25 @@ def federated_sft(args):
             f"worst_domain_loss={worst_domain:.4f} "
             f"best_worst_domain_loss={best_worst_domain:.4f} | {metrics_str}"
         )
+        if pfl_block:
+            print(
+                f"[eval] personalization round={round_idx + 1} "
+                f"client_local_macro_loss={pfl_block['client_local_macro_loss']:.4f} "
+                f"in_domain_domain_test_macro_loss={pfl_block['in_domain_domain_test_macro_loss']:.4f} "
+                f"off_domain_macro_loss={pfl_block['off_domain_macro_loss']:.4f}",
+                flush=True,
+            )
 
-        metrics_history["rounds"].append(
-            {
-                "round": round_idx + 1,
-                "domain_macro_loss": domain_macro,
-                "best_domain_macro_loss": best_domain_macro,
-                "worst_domain_loss": worst_domain,
-                "best_worst_domain_loss": best_worst_domain,
-                "domain_metrics": domain_metrics,
-            }
-        )
+        round_payload = {
+            "round": round_idx + 1,
+            "domain_macro_loss": domain_macro,
+            "best_domain_macro_loss": best_domain_macro,
+            "worst_domain_loss": worst_domain,
+            "best_worst_domain_loss": best_worst_domain,
+            "domain_metrics": domain_metrics,
+        }
+        round_payload.update(pfl_block)
+        metrics_history["rounds"].append(round_payload)
 
     metrics_path = _metrics_path(args, split_dir)
     _write_metrics_file(metrics_path, metrics_history)

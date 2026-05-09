@@ -1,0 +1,100 @@
+[
+  {
+    "client_id": 0,
+    "domain": "code",
+    "n_train": 1800,
+    "n_val": 225,
+    "n_local_test": 225
+  },
+  {
+    "client_id": 1,
+    "domain": "code",
+    "n_train": 1800,
+    "n_val": 225,
+    "n_local_test": 225
+  },
+  {
+    "client_id": 2,
+    "domain": "education",
+    "n_train": 171,
+    "n_val": 21,
+    "n_local_test": 21
+  },
+  {
+    "client_id": 3,
+    "domain": "education",
+    "n_train": 171,
+    "n_val": 21,
+    "n_local_test": 21
+  },
+  {
+    "client_id": 4,
+    "domain": "finance",
+    "n_train": 1800,
+    "n_val": 225,
+    "n_local_test": 225
+  },
+  {
+    "client_id": 5,
+    "domain": "finance",
+    "n_train": 1800,
+    "n_val": 225,
+    "n_local_test": 225
+  },
+  {
+    "client_id": 6,
+    "domain": "general",
+    "n_train": 1800,
+    "n_val": 225,
+    "n_local_test": 225
+  },
+  {
+    "client_id": 7,
+    "domain": "general",
+    "n_train": 1800,
+    "n_val": 225,
+    "n_local_test": 225
+  },
+  {
+    "client_id": 8,
+    "domain": "legal",
+    "n_train": 1800,
+    "n_val": 225,
+    "n_local_test": 225
+  },
+  {
+    "client_id": 9,
+    "domain": "legal",
+    "n_train": 1800,
+    "n_val": 225,
+    "n_local_test": 225
+  },
+  {
+    "client_id": 10,
+    "domain": "math",
+    "n_train": 1800,
+    "n_val": 225,
+    "n_local_test": 225
+  },
+  {
+    "client_id": 11,
+    "domain": "math",
+    "n_train": 1800,
+    "n_val": 225,
+    "n_local_test": 225
+  },
+  {
+    "client_id": 12,
+    "domain": "medical",
+    "n_train": 720,
+    "n_val": 90,
+    "n_local_test": 90
+  },
+  {
+    "client_id": 13,
+    "domain": "medical",
+    "n_train": 720,
+    "n_val": 90,
+    "n_local_test": 90
+  }
+]

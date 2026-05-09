@@ -236,9 +236,15 @@ def setup_run_logging(args, log_dir="log", filename_prefix=None):
 
     task = getattr(args, "task", None) or getattr(args, "dataset", None) or "run"
     agg = getattr(args, "agg_type", "agg")
-    part = getattr(args, "partition", "iid")
-    alpha = getattr(args, "dirichlet_alpha", None)
-    alpha_s = f"a{alpha}" if (part == "dirichlet" and alpha is not None) else "iid"
+    # GLUE / E2E: filename encodes label-partition scheme (iid vs dirichlet + alpha).
+    # Domain SFT (fed_train_sft): clients are domain-disjoint → task-shift non-IID, not iid_iid.
+    if filename_prefix == "sft":
+        skew_tag = "task_shift_non-iid"
+    else:
+        part = getattr(args, "partition", "iid")
+        alpha = getattr(args, "dirichlet_alpha", None)
+        alpha_s = f"a{alpha}" if (part == "dirichlet" and alpha is not None) else "iid"
+        skew_tag = f"{part}_{alpha_s}"
     num_clients = getattr(args, "num_clients", "C")
     rounds = getattr(args, "rounds", "R")
     local_epochs = getattr(args, "local_epochs", "E")
@@ -247,7 +253,7 @@ def setup_run_logging(args, log_dir="log", filename_prefix=None):
 
     prefix = filename_prefix + "_" if filename_prefix else ""
     fname = (
-        f"{prefix}{task}_{agg}_{part}_{alpha_s}_"
+        f"{prefix}{task}_{agg}_{skew_tag}_"
         f"c{num_clients}_r{rounds}_e{local_epochs}_lr{lr}_seed{seed}_{ts}.log"
     )
     path = os.path.join(log_dir, fname)

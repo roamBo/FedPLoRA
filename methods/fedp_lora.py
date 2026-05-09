@@ -70,6 +70,8 @@ def aggregate_models_fedplora(global_model, client_models, args):
     eps = 1e-8
     consensus_power = float(getattr(args, "gp_consensus_power", 2.0))
     agg_momentum = float(getattr(args, "gp_agg_momentum", 0.5))
+    abl_no_consensus = bool(getattr(args, "fedplora_ablation_no_consensus", False))
+    abl_no_momentum = bool(getattr(args, "fedplora_ablation_no_momentum", False))
 
     for k in global_dict.keys():
         if is_task_head_param_name(k) and all(k in state for state in client_states):
@@ -96,7 +98,9 @@ def aggregate_models_fedplora(global_model, client_models, args):
                 else:
                     imp = imp.to(dtype=A_dir.dtype)
 
-                if A_prev_dir is not None:
+                if abl_no_consensus:
+                    consensus = torch.ones(Ai.shape[0], device=A_dir.device, dtype=A_dir.dtype)
+                elif A_prev_dir is not None:
                     ref = A_prev_dir.to(device=A_dir.device, dtype=A_dir.dtype)
                     dots = (A_dir * ref).sum(dim=1)
                     sign = torch.where(dots >= 0, 1.0, -1.0).unsqueeze(1)
@@ -105,9 +109,12 @@ def aggregate_models_fedplora(global_model, client_models, args):
                 else:
                     consensus = torch.ones(Ai.shape[0], device=A_dir.device, dtype=A_dir.dtype)
 
-                row_weight = (
-                    float(weights[i]) * imp.clamp_min(eps) * torch.pow(consensus, consensus_power)
+                cons_factor = (
+                    torch.ones_like(consensus)
+                    if abl_no_consensus
+                    else torch.pow(consensus, consensus_power)
                 )
+                row_weight = float(weights[i]) * imp.clamp_min(eps) * cons_factor
                 rw = row_weight.unsqueeze(1)
                 A_acc = A_acc + rw * A_dir
                 w_sum = w_sum + rw
@@ -116,7 +123,7 @@ def aggregate_models_fedplora(global_model, client_models, args):
                 continue
 
             A_mean = A_acc / w_sum.clamp_min(eps)
-            if A_prev_dir is not None:
+            if A_prev_dir is not None and not abl_no_momentum:
                 A_mean = (agg_momentum * A_prev_dir.cpu()) + ((1.0 - agg_momentum) * A_mean)
 
             Q, _ = torch.linalg.qr(A_mean.transpose(0, 1), mode="reduced")

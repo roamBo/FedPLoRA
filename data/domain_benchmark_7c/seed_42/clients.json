@@ -1,0 +1,51 @@
+[
+  {
+    "client_id": 0,
+    "domain": "code",
+    "n_train": 3600,
+    "n_val": 450,
+    "n_local_test": 450
+  },
+  {
+    "client_id": 1,
+    "domain": "education",
+    "n_train": 342,
+    "n_val": 42,
+    "n_local_test": 42
+  },
+  {
+    "client_id": 2,
+    "domain": "finance",
+    "n_train": 3600,
+    "n_val": 450,
+    "n_local_test": 450
+  },
+  {
+    "client_id": 3,
+    "domain": "general",
+    "n_train": 3600,
+    "n_val": 450,
+    "n_local_test": 450
+  },
+  {
+    "client_id": 4,
+    "domain": "legal",
+    "n_train": 3600,
+    "n_val": 450,
+    "n_local_test": 450
+  },
+  {
+    "client_id": 5,
+    "domain": "math",
+    "n_train": 3600,
+    "n_val": 450,
+    "n_local_test": 450
+  },
+  {
+    "client_id": 6,
+    "domain": "medical",
+    "n_train": 1440,
+    "n_val": 180,
+    "n_local_test": 180
+  }
+]

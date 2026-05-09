@@ -1,6 +1,3 @@
-(base) random-bo@LAPTOP-NJ0CUBJA:/mnt/f/HuggingfaceModels/models/qwen3-14b$ find . -type f -print0 | sort -z | xargs -0 sha256sum > qwen3-14b.sha256
-(base) random-bo@LAPTOP-NJ0CUBJA:/mnt/f/HuggingfaceModels/models/qwen3-14b$ diff qwen3-14b.sha256 ../../qwen3-14b.sha256 
-
 # FedPLoRA：面向跨域个性化联邦大模型的 LoRA 因子解耦方法
 
 本仓库实现了一个面向联邦个性化微调的 LoRA 方法：**FedPLoRA**。  
@@ -33,7 +30,7 @@
 - **`methods/`**：各 baseline 的服务端聚合与（部分）上传逻辑，**每个方法一个 `.py` 文件**；不含 `__init__.py`（使用隐式命名空间包，便于 `from methods.xxx import ...`）。
 - **`tasks/`**：可执行入口：`fed_train_sft.py`（域 SFT）、`fed_train_glue.py`、`fed_train_e2e.py`。
 - **`utilities/`**：`data_utils.py`、`models.py`、`utils.py`、训练/评估 `train_eval.py`、联邦状态 `state_dict_ops.py`。
-- **`scripts/`**：数据准备、`build_domain_benchmark.py`、批量实验入口 **`run_script.py`**。
+- **`scripts/`**：子目录 **`DataProcessScripts/`**（数据准备、benchmark 构建）、**`RunScripts/`**（`run_domain_sft*.sh`、`run_script.py` 等训练/批量实验入口）。
 - **`__pycache__/`**：Python 解释器自动生成的字节码缓存，**可删**；运行后会再次出现，已写入 `.gitignore` 建议不要提交。
 
 当前仓库包含三条能力线：
@@ -192,15 +189,15 @@ W_i = W_0 + B_i A_{global}
 
 当前仓库已经提供对应的数据准备入口：
 
-- [prepare_hf_domain_data.py](scripts/prepare_hf_domain_data.py)
-- [prepare_general_data.py](scripts/prepare_general_data.py)
-- [prepare_math_data.py](scripts/prepare_math_data.py)
-- [prepare_code_data.py](scripts/prepare_code_data.py)
-- [prepare_medical_data.py](scripts/prepare_medical_data.py)
-- [prepare_legal_data.py](scripts/prepare_legal_data.py)
-- [prepare_finance_data.py](scripts/prepare_finance_data.py)
-- [prepare_education_data.py](scripts/prepare_education_data.py)
-- [prepare_all_domains.sh](scripts/prepare_all_domains.sh)
+- [prepare_hf_domain_data.py](scripts/DataProcessScripts/prepare_hf_domain_data.py)
+- [prepare_general_data.py](scripts/DataProcessScripts/prepare_general_data.py)
+- [prepare_math_data.py](scripts/DataProcessScripts/prepare_math_data.py)
+- [prepare_code_data.py](scripts/DataProcessScripts/prepare_code_data.py)
+- [prepare_medical_data.py](scripts/DataProcessScripts/prepare_medical_data.py)
+- [prepare_legal_data.py](scripts/DataProcessScripts/prepare_legal_data.py)
+- [prepare_finance_data.py](scripts/DataProcessScripts/prepare_finance_data.py)
+- [prepare_education_data.py](scripts/DataProcessScripts/prepare_education_data.py)
+- [prepare_all_domains.sh](scripts/DataProcessScripts/prepare_all_domains.sh)
 - [domain_data_pilot.env](configs/domain_data_pilot.env)
 
 ### 6.2 推荐评测集
@@ -270,15 +267,15 @@ data/
 
 仓库内已补充三个直接可用的脚本：
 
-- 模板生成脚本：[scripts/prepare_domain_jsonl_template.py](scripts/prepare_domain_jsonl_template.py)
-- 多域汇总脚本：[scripts/merge_domain_jsonl.py](scripts/merge_domain_jsonl.py)
-- benchmark 构建脚本：[scripts/build_domain_benchmark.py](scripts/build_domain_benchmark.py)
+- 模板生成脚本：[scripts/DataProcessScripts/prepare_domain_jsonl_template.py](scripts/DataProcessScripts/prepare_domain_jsonl_template.py)
+- 多域汇总脚本：[scripts/DataProcessScripts/merge_domain_jsonl.py](scripts/DataProcessScripts/merge_domain_jsonl.py)
+- benchmark 构建脚本：[scripts/DataProcessScripts/build_domain_benchmark.py](scripts/DataProcessScripts/build_domain_benchmark.py)
 
 先生成一个统一 JSONL 模板：
 
 ```bash
 cd FedPLoRA  # 进入本包根目录（含 tasks、utilities、scripts）
-python scripts/prepare_domain_jsonl_template.py \
+python scripts/DataProcessScripts/prepare_domain_jsonl_template.py \
   --output data/raw/domain_7_template.jsonl \
   --examples_per_domain 2
 ```
@@ -292,7 +289,7 @@ data/raw/domain_7_all.jsonl
 如果你已经把各领域样本按目录存放，也可以先自动汇总：
 
 ```bash
-python scripts/merge_domain_jsonl.py \
+python scripts/DataProcessScripts/merge_domain_jsonl.py \
   --input_root data/domain_sources \
   --output data/raw/domain_7_all.jsonl \
   --recursive
@@ -303,8 +300,8 @@ python scripts/merge_domain_jsonl.py \
 ```bash
 cd FedPLoRA  # 进入本包根目录（含 tasks、utilities、scripts）
 source configs/domain_data_pilot.env
-bash scripts/prepare_all_domains.sh
-python scripts/merge_domain_jsonl.py \
+bash scripts/DataProcessScripts/prepare_all_domains.sh
+python scripts/DataProcessScripts/merge_domain_jsonl.py \
   --input_root data/domain_sources \
   --output data/raw/domain_7_all.jsonl \
   --recursive
@@ -313,7 +310,7 @@ python scripts/merge_domain_jsonl.py \
 再独立构建 benchmark：
 
 ```bash
-python scripts/build_domain_benchmark.py \
+python scripts/DataProcessScripts/build_domain_benchmark.py \
   --input_jsonl data/raw/domain_7_all.jsonl \
   --output_dir data/domain_benchmark \
   --num_clients_per_domain 5 \
@@ -354,18 +351,18 @@ python -m py_compile \
   utilities/models.py \
   utilities/data_utils.py \
   utilities/utils.py \
-  scripts/run_script.py \
-  scripts/prepare_domain_jsonl_template.py \
-  scripts/build_domain_benchmark.py \
-  scripts/merge_domain_jsonl.py \
-  scripts/prepare_hf_domain_data.py \
-  scripts/prepare_general_data.py \
-  scripts/prepare_math_data.py \
-  scripts/prepare_code_data.py \
-  scripts/prepare_medical_data.py \
-  scripts/prepare_legal_data.py \
-  scripts/prepare_finance_data.py \
-  scripts/prepare_education_data.py
+  scripts/RunScripts/run_script.py \
+  scripts/DataProcessScripts/prepare_domain_jsonl_template.py \
+  scripts/DataProcessScripts/build_domain_benchmark.py \
+  scripts/DataProcessScripts/merge_domain_jsonl.py \
+  scripts/DataProcessScripts/prepare_hf_domain_data.py \
+  scripts/DataProcessScripts/prepare_general_data.py \
+  scripts/DataProcessScripts/prepare_math_data.py \
+  scripts/DataProcessScripts/prepare_code_data.py \
+  scripts/DataProcessScripts/prepare_medical_data.py \
+  scripts/DataProcessScripts/prepare_legal_data.py \
+  scripts/DataProcessScripts/prepare_finance_data.py \
+  scripts/DataProcessScripts/prepare_education_data.py
 ```
 
 ---
@@ -433,8 +430,8 @@ CUDA_VISIBLE_DEVICES=0 python tasks/fed_train_e2e.py \
 
 - [utilities/data_utils.py](utilities/data_utils.py)
 - [tasks/fed_train_sft.py](tasks/fed_train_sft.py)
-- [scripts/merge_domain_jsonl.py](scripts/merge_domain_jsonl.py)
-- [scripts/build_domain_benchmark.py](scripts/build_domain_benchmark.py)
+- [scripts/DataProcessScripts/merge_domain_jsonl.py](scripts/DataProcessScripts/merge_domain_jsonl.py)
+- [scripts/DataProcessScripts/build_domain_benchmark.py](scripts/DataProcessScripts/build_domain_benchmark.py)
 
 ### 10.1 第一步：准备统一 JSONL
 
@@ -447,7 +444,7 @@ data/raw/domain_7_all.jsonl
 如果你还没有开始整理数据，可以先生成模板：
 
 ```bash
-python scripts/prepare_domain_jsonl_template.py \
+python scripts/DataProcessScripts/prepare_domain_jsonl_template.py \
   --output data/raw/domain_7_template.jsonl \
   --examples_per_domain 2
 ```
@@ -455,7 +452,7 @@ python scripts/prepare_domain_jsonl_template.py \
 如果你已经将每个域的文件分别放在 `data/domain_sources/<domain>/` 目录，也可以直接合并：
 
 ```bash
-python scripts/merge_domain_jsonl.py \
+python scripts/DataProcessScripts/merge_domain_jsonl.py \
   --input_root data/domain_sources \
   --output data/raw/domain_7_all.jsonl \
   --recursive
@@ -470,7 +467,7 @@ python scripts/merge_domain_jsonl.py \
 ### 10.2 第二步：自动切成 benchmark
 
 ```bash
-python scripts/build_domain_benchmark.py \
+python scripts/DataProcessScripts/build_domain_benchmark.py \
   --input_jsonl data/raw/domain_7_all.jsonl \
   --output_dir data/domain_benchmark \
   --num_clients_per_domain 5 \
@@ -501,9 +498,80 @@ cat data/domain_benchmark/seed_42/clients.json | head
 
 ### 11.1 直接用准备好的 benchmark 训练
 
+以下命令均在**仓库根目录**执行；默认模型为 **Meta-Llama-3.1-8B** 本地目录（与 `configs/domain_sft_*.env` 一致），请按你机器上的实际路径替换 `--model`。
+
+`fed_train_sft.py` 在 11.1 中给出 **12** 条可整段复制的命令（对应 **12** 个 `agg_type`）。其中 **`fedplora-oneshot`** 与 **`yoco`** 在服务端均调用 `aggregate_models_yoco`（PCWA），并均强制单轮通信；差别在于上传协议与命名：`fedplora-oneshot` 走 FedP 式「只上传 A+头」，`yoco` 为独立 `agg_type` 标签。别名：`fedsa`≡`fedsa_lora`，`fd_lora`≡`fdlora`，`het_lora`≡`hetlora`，`loraa2`≡`lora_a2`。
+
+公共说明：
+
+- 顺序客户端训练；需 **A/B 分离磁盘协议** 的方法（`fedplora`、`fedplora-oneshot`、`yoco`、`fedsa_lora`、`fedalt`）务必加 `--save_client_state_to_disk`。
+- 若 Transformers 加载 Llama 报错，可在命令末尾追加 `--trust_remote_code`。
+
+#### 1) `normal`
+
 ```bash
 CUDA_VISIBLE_DEVICES=0,1 python tasks/fed_train_sft.py \
-  --model ../../models/qwen3-14b \
+  --model /data/yaominghao/gb/models/Meta-Llama-3.1-8B \
+  --benchmark_dir data/domain_benchmark/seed_42 \
+  --agg_type normal \
+  --rounds 10 \
+  --local_epochs 1 \
+  --lr 2e-4 \
+  --lora_r 8 \
+  --lora_alpha 16 \
+  --lora_dropout 0.05 \
+  --batch_size 2 \
+  --max_seq_length 2048 \
+  --gradient_checkpointing \
+  --torch_dtype bfloat16 \
+  --target_modules q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj
+```
+
+#### 2) `fedex`
+
+```bash
+CUDA_VISIBLE_DEVICES=0,1 python tasks/fed_train_sft.py \
+  --model /data/yaominghao/gb/models/Meta-Llama-3.1-8B \
+  --benchmark_dir data/domain_benchmark/seed_42 \
+  --agg_type fedex \
+  --rounds 10 \
+  --local_epochs 1 \
+  --lr 2e-4 \
+  --lora_r 8 \
+  --lora_alpha 16 \
+  --lora_dropout 0.05 \
+  --batch_size 2 \
+  --max_seq_length 2048 \
+  --gradient_checkpointing \
+  --torch_dtype bfloat16 \
+  --target_modules q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj
+```
+
+#### 3) `ffa`
+
+```bash
+CUDA_VISIBLE_DEVICES=0,1 python tasks/fed_train_sft.py \
+  --model /data/yaominghao/gb/models/Meta-Llama-3.1-8B \
+  --benchmark_dir data/domain_benchmark/seed_42 \
+  --agg_type ffa \
+  --rounds 10 \
+  --local_epochs 1 \
+  --lr 2e-4 \
+  --lora_r 8 \
+  --lora_alpha 16 \
+  --lora_dropout 0.05 \
+  --batch_size 2 \
+  --max_seq_length 2048 \
+  --gradient_checkpointing \
+  --torch_dtype bfloat16 \
+  --target_modules q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj
+```
+
+#### 4) `fedplora`（多轮 FedP-LoRA）
+
+```bash
+CUDA_VISIBLE_DEVICES=0,1 python tasks/fed_train_sft.py \
+  --model /data/yaominghao/gb/models/Meta-Llama-3.1-8B \
   --benchmark_dir data/domain_benchmark/seed_42 \
   --agg_type fedplora \
   --rounds 10 \
@@ -516,22 +584,455 @@ CUDA_VISIBLE_DEVICES=0,1 python tasks/fed_train_sft.py \
   --max_seq_length 2048 \
   --gradient_checkpointing \
   --torch_dtype bfloat16 \
-  --target_modules q_proj,k_proj,v_proj,o_proj,up_proj,down_proj,gate_proj \
+  --target_modules q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj \
   --save_client_state_to_disk
 ```
 
-说明：
-
-- `fed_train_sft.py` 现在默认按 **顺序客户端训练** 工作
-- 对 `fedplora` 而言，GPU 上只保留一份模型；每个 client 的本地 `B` 保存在 CPU 或磁盘中
-- `--save_client_state_to_disk` 更适合 `35~70 clients` 的主实验
-- 如果模型需要自定义代码，可以加 `--trust_remote_code`
-
-### 11.2 从原始 JSONL 直接构建并训练
+#### 5) `fedplora-oneshot`（FedP 通信 + YOCO 单轮；入口会强制 `--rounds 1`）
 
 ```bash
 CUDA_VISIBLE_DEVICES=0,1 python tasks/fed_train_sft.py \
-  --model ../../models/qwen3-14b \
+  --model /data/yaominghao/gb/models/Meta-Llama-3.1-8B \
+  --benchmark_dir data/domain_benchmark/seed_42 \
+  --agg_type fedplora-oneshot \
+  --rounds 10 \
+  --local_epochs 1 \
+  --lr 2e-4 \
+  --lora_r 8 \
+  --lora_alpha 16 \
+  --lora_dropout 0.05 \
+  --batch_size 2 \
+  --max_seq_length 2048 \
+  --gradient_checkpointing \
+  --torch_dtype bfloat16 \
+  --target_modules q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj \
+  --yoco_sparse_lambda 1e-4 \
+  --yoco_pcwa_components 3 \
+  --save_client_state_to_disk
+```
+
+#### 6) `yoco`（单轮 PCWA；入口会强制 `--rounds 1`）
+
+```bash
+CUDA_VISIBLE_DEVICES=0,1 python tasks/fed_train_sft.py \
+  --model /data/yaominghao/gb/models/Meta-Llama-3.1-8B \
+  --benchmark_dir data/domain_benchmark/seed_42 \
+  --agg_type yoco \
+  --rounds 10 \
+  --local_epochs 1 \
+  --lr 2e-4 \
+  --lora_r 8 \
+  --lora_alpha 16 \
+  --lora_dropout 0.05 \
+  --batch_size 2 \
+  --max_seq_length 2048 \
+  --gradient_checkpointing \
+  --torch_dtype bfloat16 \
+  --target_modules q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj \
+  --yoco_sparse_lambda 1e-4 \
+  --yoco_pcwa_components 3 \
+  --save_client_state_to_disk
+```
+
+#### 7) `fedsa_lora`（可用 `--agg_type fedsa` 等价）
+
+```bash
+CUDA_VISIBLE_DEVICES=0,1 python tasks/fed_train_sft.py \
+  --model /data/yaominghao/gb/models/Meta-Llama-3.1-8B \
+  --benchmark_dir data/domain_benchmark/seed_42 \
+  --agg_type fedsa_lora \
+  --rounds 10 \
+  --local_epochs 1 \
+  --lr 2e-4 \
+  --lora_r 8 \
+  --lora_alpha 16 \
+  --lora_dropout 0.05 \
+  --batch_size 2 \
+  --max_seq_length 2048 \
+  --gradient_checkpointing \
+  --torch_dtype bfloat16 \
+  --target_modules q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj \
+  --save_client_state_to_disk
+```
+
+#### 8) `fedalt`
+
+```bash
+CUDA_VISIBLE_DEVICES=0,1 python tasks/fed_train_sft.py \
+  --model /data/yaominghao/gb/models/Meta-Llama-3.1-8B \
+  --benchmark_dir data/domain_benchmark/seed_42 \
+  --agg_type fedalt \
+  --rounds 10 \
+  --local_epochs 1 \
+  --lr 2e-4 \
+  --lora_r 8 \
+  --lora_alpha 16 \
+  --lora_dropout 0.05 \
+  --batch_size 2 \
+  --max_seq_length 2048 \
+  --gradient_checkpointing \
+  --torch_dtype bfloat16 \
+  --target_modules q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj \
+  --save_client_state_to_disk
+```
+
+#### 9) `hetlora`（可用 `--agg_type het_lora` 等价）
+
+```bash
+CUDA_VISIBLE_DEVICES=0,1 python tasks/fed_train_sft.py \
+  --model /data/yaominghao/gb/models/Meta-Llama-3.1-8B \
+  --benchmark_dir data/domain_benchmark/seed_42 \
+  --agg_type hetlora \
+  --rounds 10 \
+  --local_epochs 1 \
+  --lr 2e-4 \
+  --lora_r 8 \
+  --lora_alpha 16 \
+  --lora_dropout 0.05 \
+  --batch_size 2 \
+  --max_seq_length 2048 \
+  --gradient_checkpointing \
+  --torch_dtype bfloat16 \
+  --target_modules q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj
+```
+
+#### 10) `flora`
+
+```bash
+CUDA_VISIBLE_DEVICES=0,1 python tasks/fed_train_sft.py \
+  --model /data/yaominghao/gb/models/Meta-Llama-3.1-8B \
+  --benchmark_dir data/domain_benchmark/seed_42 \
+  --agg_type flora \
+  --rounds 10 \
+  --local_epochs 1 \
+  --lr 2e-4 \
+  --lora_r 8 \
+  --lora_alpha 16 \
+  --lora_dropout 0.05 \
+  --batch_size 2 \
+  --max_seq_length 2048 \
+  --gradient_checkpointing \
+  --torch_dtype bfloat16 \
+  --target_modules q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj
+```
+
+#### 11) `lora_a2`（可用 `--agg_type loraa2` 等价）
+
+```bash
+CUDA_VISIBLE_DEVICES=0,1 python tasks/fed_train_sft.py \
+  --model /data/yaominghao/gb/models/Meta-Llama-3.1-8B \
+  --benchmark_dir data/domain_benchmark/seed_42 \
+  --agg_type lora_a2 \
+  --rounds 10 \
+  --local_epochs 1 \
+  --lr 2e-4 \
+  --lora_r 8 \
+  --lora_alpha 16 \
+  --lora_dropout 0.05 \
+  --batch_size 2 \
+  --max_seq_length 2048 \
+  --gradient_checkpointing \
+  --torch_dtype bfloat16 \
+  --target_modules q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj
+```
+
+#### 12) `fdlora`（可用 `--agg_type fd_lora` 等价）
+
+```bash
+CUDA_VISIBLE_DEVICES=0,1 python tasks/fed_train_sft.py \
+  --model /data/yaominghao/gb/models/Meta-Llama-3.1-8B \
+  --benchmark_dir data/domain_benchmark/seed_42 \
+  --agg_type fdlora \
+  --rounds 10 \
+  --local_epochs 1 \
+  --lr 2e-4 \
+  --lora_r 8 \
+  --lora_alpha 16 \
+  --lora_dropout 0.05 \
+  --batch_size 2 \
+  --max_seq_length 2048 \
+  --gradient_checkpointing \
+  --torch_dtype bfloat16 \
+  --target_modules q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj
+```
+
+### 11.1.1 七客户端 benchmark（`data/domain_benchmark_7c/seed_42`）
+
+已由 `clients.json` / `domain_stats.json` 校验：**7 个域、每域 1 个客户端（共 7 个 `client_id`）**，与「每域 5 客户端」的 `data/domain_benchmark/seed_42` **目录不同，互不覆盖**。
+
+**总数据量与每客户端数据量（7c / 14c / 21c / 35c）**：在同一套原始 JSONL 与相同的 `val_ratio` / `test_ratio` / `min_samples_per_client` 规则下构建时，各域在 `domain_stats.json` 里的 **`n_total` 不变**——只是把域内训练样本**切成不同数量的客户端 shard**。例如 **35c → 7c** 时，每域由 5 个客户端合并为 1 个，**每个客户端上的训练样本数约为原来的约 5 倍**；**全库参与训练的总样本量仍与 35 客户端版相同**。因此**单轮联邦的总本地更新步数（各客户端 batch 之和）与总数据量仍大致同阶**，训练墙钟**不会**仅仅因为「客户端数变少」就按 5 倍变快；变快主要来自**更少的客户端顺序调度开销**与**更少的评测前向次数**（`7 域 × N 客户端`）。若需要真正缩短训练时间，需减少数据（如 `MAX_SAMPLES`）、减小 `local_epochs` / `max_seq_length`、或增大 `batch_size`（在显存允许时）等。
+
+**生成该划分**（在仓库根目录；输入 JSONL 按你实际路径调整）：
+
+```bash
+python scripts/DataProcessScripts/build_domain_benchmark.py \
+  --input_jsonl data/raw/domain_7_all.jsonl \
+  --output_dir data/domain_benchmark_7c \
+  --num_clients_per_domain 1 \
+  --min_samples_per_client 50 \
+  --seed 42
+```
+
+**训练代码无需修改**：与 11.1 相同，仅将 **`--benchmark_dir` 改为 `data/domain_benchmark_7c/seed_42`**。评估前向次数为 **7 域 × 7 客户端 = 49**（约为 35 客户端版的约 1/5）。若仍嫌慢，可在任一条命令中追加 **`--eval_max_batches 50`**（或其它正整数）以截断每轮 eval 的 batch 数。
+
+以下为 **12** 种 `agg_type` 的完整命令（与 11.1 一一对应，仅 `benchmark_dir` 不同）。
+
+#### 1) `normal`
+
+```bash
+CUDA_VISIBLE_DEVICES=0,1 python tasks/fed_train_sft.py \
+  --model /data/yaominghao/gb/models/Meta-Llama-3.1-8B \
+  --benchmark_dir data/domain_benchmark_7c/seed_42 \
+  --agg_type normal \
+  --rounds 10 \
+  --local_epochs 1 \
+  --lr 2e-4 \
+  --lora_r 8 \
+  --lora_alpha 16 \
+  --lora_dropout 0.05 \
+  --batch_size 2 \
+  --max_seq_length 2048 \
+  --gradient_checkpointing \
+  --torch_dtype bfloat16 \
+  --target_modules q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj
+```
+
+#### 2) `fedex`
+
+```bash
+CUDA_VISIBLE_DEVICES=0,1 python tasks/fed_train_sft.py \
+  --model /data/yaominghao/gb/models/Meta-Llama-3.1-8B \
+  --benchmark_dir data/domain_benchmark_7c/seed_42 \
+  --agg_type fedex \
+  --rounds 10 \
+  --local_epochs 1 \
+  --lr 2e-4 \
+  --lora_r 8 \
+  --lora_alpha 16 \
+  --lora_dropout 0.05 \
+  --batch_size 2 \
+  --max_seq_length 2048 \
+  --gradient_checkpointing \
+  --torch_dtype bfloat16 \
+  --target_modules q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj
+```
+
+#### 3) `ffa`
+
+```bash
+CUDA_VISIBLE_DEVICES=0,1 python tasks/fed_train_sft.py \
+  --model /data/yaominghao/gb/models/Meta-Llama-3.1-8B \
+  --benchmark_dir data/domain_benchmark_7c/seed_42 \
+  --agg_type ffa \
+  --rounds 10 \
+  --local_epochs 1 \
+  --lr 2e-4 \
+  --lora_r 8 \
+  --lora_alpha 16 \
+  --lora_dropout 0.05 \
+  --batch_size 2 \
+  --max_seq_length 2048 \
+  --gradient_checkpointing \
+  --torch_dtype bfloat16 \
+  --target_modules q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj
+```
+
+#### 4) `fedplora`（多轮 FedP-LoRA）
+
+```bash
+CUDA_VISIBLE_DEVICES=0,1 python tasks/fed_train_sft.py \
+  --model /data/yaominghao/gb/models/Meta-Llama-3.1-8B \
+  --benchmark_dir data/domain_benchmark_7c/seed_42 \
+  --agg_type fedplora \
+  --rounds 10 \
+  --local_epochs 1 \
+  --lr 2e-4 \
+  --lora_r 8 \
+  --lora_alpha 16 \
+  --lora_dropout 0.05 \
+  --batch_size 2 \
+  --max_seq_length 2048 \
+  --gradient_checkpointing \
+  --torch_dtype bfloat16 \
+  --target_modules q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj \
+  --save_client_state_to_disk
+```
+
+#### 5) `fedplora-oneshot`（FedP 通信 + YOCO 单轮；入口会强制 `--rounds 1`）
+
+```bash
+CUDA_VISIBLE_DEVICES=0,1 python tasks/fed_train_sft.py \
+  --model /data/yaominghao/gb/models/Meta-Llama-3.1-8B \
+  --benchmark_dir data/domain_benchmark_7c/seed_42 \
+  --agg_type fedplora-oneshot \
+  --rounds 10 \
+  --local_epochs 1 \
+  --lr 2e-4 \
+  --lora_r 8 \
+  --lora_alpha 16 \
+  --lora_dropout 0.05 \
+  --batch_size 2 \
+  --max_seq_length 2048 \
+  --gradient_checkpointing \
+  --torch_dtype bfloat16 \
+  --target_modules q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj \
+  --yoco_sparse_lambda 1e-4 \
+  --yoco_pcwa_components 3 \
+  --save_client_state_to_disk
+```
+
+#### 6) `yoco`（单轮 PCWA；入口会强制 `--rounds 1`）
+
+```bash
+CUDA_VISIBLE_DEVICES=0,1 python tasks/fed_train_sft.py \
+  --model /data/yaominghao/gb/models/Meta-Llama-3.1-8B \
+  --benchmark_dir data/domain_benchmark_7c/seed_42 \
+  --agg_type yoco \
+  --rounds 10 \
+  --local_epochs 1 \
+  --lr 2e-4 \
+  --lora_r 8 \
+  --lora_alpha 16 \
+  --lora_dropout 0.05 \
+  --batch_size 2 \
+  --max_seq_length 2048 \
+  --gradient_checkpointing \
+  --torch_dtype bfloat16 \
+  --target_modules q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj \
+  --yoco_sparse_lambda 1e-4 \
+  --yoco_pcwa_components 3 \
+  --save_client_state_to_disk
+```
+
+#### 7) `fedsa_lora`（可用 `--agg_type fedsa` 等价）
+
+```bash
+CUDA_VISIBLE_DEVICES=0,1 python tasks/fed_train_sft.py \
+  --model /data/yaominghao/gb/models/Meta-Llama-3.1-8B \
+  --benchmark_dir data/domain_benchmark_7c/seed_42 \
+  --agg_type fedsa_lora \
+  --rounds 10 \
+  --local_epochs 1 \
+  --lr 2e-4 \
+  --lora_r 8 \
+  --lora_alpha 16 \
+  --lora_dropout 0.05 \
+  --batch_size 2 \
+  --max_seq_length 2048 \
+  --gradient_checkpointing \
+  --torch_dtype bfloat16 \
+  --target_modules q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj \
+  --save_client_state_to_disk
+```
+
+#### 8) `fedalt`
+
+```bash
+CUDA_VISIBLE_DEVICES=0,1 python tasks/fed_train_sft.py \
+  --model /data/yaominghao/gb/models/Meta-Llama-3.1-8B \
+  --benchmark_dir data/domain_benchmark_7c/seed_42 \
+  --agg_type fedalt \
+  --rounds 10 \
+  --local_epochs 1 \
+  --lr 2e-4 \
+  --lora_r 8 \
+  --lora_alpha 16 \
+  --lora_dropout 0.05 \
+  --batch_size 2 \
+  --max_seq_length 2048 \
+  --gradient_checkpointing \
+  --torch_dtype bfloat16 \
+  --target_modules q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj \
+  --save_client_state_to_disk
+```
+
+#### 9) `hetlora`（可用 `--agg_type het_lora` 等价）
+
+```bash
+CUDA_VISIBLE_DEVICES=0,1 python tasks/fed_train_sft.py \
+  --model /data/yaominghao/gb/models/Meta-Llama-3.1-8B \
+  --benchmark_dir data/domain_benchmark_7c/seed_42 \
+  --agg_type hetlora \
+  --rounds 10 \
+  --local_epochs 1 \
+  --lr 2e-4 \
+  --lora_r 8 \
+  --lora_alpha 16 \
+  --lora_dropout 0.05 \
+  --batch_size 2 \
+  --max_seq_length 2048 \
+  --gradient_checkpointing \
+  --torch_dtype bfloat16 \
+  --target_modules q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj
+```
+
+#### 10) `flora`
+
+```bash
+CUDA_VISIBLE_DEVICES=0,1 python tasks/fed_train_sft.py \
+  --model /data/yaominghao/gb/models/Meta-Llama-3.1-8B \
+  --benchmark_dir data/domain_benchmark_7c/seed_42 \
+  --agg_type flora \
+  --rounds 10 \
+  --local_epochs 1 \
+  --lr 2e-4 \
+  --lora_r 8 \
+  --lora_alpha 16 \
+  --lora_dropout 0.05 \
+  --batch_size 2 \
+  --max_seq_length 2048 \
+  --gradient_checkpointing \
+  --torch_dtype bfloat16 \
+  --target_modules q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj
+```
+
+#### 11) `lora_a2`（可用 `--agg_type loraa2` 等价）
+
+```bash
+CUDA_VISIBLE_DEVICES=0,1 python tasks/fed_train_sft.py \
+  --model /data/yaominghao/gb/models/Meta-Llama-3.1-8B \
+  --benchmark_dir data/domain_benchmark_7c/seed_42 \
+  --agg_type lora_a2 \
+  --rounds 10 \
+  --local_epochs 1 \
+  --lr 2e-4 \
+  --lora_r 8 \
+  --lora_alpha 16 \
+  --lora_dropout 0.05 \
+  --batch_size 2 \
+  --max_seq_length 2048 \
+  --gradient_checkpointing \
+  --torch_dtype bfloat16 \
+  --target_modules q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj
+```
+
+#### 12) `fdlora`（可用 `--agg_type fd_lora` 等价）
+
+```bash
+CUDA_VISIBLE_DEVICES=0,1 python tasks/fed_train_sft.py \
+  --model /data/yaominghao/gb/models/Meta-Llama-3.1-8B \
+  --benchmark_dir data/domain_benchmark_7c/seed_42 \
+  --agg_type fdlora \
+  --rounds 10 \
+  --local_epochs 1 \
+  --lr 2e-4 \
+  --lora_r 8 \
+  --lora_alpha 16 \
+  --lora_dropout 0.05 \
+  --batch_size 2 \
+  --max_seq_length 2048 \
+  --gradient_checkpointing \
+  --torch_dtype bfloat16 \
+  --target_modules q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj
+```
+
+### 11.2 从原始 JSONL 直接构建并训练
+
+在首次没有 benchmark 时，可用下面命令**先构建再训练**（同样使用 Meta-Llama；`--agg_type` 可换成 11.1 中任意一种）。开启 `--build_benchmark` 时，训练使用的 `split_dir` 由构建结果决定（控制台会打印 `[benchmark] loaded from ...`），**不要**再单独传 `--benchmark_dir`。
+
+```bash
+CUDA_VISIBLE_DEVICES=0,1 python tasks/fed_train_sft.py \
+  --model /data/yaominghao/gb/models/Meta-Llama-3.1-8B \
   --build_benchmark \
   --benchmark_jsonl data/raw/domain_7_all.jsonl \
   --benchmark_output_dir data/domain_benchmark \
@@ -543,11 +1044,12 @@ CUDA_VISIBLE_DEVICES=0,1 python tasks/fed_train_sft.py \
   --lr 2e-4 \
   --lora_r 8 \
   --lora_alpha 16 \
+  --lora_dropout 0.05 \
   --batch_size 2 \
   --max_seq_length 2048 \
   --gradient_checkpointing \
   --torch_dtype bfloat16 \
-  --target_modules q_proj,k_proj,v_proj,o_proj,up_proj,down_proj,gate_proj \
+  --target_modules q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj \
   --save_client_state_to_disk
 ```
 
@@ -555,8 +1057,11 @@ CUDA_VISIBLE_DEVICES=0,1 python tasks/fed_train_sft.py \
 
 已补充主实验脚本：
 
-- [scripts/run_domain_sft.sh](scripts/run_domain_sft.sh)（单次跑一个 `AGG_TYPE`）
-- [scripts/run_domain_sft_baselines.sh](scripts/run_domain_sft_baselines.sh)（按固定顺序自动串行多种 `AGG_TYPE`）
+- [scripts/RunScripts/run_domain_sft.sh](scripts/RunScripts/run_domain_sft.sh)（单次跑一个 `AGG_TYPE`）
+- [scripts/RunScripts/run_domain_sft_baselines.sh](scripts/RunScripts/run_domain_sft_baselines.sh)（按固定顺序自动串行多种 `AGG_TYPE`）
+- [scripts/RunScripts/run_domain_sft_baselines1.sh](scripts/RunScripts/run_domain_sft_baselines1.sh)（分组 baseline ①：FedP-LoRA-oneshot、FedALT、Flora、FedAvg-Normal）
+- [scripts/RunScripts/run_domain_sft_baselines2.sh](scripts/RunScripts/run_domain_sft_baselines2.sh)（分组 baseline ②：YOCO、FedSA-LoRA、FFA）
+- 扩展实验脚本（详见 **§十四**）：[`run_exp_personalization.sh`](scripts/RunScripts/run_exp_personalization.sh)、[`run_exp_comm_profile.sh`](scripts/RunScripts/run_exp_comm_profile.sh)、[`run_exp_ablation_fedplora.sh`](scripts/RunScripts/run_exp_ablation_fedplora.sh)
 - [configs/domain_sft_pilot.env](configs/domain_sft_pilot.env)（单机 pilot 默认环境）
 - [configs/domain_sft_baselines.env](configs/domain_sft_baselines.env)（批量 baseline 默认环境）
 
@@ -568,10 +1073,10 @@ CUDA_VISIBLE_DEVICES=0,1 python tasks/fed_train_sft.py \
 
 #### 11.3.1 单次实验（pilot）
 
-`scripts/run_domain_sft.sh` 会**自动** `cd` 到仓库根目录，并若存在则 **source `configs/domain_sft_pilot.env`**（无需先手动 `source`）。直接执行：
+`scripts/RunScripts/run_domain_sft.sh` 会**自动** `cd` 到仓库根目录，并若存在则 **source `configs/domain_sft_pilot.env`**（无需先手动 `source`）。直接执行：
 
 ```bash
-bash /path/to/FedPLoRA/scripts/run_domain_sft.sh
+bash /path/to/FedPLoRA/scripts/RunScripts/run_domain_sft.sh
 ```
 
 `domain_sft_pilot.env` 中已设置 `MODEL_PATH=/data/yaominghao/gb/models/Meta-Llama-3.1-8B`、`AGG_TYPE=fedplora` 等。若需临时覆盖环境变量，仍可在命令前导出（会覆盖 env 文件中的同名字段）：
@@ -582,22 +1087,60 @@ AGG_TYPE=fedplora \
 CUDA_DEVICES=0,1 \
 ROUNDS=20 \
 BATCH_SIZE=1 \
-bash /path/to/FedPLoRA/scripts/run_domain_sft.sh
+bash /path/to/FedPLoRA/scripts/RunScripts/run_domain_sft.sh
 ```
 
 #### 11.3.2 自动批量 baseline（推荐顺序）
 
-[scripts/run_domain_sft_baselines.sh](scripts/run_domain_sft_baselines.sh) 同样会 **cd 到仓库根** 并自动 **source `configs/domain_sft_baselines.env`**。当前顺序为：**先 `fedplora-oneshot`，再 `fedplora`**，随后 `normal`、`ffa`、`fedex`（后三项在脚本里顺序可任意调整）。
+[scripts/RunScripts/run_domain_sft_baselines.sh](scripts/RunScripts/run_domain_sft_baselines.sh) 同样会 **cd 到仓库根** 并自动 **source `configs/domain_sft_baselines.env`**。当前顺序为：**先 `fedplora-oneshot`，再 `fedplora`**，随后 `normal`、`ffa`、`fedex`（后三项在脚本里顺序可任意调整）。
 
 ```bash
-bash /path/to/FedPLoRA/scripts/run_domain_sft_baselines.sh
+bash /path/to/FedPLoRA/scripts/RunScripts/run_domain_sft_baselines.sh
 ```
 
 `domain_sft_baselines.env` 中已写入 `MODEL_PATH`。需要临时改 GPU 或轮数时：
 
 ```bash
-CUDA_DEVICES=0,1 ROUNDS=10 bash /path/to/FedPLoRA/scripts/run_domain_sft_baselines.sh
+CUDA_DEVICES=0,1 ROUNDS=10 bash /path/to/FedPLoRA/scripts/RunScripts/run_domain_sft_baselines.sh
 ```
+
+#### 11.3.3 分组 baseline 脚本（可选客户端数 7 / 14 / 21 / 35）
+
+以下两个脚本会 **cd 到仓库根**、自动 **source `configs/domain_sft_baselines.env`**（若存在），并根据**第一个命令行参数**选择 benchmark：
+
+| 参数 | `benchmark_dir` |
+|------|-----------------|
+| `7` | `data/domain_benchmark_7c/seed_42` |
+| `14` | `data/domain_benchmark_14c/seed_42` |
+| `21` | `data/domain_benchmark_21c/seed_42` |
+| `35`（默认） | `data/domain_benchmark_35c/seed_42` |
+
+**脚本 1**（`run_domain_sft_baselines1.sh`）串行方法及与代码中 `agg_type` 的对应：
+
+| 论文/口头名称 | `agg_type` |
+|---------------|------------|
+| FedP-LoRA-oneshot | `fedplora-oneshot` |
+| FedALT | `fedalt` |
+| Flora | `flora` |
+| FedAvg-Normal | `normal` |
+
+**脚本 2**（`run_domain_sft_baselines2.sh`）：
+
+| 论文/口头名称 | `agg_type` |
+|---------------|------------|
+| YOCO | `yoco` |
+| FedSA-LoRA | `fedsa_lora` |
+| FFA | `ffa` |
+
+**示例**（与 `domain_sft_baselines.env` 联用）：
+
+```bash
+source configs/domain_sft_baselines.env
+bash scripts/RunScripts/run_domain_sft_baselines1.sh 7
+bash scripts/RunScripts/run_domain_sft_baselines2.sh 35
+```
+
+不传参数时等价于末尾的 `35`。其它超参仍可通过环境变量覆盖（与 `run_domain_sft_baselines.sh` 相同，如 `CUDA_DEVICES`、`ROUNDS`）。
 
 训练结束后，每轮 `domain_macro_loss` 等指标会写入：
 
@@ -609,12 +1152,16 @@ artifacts/sft_metrics/
 
 已补充批量 baseline 脚本：
 
-- [scripts/run_domain_sft_baselines.sh](scripts/run_domain_sft_baselines.sh)
+- [scripts/RunScripts/run_domain_sft_baselines.sh](scripts/RunScripts/run_domain_sft_baselines.sh)（全量默认顺序）
+- [scripts/RunScripts/run_domain_sft_baselines1.sh](scripts/RunScripts/run_domain_sft_baselines1.sh)、[scripts/RunScripts/run_domain_sft_baselines2.sh](scripts/RunScripts/run_domain_sft_baselines2.sh)（分组 + `7|14|21|35` 选 benchmark，见 **§11.3.3**）
 - [configs/domain_sft_baselines.env](configs/domain_sft_baselines.env)
 
 ```bash
 source configs/domain_sft_baselines.env
-bash scripts/run_domain_sft_baselines.sh
+bash scripts/RunScripts/run_domain_sft_baselines.sh
+# 或（示例：7 客户端数据）
+bash scripts/RunScripts/run_domain_sft_baselines1.sh 7
+bash scripts/RunScripts/run_domain_sft_baselines2.sh 7
 ```
 
 #### `normal`
@@ -768,7 +1315,7 @@ data/domain_sources/
 每个域目录下可以放多个 `.json` 或 `.jsonl` 文件，然后统一执行：
 
 ```bash
-python scripts/merge_domain_jsonl.py \
+python scripts/DataProcessScripts/merge_domain_jsonl.py \
   --input_root data/domain_sources \
   --output data/raw/domain_7_all.jsonl \
   --recursive
@@ -776,15 +1323,15 @@ python scripts/merge_domain_jsonl.py \
 
 现在仓库已经补上：
 
-- `scripts/prepare_general_data.py`
-- `scripts/prepare_math_data.py`
-- `scripts/prepare_code_data.py`
-- `scripts/prepare_medical_data.py`
-- `scripts/prepare_legal_data.py`
-- `scripts/prepare_finance_data.py`
-- `scripts/prepare_education_data.py`
-- `scripts/prepare_hf_domain_data.py`
-- `scripts/prepare_all_domains.sh`
+- `scripts/DataProcessScripts/prepare_general_data.py`
+- `scripts/DataProcessScripts/prepare_math_data.py`
+- `scripts/DataProcessScripts/prepare_code_data.py`
+- `scripts/DataProcessScripts/prepare_medical_data.py`
+- `scripts/DataProcessScripts/prepare_legal_data.py`
+- `scripts/DataProcessScripts/prepare_finance_data.py`
+- `scripts/DataProcessScripts/prepare_education_data.py`
+- `scripts/DataProcessScripts/prepare_hf_domain_data.py`
+- `scripts/DataProcessScripts/prepare_all_domains.sh`
 
 如果某个数据集字段与默认规则不一致，可以在对应脚本里增加：
 
@@ -808,108 +1355,102 @@ python scripts/merge_domain_jsonl.py \
 
 ## 十四、推荐实验列表
 
-为了支撑顶会论文，建议按如下顺序推进。
+论文级实验按下面 **四条主线** 组织；每条主线前用 **【】** 标出。其余条目（GLUE / E2E / 跨模型 / hard setting 等）作为 **扩展实验**。
 
-### E1. GLUE sanity
+---
 
-目标：
+### 【7域主实验】
 
-- 验证方法逻辑
-- 验证通信统计
-- 验证 `fedplora` 行为正常
+对应原 **E3**，主结果表与 baseline 对比（`fedplora`、`fedplora-oneshot`、`normal`、`ffa`、`fedex` 及 README §11 中其它 `agg_type`）。
 
-### E2. E2E-NLG sanity
+- **数据**：`data/domain_benchmark_35c/seed_42`（或 `7c` / `14c` / `21c` 做客户端规模扫描）。
+- **脚本**：§11.3 的 `run_domain_sft.sh`、`run_domain_sft_baselines.sh`、`run_domain_sft_baselines1.sh`、`run_domain_sft_baselines2.sh`；后三者第一个参数 `7|14|21|35` 选择 `domain_benchmark_<N>c`。
+- **指标**：每轮 `domain_macro_loss` / `worst_domain_loss`（及 `artifacts/sft_metrics/*.json`）；训练日志中 `[setup] comm_*` 为单轮通信估计。
 
-目标：
+**前置 sanity（非主线必排进主表，但建议先做）**
 
-- 验证生成侧可用
-- 检查因果 LM 路线没有逻辑错误
+- **E1. GLUE sanity**：验证分类联邦与通信统计。
+- **E2. E2E-NLG sanity**：验证生成侧因果 LM 链路。
 
-### E3. 7 域主实验
+---
 
-目标：
+### 【个性化收益分析】
 
-- 作为主结果表
-- 比较 `fedplora` 与 `normal/ffa/fedex`
+对应原 **E5**：比较 **客户端本地 held-out（本域）** 与 **非本域 held-out（跨域）** 上的 LM loss，避免只看 domain-macro 平均而忽略 specialization。
 
-建议：
+**代码**
 
-- `7 domains x 5 clients = 35 clients` 作为 pilot
-- `7 domains x 10 clients = 70 clients` 作为主实验
+- 训练入口增加 `--eval_personalization_metrics`：在原有 domain-macro eval 之外，写入并打印  
+  - `client_local_macro_loss`：`test_local.jsonl` 按客户端平均再 macro；  
+  - `in_domain_domain_test_macro_loss`：各客户端仅在 **本域** `test_domain` 上 loss 的 macro；  
+  - `off_domain_macro_loss`：各客户端在所有 **非本域** 的 `test_domain` 上 loss 的 macro。  
+  上述字段进入 `artifacts/sft_metrics/*.json` 的每一轮记录。
 
-### E4. 跨模型验证
+**一键脚本**
 
-模型建议：
+```bash
+source configs/domain_sft_baselines.env
+bash scripts/RunScripts/run_exp_personalization.sh 35
+```
 
-- `Qwen3-32B`
-- `Mistral-Small-24B`
+（末尾 `7|14|21|35` 与 `run_domain_sft_baselines1.sh` 规则相同。）
 
-### E5. 个性化收益分析
+---
 
-比较：
+### 【通信-性能实验】
 
-- 本域测试
-- 跨域测试
+对应原 **E6**：在同一套 PEFT 结构下对比各 `agg_type` 的 **每轮下行/上行字节**（与训练时 `estimate_round_communication_bytes` 一致），再与最终 `domain_macro_loss` 等联合作 Pareto 图。
 
-目标：
+**代码含义（与实现对照）**
 
-- 证明个性化不是只提高平均分，而是提高 in-domain specialization
+- **近似 `A+B` 全量可训练 LoRA 上传**：`normal`、`fedex`（见 `utilities/utils.py` 中 `estimate_round_communication_bytes`）。
+- **FedPLoRA / YOCO 等「仅 A + 头」上传**：`fedplora`、`fedplora-oneshot`、`yoco`、`fedsa_lora`、`fedalt`。
+- **`ffa`**：下行全量、上行为 `B+head` 的专用规则（同文件）。
+- **「B-only / local-only」**：当前仓库 **未**实现为独立 `agg_type`；若论文需要，需在方法层增加协议后再接统计。
 
-### E6. 通信-性能实验
+**一键脚本（只打通信表，不训练）**
 
-比较：
+```bash
+source configs/domain_sft_baselines.env
+bash scripts/RunScripts/run_exp_comm_profile.sh
+```
 
-- `A+B` 全上传
-- `A-only`
-- `B-only`
-- local-only
+可选：`AGG_LIST=normal,fedplora,ffa bash scripts/RunScripts/run_exp_comm_profile.sh`。  
+底层：`python scripts/RunScripts/print_sft_comm_profile.py --model "$MODEL_PATH"`（会 **加载一次** 基座+LoRA 以统计参数规模，首次较慢）。
 
-目标：
+---
 
-- 证明 FedPLoRA 在通信-性能 Pareto 上更优
+### 【机制消融】
 
-### E7. 机制消融
+对应原 **E7**，针对 **多轮 `fedplora`**：
 
-消融项：
+| 消融 | 做法 |
+|------|------|
+| w/o align | `--gp_align_lambda 0` |
+| w/o prox | `--gp_prox_lambda 0` |
+| w/o orth | `--gp_orth_lambda 0` |
+| w/o 共识加权（服务端行对齐与共识幂次） | `--fedplora_ablation_no_consensus` |
+| w/o server momentum（上一轮全局 A 的 EMA） | `--fedplora_ablation_no_momentum` |
 
-- 去掉 `align`
-- 去掉 `prox`
-- 去掉 `orth`
-- 去掉共识加权
-- 去掉 server momentum
+**一键脚本**
 
-### E8. 6 域 hard setting
+```bash
+source configs/domain_sft_baselines.env
+bash scripts/RunScripts/run_exp_ablation_fedplora.sh 35
+```
 
-去掉 `general` 域，证明方法不是靠通用锚点域撑住全局
+单组调试：`ABLATION_MODE=no_align bash scripts/RunScripts/run_exp_ablation_fedplora.sh 35`。
 
-### E9. 分层异质性
+---
 
-在领域内部再分：
+### 扩展实验（未归入四条主线）
 
-- `math`：按难度/题型
-- `code`：按语言/任务
-- `medical/legal/finance`：按子主题
-
-### E10. 不均衡与参与率鲁棒性
-
-扫描：
-
-- `10% / 20% / 50%` partial participation
-- client size long-tail
-- 不同 `local_epochs`
-
-### E11. Transfer matrix
-
-构建 `7 x 7` 域迁移矩阵，分析负迁移
-
-### E12. 上传载荷泄露代理实验
-
-比较：
-
-- 上传 `A+B`
-- 上传 `A-only`
-
-看看能否从上传参数推测 client/domain
+- **E4. 跨模型验证**：`Qwen3-32B`、`Mistral-Small-24B` 等，见 §十五阶段 7–8。
+- **E8. 6 域 hard setting**：去掉 `general` 域，需重新构建 benchmark JSONL。
+- **E9. 分层异质性**：域内再划分，需数据与构建脚本扩展。
+- **E10. 不均衡与参与率**：需采样客户端子集或改 `create_domain_client_dataloaders` 逻辑。
+- **E11. Transfer matrix**：由每轮各域 loss 组装 `7×7` 矩阵（可作后处理脚本）。
+- **E12. 上传载荷泄露代理**：对比上传 `A+B` vs `A-only` 的可推断性，属安全向扩展。
 
 ---
 
@@ -924,9 +1465,9 @@ pip install -r requirements.txt
 python -m py_compile \
   tasks/fed_train_glue.py tasks/fed_train_e2e.py tasks/fed_train_sft.py \
   utilities/train_eval.py utilities/state_dict_ops.py utilities/models.py \
-  utilities/data_utils.py utilities/utils.py scripts/run_script.py \
-  scripts/prepare_domain_jsonl_template.py scripts/build_domain_benchmark.py \
-  scripts/merge_domain_jsonl.py
+  utilities/data_utils.py utilities/utils.py scripts/RunScripts/run_script.py \
+  scripts/DataProcessScripts/prepare_domain_jsonl_template.py scripts/DataProcessScripts/build_domain_benchmark.py \
+  scripts/DataProcessScripts/merge_domain_jsonl.py scripts/RunScripts/print_sft_comm_profile.py
 ```
 
 ### 阶段 1：GLUE sanity
@@ -971,7 +1512,7 @@ data/raw/domain_7_all.jsonl
 可先生成模板：
 
 ```bash
-python scripts/prepare_domain_jsonl_template.py \
+python scripts/DataProcessScripts/prepare_domain_jsonl_template.py \
   --output data/raw/domain_7_template.jsonl \
   --examples_per_domain 2
 ```
@@ -979,7 +1520,7 @@ python scripts/prepare_domain_jsonl_template.py \
 或者从按域存放的文件自动汇总：
 
 ```bash
-python scripts/merge_domain_jsonl.py \
+python scripts/DataProcessScripts/merge_domain_jsonl.py \
   --input_root data/domain_sources \
   --output data/raw/domain_7_all.jsonl \
   --recursive
@@ -989,8 +1530,8 @@ python scripts/merge_domain_jsonl.py \
 
 ```bash
 source configs/domain_data_pilot.env
-bash scripts/prepare_all_domains.sh
-python scripts/merge_domain_jsonl.py \
+bash scripts/DataProcessScripts/prepare_all_domains.sh
+python scripts/DataProcessScripts/merge_domain_jsonl.py \
   --input_root data/domain_sources \
   --output data/raw/domain_7_all.jsonl \
   --recursive
@@ -999,7 +1540,7 @@ python scripts/merge_domain_jsonl.py \
 ### 阶段 4：自动构建 benchmark
 
 ```bash
-python scripts/build_domain_benchmark.py \
+python scripts/DataProcessScripts/build_domain_benchmark.py \
   --input_jsonl data/raw/domain_7_all.jsonl \
   --output_dir data/domain_benchmark \
   --num_clients_per_domain 5 \
@@ -1037,7 +1578,7 @@ CUDA_VISIBLE_DEVICES=0,1 python tasks/fed_train_sft.py \
 
 ```bash
 source configs/domain_sft_pilot.env
-bash scripts/run_domain_sft.sh
+bash scripts/RunScripts/run_domain_sft.sh
 ```
 
 训练指标会自动落到：
@@ -1052,7 +1593,10 @@ artifacts/sft_metrics/
 
 ```bash
 source configs/domain_sft_baselines.env
-bash scripts/run_domain_sft_baselines.sh
+bash scripts/RunScripts/run_domain_sft_baselines.sh
+# 分组 baseline + 客户端数（7/14/21/35）见 §11.3.3
+bash scripts/RunScripts/run_domain_sft_baselines1.sh 7
+bash scripts/RunScripts/run_domain_sft_baselines2.sh 7
 ```
 
 ```bash
@@ -1216,7 +1760,7 @@ CUDA_VISIBLE_DEVICES=0,1 python tasks/fed_train_sft.py \
 
 后续建议继续补：
 
-1. `scripts/prepare_*.py`
+1. `scripts/DataProcessScripts/prepare_*.py`
    - 自动下载并清洗 7 个领域数据
 
 2. 更细粒度评测脚本
@@ -1254,7 +1798,7 @@ pip install -r requirements.txt
 ```
 
 ```bash
-python scripts/build_domain_benchmark.py \
+python scripts/DataProcessScripts/build_domain_benchmark.py \
   --input_jsonl data/raw/domain_7_all.jsonl \
   --output_dir data/domain_benchmark \
   --num_clients_per_domain 5 \
