@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # 【机制消融】多轮 fedplora：逐项关闭正则或服务端共识 / 动量
-# 产物：artifacts/sft_metrics/* 与各 run 日志
+# 产物：artifacts_{N}c/sft_metrics/* 与各 run 日志（N=客户端数）
 #
 # Usage:
 #   source configs/domain_sft_baselines.env

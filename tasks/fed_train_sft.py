@@ -99,9 +99,21 @@ parser.add_argument(
     default="q_proj,k_proj,v_proj,o_proj,up_proj,down_proj,gate_proj",
     help="Comma-separated LoRA target modules for causal LM backbones",
 )
-parser.add_argument("--client_state_dir", type=str, default="artifacts/domain_client_states", help="Directory to store per-client local FedPLoRA states for large-model sequential training")
+parser.add_argument(
+    "--client_state_dir",
+    type=str,
+    default="artifacts/domain_client_states",
+    help="Per-client state root (contains seed_*/). If left at default artifacts/domain_client_states, "
+    "it is relocated to artifacts_{num_clients}c/domain_client_states after benchmark load.",
+)
 parser.add_argument("--save_client_state_to_disk", action="store_true", help="Persist per-client FedPLoRA local states to disk instead of keeping them in CPU memory")
-parser.add_argument("--metrics_output_dir", type=str, default="artifacts/sft_metrics", help="Directory for round-wise evaluation metrics")
+parser.add_argument(
+    "--metrics_output_dir",
+    type=str,
+    default="artifacts/sft_metrics",
+    help="Round-wise metrics JSON directory. Default artifacts/sft_metrics is relocated to "
+    "artifacts_{num_clients}c/sft_metrics when still the legacy path.",
+)
 parser.add_argument("--gp_align_lambda", type=float, default=0.01)
 parser.add_argument("--gp_prox_lambda", type=float, default=0.001)
 parser.add_argument("--gp_orth_lambda", type=float, default=1e-4)
@@ -196,6 +208,29 @@ def evaluate_domain_macro(client_models, domain_rows, tokenizer, args):
     macro = float(np.mean(list(metrics.values()))) if metrics else float("nan")
     worst = float(max(metrics.values())) if metrics else float("nan")
     return metrics, macro, worst
+
+
+def _norm_path_key(path: str) -> str:
+    return os.path.normpath(os.path.expanduser(path or ""))
+
+
+def _relocate_legacy_artifact_dirs(args, num_clients: int) -> None:
+    """
+    If user kept CLI defaults artifacts/domain_client_states and artifacts/sft_metrics,
+    move them under artifacts_{num_clients}c/ so parallel runs for 7c vs 35c do not clash.
+    Subdirectory names domain_client_states / sft_metrics stay unchanged.
+    """
+    if num_clients <= 0:
+        return
+    root = f"artifacts_{int(num_clients)}c"
+    legacy_cs = _norm_path_key("artifacts/domain_client_states")
+    legacy_met = _norm_path_key("artifacts/sft_metrics")
+    cur_cs = _norm_path_key(args.client_state_dir)
+    cur_met = _norm_path_key(args.metrics_output_dir)
+    if cur_cs == legacy_cs:
+        args.client_state_dir = os.path.join(root, "domain_client_states")
+    if cur_met == legacy_met:
+        args.metrics_output_dir = os.path.join(root, "sft_metrics")
 
 
 def _fedplora_disk_state_dir(args):
@@ -511,6 +546,12 @@ def federated_sft(args):
     client_sizes = [len(dl.dataset) for dl in client_dataloaders]
     args.num_clients = len(client_ids)
     args._runtime_client_sizes = client_sizes
+    _relocate_legacy_artifact_dirs(args, args.num_clients)
+    print(
+        f"[setup] client_state_dir={args.client_state_dir} "
+        f"metrics_output_dir={args.metrics_output_dir}",
+        flush=True,
+    )
 
     if args.agg_type == "ffa":
         global_model = create_peft_causal_lm_ffa_model(args)

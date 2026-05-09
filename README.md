@@ -1142,11 +1142,13 @@ bash scripts/RunScripts/run_domain_sft_baselines2.sh 35
 
 不传参数时等价于末尾的 `35`。其它超参仍可通过环境变量覆盖（与 `run_domain_sft_baselines.sh` 相同，如 `CUDA_DEVICES`、`ROUNDS`）。
 
-训练结束后，每轮 `domain_macro_loss` 等指标会写入：
+训练结束后，每轮 `domain_macro_loss` 等指标会写入（默认路径在加载 benchmark 后按客户端数 **自动** 带上后缀，子目录名不变）：
 
 ```text
-artifacts/sft_metrics/
+artifacts_{num_clients}c/sft_metrics/
 ```
+
+例如 35 个客户端时为 `artifacts_35c/sft_metrics/`；客户端状态目录同理为 `artifacts_35c/domain_client_states/`。若你在命令行 **显式** 传入非默认的 `--metrics_output_dir` / `--client_state_dir`，则不会改写。控制台会打印 `[setup] client_state_dir=... metrics_output_dir=...`。
 
 ### 11.4 运行 baseline
 
@@ -1365,7 +1367,7 @@ python scripts/DataProcessScripts/merge_domain_jsonl.py \
 
 - **数据**：`data/domain_benchmark_35c/seed_42`（或 `7c` / `14c` / `21c` 做客户端规模扫描）。
 - **脚本**：§11.3 的 `run_domain_sft.sh`、`run_domain_sft_baselines.sh`、`run_domain_sft_baselines1.sh`、`run_domain_sft_baselines2.sh`；后三者第一个参数 `7|14|21|35` 选择 `domain_benchmark_<N>c`。
-- **指标**：每轮 `domain_macro_loss` / `worst_domain_loss`（及 `artifacts/sft_metrics/*.json`）；训练日志中 `[setup] comm_*` 为单轮通信估计。
+- **指标**：每轮 `domain_macro_loss` / `worst_domain_loss`（及 `artifacts_{N}c/sft_metrics/*.json`，`N` 为客户端数）；训练日志中 `[setup] comm_*` 为单轮通信估计。
 
 **前置 sanity（非主线必排进主表，但建议先做）**
 
@@ -1384,7 +1386,7 @@ python scripts/DataProcessScripts/merge_domain_jsonl.py \
   - `client_local_macro_loss`：`test_local.jsonl` 按客户端平均再 macro；  
   - `in_domain_domain_test_macro_loss`：各客户端仅在 **本域** `test_domain` 上 loss 的 macro；  
   - `off_domain_macro_loss`：各客户端在所有 **非本域** 的 `test_domain` 上 loss 的 macro。  
-  上述字段进入 `artifacts/sft_metrics/*.json` 的每一轮记录。
+  上述字段进入 `artifacts_{N}c/sft_metrics/*.json` 的每一轮记录（`N` 为客户端数，见 §11.3.2 说明）。
 
 **一键脚本**
 
@@ -1581,11 +1583,7 @@ source configs/domain_sft_pilot.env
 bash scripts/RunScripts/run_domain_sft.sh
 ```
 
-训练指标会自动落到：
-
-```text
-artifacts/sft_metrics/
-```
+训练指标会自动落到 `artifacts_{num_clients}c/sft_metrics/`（与 §11.3.2 一致）。
 
 ### 阶段 6：Pilot baseline
 

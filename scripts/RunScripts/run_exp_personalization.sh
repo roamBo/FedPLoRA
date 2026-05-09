@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # 【个性化收益分析】跑 fedplora 与 normal，开启 --eval_personalization_metrics
-# 读 artifacts/sft_metrics/*.json 中的 client_local_macro_loss vs off_domain_macro_loss
+# 读 artifacts_{N}c/sft_metrics/*.json 中的 client_local_macro_loss vs off_domain_macro_loss（N=客户端数）
 #
 # Usage (repo root):
 #   source configs/domain_sft_baselines.env   # 可选
