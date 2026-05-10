@@ -1696,6 +1696,19 @@ CUDA_VISIBLE_DEVICES=0,1 python tasks/fed_train_sft.py \
 7. 达到目标性能所需轮数
 8. 不同域的收敛曲线
 
+**域 SFT（`fed_train_sft.py`）日志与 `artifacts_*c/sft_metrics/*.json` 中每轮额外包含：**
+
+- **`domain_macro_loss` / `worst_domain_loss`**：各域 held-out `test_domain` 上 LM 交叉熵（客户端平均后再 domain-macro），与此前一致。
+- **`domain_macro_token_accuracy` / `worst_domain_token_accuracy`**：在 **非 `-100` 的 label 位置**（即 **response 段**）上，**下一词预测** 的 micro **token 准确率**（先对每个客户端在该域测试集上算 micro-acc，再在客户端上取平均，再对域取 macro / worst）。这是因果语言模型 SFT 下与「分类 Accuracy」最接近、可自动批量计算的指标。
+- **`perplexity`（每域字典内）**：`exp(mean_batch_loss)` 的域内平均，作辅助曲线（与 loss 信息重叠，但便于与习惯用语对照）。
+- **`communication`**（JSON 顶层）：单轮上下行字节估计。
+
+**与 YOCO 原论文表格的对应关系（你截图中的 Table 1–4）**：YOCO 主表是 **Hateful-Memes / CrisisMMD / VQA-RAD / SLAKE** 等任务上的 **分类或 VQA 准确率（Accuracy）** 与 **通信代价（rounds×layers×LoRAs）**。本仓库主线是 **7 域文本 SFT + LM loss**，没有多模态分类头，因此 **不会直接产出「整张表那种 task Accuracy」**；若要对齐论文叙事，可选扩展包括：**(a)** 在固定测试集上做 **生成式 Exact Match / ROUGE-L**（需额外解码与参考串）；**(b)** 对带选项的医学/安全子集改 **MCQ 分类头** 再算 Acc；**(c)** 单独接 **GLUE** 子实验走分类 Acc（已有 `fed_train_glue.py`）。当前默认可写进论文主表的是 **loss + token-level acc + comm + PPL**。
+
+**进一步可选指标（按需实现）**：`eval_max_batches` 截断下的 **校准性**（ECE）、**长度惩罚后的 BLEU**、**域间迁移矩阵**（每对域 loss）、**训练步 token 吞吐**、**显存峰值**。
+
+**缩短评估时间**：`--eval_max_batches N`（每客户端×每域只跑前 N 个 batch）；pilot 用较小 `--max_seq_length`；保证评测时 **GPU 独占**；同一次进程内模型已在显存中，**「保存 checkpoint」不会减少当前这次 domain-macro 顺序 eval 的前向次数**；若师兄指的是把 **训练结束后的权重落盘**，下次 **单独写评测脚本只加载模型做 eval**，可避免重复训练，但总 eval 算子数不变。
+
 ---
 
 ## 十七、建议表格与图

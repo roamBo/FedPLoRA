@@ -1,5 +1,6 @@
 import argparse
 import json
+import math
 import os
 import sys
 import warnings
@@ -181,20 +182,52 @@ def build_or_load_benchmark(args):
     return load_domain_sft_benchmark(split_dir), split_dir
 
 
-def compute_lm_loss(model, dataloader, device, max_batches=0):
+def compute_lm_eval_stats(model, dataloader, device, max_batches=0):
+    """
+    Causal LM eval on SFT batches: mean batch loss (same convention as HF outputs.loss),
+    micro-averaged next-token accuracy on non-masked label positions (response tokens only),
+    and perplexity = exp(mean batch loss) as a cheap global summary.
+    """
     model.to(device)
     model.eval()
     total_loss = 0.0
     steps = 0
+    total_correct = 0
+    total_valid = 0
     with torch.no_grad():
         for batch in dataloader:
             if max_batches and steps >= max_batches:
                 break
             batch = {k: v.to(device) for k, v in batch.items()}
+            labels = batch["labels"]
             outputs = model(**batch)
             total_loss += float(outputs.loss.detach().cpu().item())
+            logits = outputs.logits
+            shift_logits = logits[..., :-1, :].contiguous()
+            shift_labels = labels[..., 1:].contiguous()
+            preds = shift_logits.argmax(dim=-1)
+            mask = shift_labels.ne(-100)
+            if mask.any():
+                total_correct += int((preds[mask] == shift_labels[mask]).sum().cpu())
+                total_valid += int(mask.sum().cpu())
             steps += 1
-    return total_loss / max(steps, 1)
+    mean_loss = total_loss / max(steps, 1)
+    tok_acc = total_correct / max(total_valid, 1)
+    try:
+        ppl = float(math.exp(min(mean_loss, 80.0)))
+    except OverflowError:
+        ppl = float("inf")
+    return {
+        "loss": mean_loss,
+        "token_accuracy": float(tok_acc),
+        "perplexity": ppl,
+        "n_eval_batches": int(steps),
+    }
+
+
+def compute_lm_loss(model, dataloader, device, max_batches=0):
+    """Backward-compatible: mean eval loss only."""
+    return compute_lm_eval_stats(model, dataloader, device, max_batches=max_batches)["loss"]
 
 
 def evaluate_domain_macro(client_models, domain_rows, tokenizer, args):
@@ -203,10 +236,17 @@ def evaluate_domain_macro(client_models, domain_rows, tokenizer, args):
     metrics = {}
     for domain, rows in sorted(by_domain.items()):
         dl = create_domain_eval_dataloader(rows, tokenizer, args)
-        losses = [compute_lm_loss(model, dl, device) for model in client_models]
-        metrics[domain] = float(np.mean(losses))
-    macro = float(np.mean(list(metrics.values()))) if metrics else float("nan")
-    worst = float(max(metrics.values())) if metrics else float("nan")
+        stats_list = [
+            compute_lm_eval_stats(model, dl, device) for model in client_models
+        ]
+        metrics[domain] = {
+            "loss": float(np.mean([s["loss"] for s in stats_list])),
+            "token_accuracy": float(np.mean([s["token_accuracy"] for s in stats_list])),
+            "perplexity": float(np.mean([s["perplexity"] for s in stats_list])),
+        }
+    losses = [v["loss"] for v in metrics.values()]
+    macro = float(np.mean(losses)) if losses else float("nan")
+    worst = float(max(losses)) if losses else float("nan")
     return metrics, macro, worst
 
 
@@ -329,7 +369,7 @@ def _evaluate_domain_macro_sequential(global_model, client_ids, client_store, do
     )
     for domain, rows in domains_sorted:
         dl = create_domain_eval_dataloader(rows, tokenizer, args)
-        losses = []
+        stats_per_client = []
         for client_id in tqdm(
             client_ids,
             desc=f"eval {domain}",
@@ -339,11 +379,23 @@ def _evaluate_domain_macro_sequential(global_model, client_ids, client_store, do
             broadcast_fedplora_shared_state(global_model, shared_state)
             local_state = _get_client_local_state(client_store, client_id)
             load_fedplora_local_state(global_model, local_state)
-            losses.append(compute_lm_loss(global_model, dl, device, max_batches=eval_cap))
-        metrics[domain] = float(np.mean(losses))
-    macro = float(np.mean(list(metrics.values()))) if metrics else float("nan")
-    worst = float(max(metrics.values())) if metrics else float("nan")
-    return metrics, macro, worst
+            stats_per_client.append(
+                compute_lm_eval_stats(global_model, dl, device, max_batches=eval_cap)
+            )
+        metrics[domain] = {
+            "loss": float(np.mean([s["loss"] for s in stats_per_client])),
+            "token_accuracy": float(
+                np.mean([s["token_accuracy"] for s in stats_per_client])
+            ),
+            "perplexity": float(np.mean([s["perplexity"] for s in stats_per_client])),
+        }
+    losses = [v["loss"] for v in metrics.values()]
+    accs = [v["token_accuracy"] for v in metrics.values()]
+    macro = float(np.mean(losses)) if losses else float("nan")
+    worst = float(max(losses)) if losses else float("nan")
+    macro_tok = float(np.mean(accs)) if accs else float("nan")
+    worst_tok = float(min(accs)) if accs else float("nan")
+    return metrics, macro, worst, macro_tok, worst_tok
 
 
 def _client_id_to_home_domain(clients_manifest):
@@ -579,6 +631,8 @@ def federated_sft(args):
 
     best_domain_macro = float("inf")
     best_worst_domain = float("inf")
+    best_domain_macro_token_accuracy = float("-inf")
+    best_worst_domain_token_accuracy = float("-inf")
     metrics_history = {
         "args": vars(args).copy(),
         "benchmark_dir": split_dir,
@@ -691,7 +745,13 @@ def federated_sft(args):
         print(f"[round {round_idx + 1}] aggregation done; running evaluation ...", flush=True)
         pfl_block = {}
         if is_lora_a_disk_agg(args.agg_type):
-            domain_metrics, domain_macro, worst_domain = _evaluate_domain_macro_sequential(
+            (
+                domain_metrics,
+                domain_macro,
+                worst_domain,
+                domain_macro_token_accuracy,
+                worst_domain_token_accuracy,
+            ) = _evaluate_domain_macro_sequential(
                 global_model,
                 client_ids,
                 client_store,
@@ -727,7 +787,7 @@ def federated_sft(args):
             metrics = {}
             for domain, rows in domains_sorted:
                 dl = create_domain_eval_dataloader(rows, tokenizer, args)
-                losses = []
+                stats_per_client = []
                 for idx in tqdm(
                     eval_client_ids,
                     desc=f"eval {domain}",
@@ -736,11 +796,29 @@ def federated_sft(args):
                 ):
                     state = _get_client_local_state(eval_store, idx)
                     load_partial_state_dict(global_model, state)
-                    losses.append(compute_lm_loss(global_model, dl, device, max_batches=eval_cap))
-                metrics[domain] = float(np.mean(losses))
+                    stats_per_client.append(
+                        compute_lm_eval_stats(
+                            global_model, dl, device, max_batches=eval_cap
+                        )
+                    )
+                metrics[domain] = {
+                    "loss": float(np.mean([s["loss"] for s in stats_per_client])),
+                    "token_accuracy": float(
+                        np.mean([s["token_accuracy"] for s in stats_per_client])
+                    ),
+                    "perplexity": float(
+                        np.mean([s["perplexity"] for s in stats_per_client])
+                    ),
+                }
             domain_metrics = metrics
-            domain_macro = float(np.mean(list(metrics.values()))) if metrics else float("nan")
-            worst_domain = float(max(metrics.values())) if metrics else float("nan")
+            losses = [v["loss"] for v in metrics.values()]
+            accs = [v["token_accuracy"] for v in metrics.values()]
+            domain_macro = float(np.mean(losses)) if losses else float("nan")
+            worst_domain = float(max(losses)) if losses else float("nan")
+            domain_macro_token_accuracy = (
+                float(np.mean(accs)) if accs else float("nan")
+            )
+            worst_domain_token_accuracy = float(min(accs)) if accs else float("nan")
             if getattr(args, "eval_personalization_metrics", False):
                 pfl_block = _evaluate_personalization_metrics_full_state(
                     global_model,
@@ -752,15 +830,37 @@ def federated_sft(args):
                 )
         best_domain_macro = min(best_domain_macro, domain_macro)
         best_worst_domain = min(best_worst_domain, worst_domain)
-        metrics_str = " | ".join(
-            [f"{d}_loss={v:.4f}" for d, v in domain_metrics.items()]
-        )
+        if not math.isnan(domain_macro_token_accuracy):
+            best_domain_macro_token_accuracy = max(
+                best_domain_macro_token_accuracy, domain_macro_token_accuracy
+            )
+        if not math.isnan(worst_domain_token_accuracy):
+            best_worst_domain_token_accuracy = max(
+                best_worst_domain_token_accuracy, worst_domain_token_accuracy
+            )
+        loss_parts = []
+        acc_parts = []
+        for d, v in domain_metrics.items():
+            if isinstance(v, dict):
+                loss_parts.append(f"{d}_loss={v['loss']:.4f}")
+                acc_parts.append(f"{d}_tok_acc={v['token_accuracy']:.4f}")
+            else:
+                loss_parts.append(f"{d}_loss={float(v):.4f}")
+        metrics_str = " | ".join(loss_parts)
+        metrics_acc_str = " | ".join(acc_parts) if acc_parts else ""
         print(
             f"[eval] round={round_idx + 1} domain_macro_loss={domain_macro:.4f} "
             f"best_domain_macro_loss={best_domain_macro:.4f} "
             f"worst_domain_loss={worst_domain:.4f} "
-            f"best_worst_domain_loss={best_worst_domain:.4f} | {metrics_str}"
+            f"best_worst_domain_loss={best_worst_domain:.4f} "
+            f"domain_macro_tok_acc={domain_macro_token_accuracy:.4f} "
+            f"best_domain_macro_tok_acc={best_domain_macro_token_accuracy:.4f} "
+            f"worst_domain_tok_acc={worst_domain_token_accuracy:.4f} "
+            f"best_worst_domain_tok_acc={best_worst_domain_token_accuracy:.4f} | "
+            f"{metrics_str}"
         )
+        if metrics_acc_str:
+            print(f"[eval] per-domain token_accuracy: {metrics_acc_str}", flush=True)
         if pfl_block:
             print(
                 f"[eval] personalization round={round_idx + 1} "
@@ -776,6 +876,10 @@ def federated_sft(args):
             "best_domain_macro_loss": best_domain_macro,
             "worst_domain_loss": worst_domain,
             "best_worst_domain_loss": best_worst_domain,
+            "domain_macro_token_accuracy": domain_macro_token_accuracy,
+            "best_domain_macro_token_accuracy": best_domain_macro_token_accuracy,
+            "worst_domain_token_accuracy": worst_domain_token_accuracy,
+            "best_worst_domain_token_accuracy": best_worst_domain_token_accuracy,
             "domain_metrics": domain_metrics,
         }
         round_payload.update(pfl_block)
