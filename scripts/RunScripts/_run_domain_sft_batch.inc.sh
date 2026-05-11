@@ -64,9 +64,12 @@ domain_sft_run_batch() {
       --target_modules "${TARGET_MODULES}"
       --client_state_dir "${CLIENT_STATE_DIR}"
       --seed "${SEED}"
-      --gradient_checkpointing
       --save_run_checkpoint_dir "${ckpt_dir}"
     )
+    # 默认开启以省显存；显存充足时 export GRADIENT_CHECKPOINTING=0 可明显加速单 step。
+    if [[ "${GRADIENT_CHECKPOINTING:-1}" != "0" ]]; then
+      CMD+=(--gradient_checkpointing)
+    fi
     if [[ -n "${EVAL_MAX_BATCHES}" && "${EVAL_MAX_BATCHES}" != "0" ]]; then
       CMD+=(--eval_max_batches "${EVAL_MAX_BATCHES}")
     fi
