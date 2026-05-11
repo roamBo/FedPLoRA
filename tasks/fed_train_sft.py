@@ -1,7 +1,12 @@
+import os
+
+# Must run before any import that loads HuggingFace tokenizers (see utilities.data_utils).
+# With DataLoader num_workers>0, Rust tokenizers + fork otherwise spam warnings and can stall.
+os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
+
 import argparse
 import json
 import math
-import os
 import shutil
 import sys
 import warnings
