@@ -2104,4 +2104,4 @@ CUDA_VISIBLE_DEVICES=0,1 python tasks/fed_train_sft.py \
 
 **本仓库当前已对齐的部分**：单轮协议；FedP 式「只上传 `A`+头+行统计、`B` 本地」；本地对 `A` 的 L1 稀疏正则（`--yoco_sparse_lambda`）。与 YOCO 的差异是：FedPLoRA-Oneshot 不上传/聚合 `B`，不做 PCWA，而是在 `A` 空间显式建模跨域行冲突并保留本地 `B_i` 个性化。
 
-**尚未从 YOCO 论文全文落地的部分**（若要复现 YOCO 原算法，可作为 baseline 后续扩展）：基于 **SVD 的 LoRA 初始化**、仅作用于 **`B` 的符号一致性损失 \(R_{\text{sign}}\)**（及 \(\gamma,\beta\) 等超参）、服务端对 **`B` 的显式加权平均**。这些点不应写成 FedPLoRA-Oneshot 的方法贡献；我们的贡献应聚焦在 **不上传 `B` 时，如何通过 `A0` 参考和行级冲突门控实现跨域 one-shot 个性化**。
+<!-- **尚未从 YOCO 论文全文落地的部分**（若要复现 YOCO 原算法，可作为 baseline 后续扩展）：基于 **SVD 的 LoRA 初始化**、仅作用于 **`B` 的符号一致性损失 \(R_{\text{sign}}\)**（及 \(\gamma,\beta\) 等超参）、服务端对 **`B` 的显式加权平均**。这些点不应写成 FedPLoRA-Oneshot 的方法贡献；我们的贡献应聚焦在 **不上传 `B` 时，如何通过 `A0` 参考和行级冲突门控实现跨域 one-shot 个性化**。 -->
