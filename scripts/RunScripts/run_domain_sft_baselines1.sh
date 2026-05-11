@@ -3,10 +3,10 @@
 # Maps to agg_type: fedplora-oneshot, fedalt, flora, normal
 #
 # Usage (from repo root):
-#   source configs/domain_sft_baselines.env
-#   bash scripts/RunScripts/run_domain_sft_baselines1.sh [7|14|21|35]
+#   bash scripts/RunScripts/run_domain_sft_baselines1.sh [7|14|21|35] [gpu]
 #
 # First argument selects data/domain_benchmark_<N>c/seed_42 (default: 35).
+# Second optional: GPU index/list; if omitted, auto-pick or CUDA_DEVICES from env.
 
 set -euo pipefail
 
@@ -22,19 +22,23 @@ if [[ -f "${_REPO_ROOT}/configs/domain_sft_baselines.env" ]]; then
 fi
 
 usage() {
-  echo "Usage: $0 [7|14|21|35]" >&2
+  echo "Usage: $0 [7|14|21|35] [gpu]" >&2
   echo "  Uses data/domain_benchmark_<N>c/seed_42 (default: 35)." >&2
   exit 1
 }
 
 NC="${1:-35}"
+GPU_CLI="${2:-}"
 case "${NC}" in
   7|14|21|35) BENCHMARK_DIR="data/domain_benchmark_${NC}c/seed_42" ;;
   *) usage ;;
 esac
 
+# shellcheck disable=SC1091
+source "${_REPO_ROOT}/configs/cuda_resolve.inc.sh"
+cuda_resolve_devices "${GPU_CLI}"
+
 MODEL_PATH="${MODEL_PATH:-/data/yaominghao/gb/models/Meta-Llama-3.1-8B}"
-CUDA_DEVICES="${CUDA_DEVICES:-0,1}"
 ROUNDS="${ROUNDS:-10}"
 LOCAL_EPOCHS="${LOCAL_EPOCHS:-1}"
 LR="${LR:-2e-4}"
