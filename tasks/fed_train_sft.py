@@ -214,6 +214,48 @@ parser.add_argument(
     help="If > 0, cap batches per eval forward pass (per client×domain). 0 = full eval. Does not affect training.",
 )
 parser.add_argument(
+    "--train_max_steps_per_client",
+    type=int,
+    default=0,
+    help="If > 0, cap optimizer steps per client per round (pilot / smoke). 0 = full local_epoch(s) over the dataloader.",
+)
+parser.add_argument(
+    "--max_train_samples_per_client",
+    type=int,
+    default=0,
+    help="If > 0, subsample training rows per client (seed+client_id). 0 = use full client shard.",
+)
+parser.add_argument(
+    "--dataloader_num_workers",
+    type=int,
+    default=0,
+    help="DataLoader workers for train/eval (Linux: try 4–8 if CPU allows). 0 loads in the main process.",
+)
+parser.add_argument(
+    "--dataloader_pin_memory",
+    action=argparse.BooleanOptionalAction,
+    default=True,
+    help="Pin CPU tensors when CUDA is available (default: true). Use --no-dataloader-pin-memory to disable.",
+)
+parser.add_argument(
+    "--dataloader_persistent_workers",
+    action="store_true",
+    help="If set with --dataloader_num_workers > 0, sets persistent_workers=True.",
+)
+parser.add_argument(
+    "--attn_implementation",
+    type=str,
+    default="",
+    choices=["", "sdpa", "flash_attention_2", "eager"],
+    help="HF causal LM attention backend; sdpa speeds Llama on PyTorch 2+ when supported. Empty = library default.",
+)
+parser.add_argument(
+    "--tokenizer_use_fast",
+    action=argparse.BooleanOptionalAction,
+    default=True,
+    help="Use fast tokenizer when available (default: true).",
+)
+parser.add_argument(
     "--eval_personalization_metrics",
     action="store_true",
     help="Also report personalization block: local / in-domain / off-domain macro "
@@ -775,12 +817,14 @@ def _sft_eval_phase(
                 args,
             )
     else:
-        state_dir = os.path.join(args.client_state_dir, f"eval_seed_{args.seed}")
-        os.makedirs(state_dir, exist_ok=True)
+        # In-memory client states: avoid writing 35× full state_dicts to disk before eval (major wall-clock win).
         eval_client_ids = list(range(len(client_states_for_agg)))
-        eval_store = {"mode": "disk", "state_dir": state_dir}
-        for idx, state in enumerate(client_states_for_agg):
-            torch.save(state, _client_state_path(state_dir, idx))
+        eval_store = {
+            "mode": "memory",
+            "local_states": {
+                idx: client_states_for_agg[idx] for idx in eval_client_ids
+            },
+        }
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         by_domain = group_rows_by_domain(benchmark["test_domain"])
         eval_cap = int(getattr(args, "eval_max_batches", 0) or 0)
@@ -1042,7 +1086,7 @@ def eval_only_from_checkpoint(args):
 
     tokenizer = AutoTokenizer.from_pretrained(
         args.model,
-        use_fast=False,
+        use_fast=getattr(args, "tokenizer_use_fast", True),
         trust_remote_code=args.trust_remote_code,
     )
     if tokenizer.pad_token is None:
@@ -1200,7 +1244,7 @@ def federated_sft(args):
 
     tokenizer = AutoTokenizer.from_pretrained(
         args.model,
-        use_fast=False,
+        use_fast=getattr(args, "tokenizer_use_fast", True),
         trust_remote_code=args.trust_remote_code,
     )
     if tokenizer.pad_token is None:
@@ -1213,11 +1257,21 @@ def federated_sft(args):
     args.num_clients = len(client_ids)
     args._runtime_client_sizes = client_sizes
     _relocate_legacy_artifact_dirs(args, args.num_clients)
+    nw = int(getattr(args, "dataloader_num_workers", 0) or 0)
+    tcap = int(getattr(args, "train_max_steps_per_client", 0) or 0)
+    scap = int(getattr(args, "max_train_samples_per_client", 0) or 0)
     print(
         f"[setup] client_state_dir={args.client_state_dir} "
         f"metrics_output_dir={args.metrics_output_dir}",
         flush=True,
     )
+    if nw > 0 or tcap > 0 or scap > 0:
+        print(
+            f"[setup] speed: dataloader_num_workers={nw} "
+            f"train_max_steps_per_client={tcap or 'off'} "
+            f"max_train_samples_per_client={scap or 'off'}",
+            flush=True,
+        )
 
     if args.agg_type == "ffa":
         global_model = create_peft_causal_lm_ffa_model(args)

@@ -19,6 +19,9 @@ GPU_CLI="${1:-}"
 source "${_REPO_ROOT}/configs/cuda_resolve.inc.sh"
 cuda_resolve_devices "${GPU_CLI}"
 
+# shellcheck disable=SC1091
+source "${_SCRIPT_DIR}/_fed_train_speed.inc.sh"
+
 # 未配置 env 时的回退（与 domain_sft.env 默认一致）
 MODEL_PATH="${MODEL_PATH:-/data/yaominghao/gb/models/Meta-Llama-3.1-8B}"
 BENCHMARK_DIR="${BENCHMARK_DIR:-data/domain_benchmark_35c/seed_42}"
@@ -102,6 +105,8 @@ for AGG_TYPE in "${METHODS[@]}"; do
   if [[ "${TRUST_REMOTE_CODE}" == "1" ]]; then
     CMD+=(--trust_remote_code)
   fi
+
+  fed_train_append_speed_flags CMD
 
   CUDA_VISIBLE_DEVICES="${CUDA_DEVICES}" "${CMD[@]}"
 done
