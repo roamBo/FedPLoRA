@@ -31,6 +31,7 @@ from methods.flora import aggregate_models_flora
 from methods.hetlora import aggregate_models_hetlora
 from methods.lora_a2 import aggregate_models_lora_a2
 from methods.fedp_lora import aggregate_models_fedplora, build_fedplora_upload_package
+from methods.fedplora_oneshot import aggregate_models_fedplora_oneshot
 from methods.yoco import aggregate_models_yoco
 from utilities.models import (
     create_peft_causal_lm_model,
@@ -131,6 +132,64 @@ parser.add_argument(
     type=int,
     default=3,
     help="YOCO: number of principal directions for PCWA weights (<= n_clients-1).",
+)
+parser.add_argument(
+    "--oneshot_consensus_power",
+    type=float,
+    default=2.0,
+    help="FedPLoRA-Oneshot: exponent for row agreement with the initial shared A0.",
+)
+parser.add_argument(
+    "--oneshot_importance_power",
+    type=float,
+    default=1.0,
+    help="FedPLoRA-Oneshot: exponent for private-B row-importance statistics.",
+)
+parser.add_argument(
+    "--oneshot_importance_clip",
+    type=float,
+    default=5.0,
+    help="FedPLoRA-Oneshot: cap row-importance weights; <=0 disables the cap.",
+)
+parser.add_argument(
+    "--oneshot_conflict_threshold",
+    type=float,
+    default=0.35,
+    help="FedPLoRA-Oneshot: row conflict above this threshold is blended toward A0.",
+)
+parser.add_argument(
+    "--oneshot_conflict_blend",
+    type=float,
+    default=1.0,
+    help="FedPLoRA-Oneshot: maximum high-conflict fallback strength toward A0.",
+)
+parser.add_argument(
+    "--oneshot_scale_clip_ratio",
+    type=float,
+    default=0.0,
+    help="FedPLoRA-Oneshot: if >1, clip aggregated row norm to [A0/r, A0*r].",
+)
+parser.add_argument(
+    "--oneshot_anchor_lambda",
+    type=float,
+    default=1e-4,
+    help="FedPLoRA-Oneshot local training: signed row-direction anchor to initial A0.",
+)
+parser.add_argument(
+    "--oneshot_prox_lambda",
+    type=float,
+    default=0.0,
+    help="FedPLoRA-Oneshot local training: optional MSE proximity to initial A0.",
+)
+parser.add_argument(
+    "--oneshot_no_keep_init_on_conflict",
+    action="store_true",
+    help="FedPLoRA-Oneshot ablation: disable fallback to initial A0 on high-conflict rows.",
+)
+parser.add_argument(
+    "--oneshot_orthogonalize",
+    action="store_true",
+    help="FedPLoRA-Oneshot ablation: QR-orthogonalize A rows after aggregation (off by default).",
 )
 parser.add_argument(
     "--eval_max_batches",
@@ -574,7 +633,7 @@ def _write_metrics_file(path, payload):
 
 def federated_sft(args):
     if (is_yoco_agg(args.agg_type) or is_fedplora_oneshot_agg(args.agg_type)) and args.rounds != 1:
-        tag = "YOCO" if is_yoco_agg(args.agg_type) else "fedplora-oneshot (FedP-LoRA + YOCO)"
+        tag = "YOCO" if is_yoco_agg(args.agg_type) else "FedPLoRA-Oneshot"
         print(f"[setup] {tag} is one-shot: forcing --rounds 1")
         args.rounds = 1
 
@@ -626,8 +685,14 @@ def federated_sft(args):
         client_store = _ensure_sequential_fedplora_local_states(
             global_model, client_ids, args
         )
+        initial_A_for_oneshot = {
+            k: v.detach().cpu().clone()
+            for k, v in global_model.state_dict().items()
+            if is_lora_a_param_name(k)
+        }
     else:
         client_store = None
+        initial_A_for_oneshot = {}
 
     best_domain_macro = float("inf")
     best_worst_domain = float("inf")
@@ -643,6 +708,8 @@ def federated_sft(args):
         },
         "rounds": [],
     }
+    if is_fedplora_oneshot_agg(args.agg_type):
+        args._fedplora_initial_A = initial_A_for_oneshot
 
     for round_idx in range(args.rounds):
         print(f"Round {round_idx + 1}/{args.rounds}")
@@ -726,7 +793,18 @@ def federated_sft(args):
             global_model = aggregate_models_ffa(global_model, client_states_for_agg)
         elif is_fedplora_multiround_agg(args.agg_type):
             global_model = aggregate_models_fedplora(global_model, fedplora_uploads, args)
-        elif is_yoco_agg(args.agg_type) or is_fedplora_oneshot_agg(args.agg_type):
+        elif is_fedplora_oneshot_agg(args.agg_type):
+            global_model = aggregate_models_fedplora_oneshot(global_model, fedplora_uploads, args)
+            stats = getattr(args, "_fedplora_oneshot_conflict_stats", {}).get("_summary", {})
+            if stats:
+                print(
+                    f"[fedplora-oneshot] conflict mean={stats.get('mean_conflict', float('nan')):.4f} "
+                    f"max={stats.get('max_conflict', float('nan')):.4f} "
+                    f"high_row_frac={stats.get('high_conflict_row_frac', float('nan')):.4f} "
+                    f"init_gate={stats.get('mean_init_gate', float('nan')):.4f}",
+                    flush=True,
+                )
+        elif is_yoco_agg(args.agg_type):
             global_model = aggregate_models_yoco(global_model, fedplora_uploads, args)
         elif is_fedsa_lora_agg(args.agg_type) or is_fedalt_agg(args.agg_type):
             global_model = aggregate_models_fedsa_lora(global_model, fedplora_uploads, args)
@@ -882,6 +960,10 @@ def federated_sft(args):
             "best_worst_domain_token_accuracy": best_worst_domain_token_accuracy,
             "domain_metrics": domain_metrics,
         }
+        if is_fedplora_oneshot_agg(args.agg_type):
+            round_payload["fedplora_oneshot_conflict"] = getattr(
+                args, "_fedplora_oneshot_conflict_stats", {}
+            ).get("_summary", {})
         round_payload.update(pfl_block)
         metrics_history["rounds"].append(round_payload)
 
