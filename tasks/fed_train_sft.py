@@ -2,6 +2,7 @@ import argparse
 import json
 import math
 import os
+import shutil
 import sys
 import warnings
 from pathlib import Path
@@ -115,6 +116,21 @@ parser.add_argument(
     default="artifacts/sft_metrics",
     help="Round-wise metrics JSON directory. Default artifacts/sft_metrics is relocated to "
     "artifacts_{num_clients}c/sft_metrics when still the legacy path.",
+)
+parser.add_argument(
+    "--save_run_checkpoint_dir",
+    type=str,
+    default="",
+    help="If set, after training saves global shared weights + per-client states and "
+    "run_checkpoint_meta.json for reuse with --eval_only_from_checkpoint.",
+)
+parser.add_argument(
+    "--eval_only_from_checkpoint",
+    type=str,
+    default="",
+    help="Path to a directory created by --save_run_checkpoint_dir; skips training and runs "
+    "the same eval as the end of a round (domain macro + optional --eval_personalization_metrics). "
+    "Does not replace mechanism ablation (those need retraining). Pass the same --model as in meta.",
 )
 parser.add_argument("--gp_align_lambda", type=float, default=0.01)
 parser.add_argument("--gp_prox_lambda", type=float, default=0.001)
@@ -669,6 +685,507 @@ def _write_metrics_file(path, payload):
         json.dump(payload, f, indent=2, ensure_ascii=False)
 
 
+def _metrics_recommended_kpis(include_personalization: bool) -> dict:
+    """Unified index for papers / dashboards: acc, ppl, communication, oneshot conflict."""
+    kpi = {
+        "token_accuracy": [
+            "domain_macro_token_accuracy",
+            "worst_domain_token_accuracy",
+        ],
+        "perplexity": [
+            "domain_macro_perplexity",
+            "worst_domain_perplexity",
+        ],
+        "communication": {
+            "path": "communication",
+            "fields": ["down_bytes_per_client", "up_bytes_per_client", "agg_type"],
+        },
+        "fedplora_oneshot_conflict": {
+            "path": "rounds[i].fedplora_oneshot_conflict",
+            "note": "Present after FedPLoRA-Oneshot server aggregation; "
+            "typically mean_conflict, max_conflict, high_conflict_row_frac, mean_init_gate. "
+            "Other agg_type: omit or {}. Eval-only reload uses checkpoint meta when available.",
+        },
+    }
+    if include_personalization:
+        kpi["token_accuracy"].extend(
+            [
+                "client_local_macro_token_accuracy",
+                "in_domain_domain_test_macro_token_accuracy",
+                "off_domain_macro_token_accuracy",
+            ]
+        )
+        kpi["perplexity"].extend(
+            [
+                "client_local_macro_perplexity",
+                "in_domain_domain_test_macro_perplexity",
+                "off_domain_macro_perplexity",
+            ]
+        )
+        kpi["personalization_gaps"] = [
+            "personalization_gap_token_accuracy",
+            "personalization_gap_perplexity",
+        ]
+    return kpi
+
+
+RUN_CHECKPOINT_VERSION = 1
+
+
+def _sft_eval_phase(
+    global_model,
+    client_ids,
+    client_store,
+    client_states_for_agg,
+    benchmark,
+    tokenizer,
+    args,
+    round_idx,
+    bests,
+):
+    """
+    Domain-macro eval (+ optional personalization). Mutates bests dict in place.
+    Returns round_payload for metrics_history['rounds'].
+    """
+    pfl_block = {}
+    if is_lora_a_disk_agg(args.agg_type):
+        (
+            domain_metrics,
+            domain_macro,
+            worst_domain,
+            domain_macro_token_accuracy,
+            worst_domain_token_accuracy,
+            domain_macro_perplexity,
+            worst_domain_perplexity,
+        ) = _evaluate_domain_macro_sequential(
+            global_model,
+            client_ids,
+            client_store,
+            benchmark["test_domain"],
+            tokenizer,
+            args,
+        )
+        if getattr(args, "eval_personalization_metrics", False):
+            pfl_block = _evaluate_personalization_metrics(
+                global_model,
+                client_ids,
+                client_store,
+                benchmark,
+                tokenizer,
+                args,
+            )
+    else:
+        state_dir = os.path.join(args.client_state_dir, f"eval_seed_{args.seed}")
+        os.makedirs(state_dir, exist_ok=True)
+        eval_client_ids = list(range(len(client_states_for_agg)))
+        eval_store = {"mode": "disk", "state_dir": state_dir}
+        for idx, state in enumerate(client_states_for_agg):
+            torch.save(state, _client_state_path(state_dir, idx))
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        by_domain = group_rows_by_domain(benchmark["test_domain"])
+        eval_cap = int(getattr(args, "eval_max_batches", 0) or 0)
+        domains_sorted = sorted(by_domain.items())
+        print(
+            f"[eval] full-state clients: {len(domains_sorted)} domains × {len(eval_client_ids)} clients; "
+            f"eval_max_batches={eval_cap or 'all'}",
+            flush=True,
+        )
+        metrics = {}
+        for domain, rows in domains_sorted:
+            dl = create_domain_eval_dataloader(rows, tokenizer, args)
+            stats_per_client = []
+            for idx in tqdm(
+                eval_client_ids,
+                desc=f"eval {domain}",
+                leave=False,
+                dynamic_ncols=True,
+            ):
+                state = _get_client_local_state(eval_store, idx)
+                load_partial_state_dict(global_model, state)
+                stats_per_client.append(
+                    compute_lm_eval_stats(
+                        global_model, dl, device, max_batches=eval_cap
+                    )
+                )
+            metrics[domain] = {
+                "loss": float(np.mean([s["loss"] for s in stats_per_client])),
+                "token_accuracy": float(
+                    np.mean([s["token_accuracy"] for s in stats_per_client])
+                ),
+                "perplexity": float(
+                    np.mean([s["perplexity"] for s in stats_per_client])
+                ),
+            }
+        domain_metrics = metrics
+        losses = [v["loss"] for v in metrics.values()]
+        accs = [v["token_accuracy"] for v in metrics.values()]
+        domain_macro = float(np.mean(losses)) if losses else float("nan")
+        worst_domain = float(max(losses)) if losses else float("nan")
+        domain_macro_token_accuracy = (
+            float(np.mean(accs)) if accs else float("nan")
+        )
+        worst_domain_token_accuracy = float(min(accs)) if accs else float("nan")
+        ppls = [v["perplexity"] for v in metrics.values()]
+        domain_macro_perplexity = (
+            float(np.mean(ppls)) if ppls else float("nan")
+        )
+        worst_domain_perplexity = float(max(ppls)) if ppls else float("nan")
+        if getattr(args, "eval_personalization_metrics", False):
+            pfl_block = _evaluate_personalization_metrics_full_state(
+                global_model,
+                eval_store,
+                eval_client_ids,
+                benchmark,
+                tokenizer,
+                args,
+            )
+
+    bests["best_domain_macro"] = min(bests["best_domain_macro"], domain_macro)
+    bests["best_worst_domain"] = min(bests["best_worst_domain"], worst_domain)
+    if not math.isnan(domain_macro_token_accuracy):
+        bests["best_domain_macro_token_accuracy"] = max(
+            bests["best_domain_macro_token_accuracy"], domain_macro_token_accuracy
+        )
+    if not math.isnan(worst_domain_token_accuracy):
+        bests["best_worst_domain_token_accuracy"] = max(
+            bests["best_worst_domain_token_accuracy"], worst_domain_token_accuracy
+        )
+    if not math.isnan(domain_macro_perplexity):
+        bests["best_domain_macro_perplexity"] = min(
+            bests["best_domain_macro_perplexity"], domain_macro_perplexity
+        )
+    if not math.isnan(worst_domain_perplexity):
+        bests["best_worst_domain_perplexity"] = min(
+            bests["best_worst_domain_perplexity"], worst_domain_perplexity
+        )
+
+    loss_parts = []
+    acc_parts = []
+    ppl_parts = []
+    for d, v in domain_metrics.items():
+        if isinstance(v, dict):
+            loss_parts.append(f"{d}_loss={v['loss']:.4f}")
+            acc_parts.append(f"{d}_tok_acc={v['token_accuracy']:.4f}")
+            ppl_parts.append(f"{d}_ppl={v['perplexity']:.2f}")
+        else:
+            loss_parts.append(f"{d}_loss={float(v):.4f}")
+    metrics_str = " | ".join(loss_parts)
+    metrics_acc_str = " | ".join(acc_parts) if acc_parts else ""
+    metrics_ppl_str = " | ".join(ppl_parts) if ppl_parts else ""
+    print(
+        f"[eval] round={round_idx + 1} "
+        f"primary_macro_tok_acc={domain_macro_token_accuracy:.4f} "
+        f"best_macro_tok_acc={bests['best_domain_macro_token_accuracy']:.4f} "
+        f"primary_macro_ppl={domain_macro_perplexity:.2f} "
+        f"best_macro_ppl={bests['best_domain_macro_perplexity']:.2f} | "
+        f"worst_domain_tok_acc={worst_domain_token_accuracy:.4f} "
+        f"best_worst_domain_tok_acc={bests['best_worst_domain_token_accuracy']:.4f} "
+        f"worst_domain_ppl={worst_domain_perplexity:.2f} "
+        f"best_worst_domain_ppl={bests['best_worst_domain_perplexity']:.2f} | "
+        f"aux_macro_loss={domain_macro:.4f} "
+        f"best_aux_macro_loss={bests['best_domain_macro']:.4f} "
+        f"aux_worst_domain_loss={worst_domain:.4f} "
+        f"best_aux_worst_domain_loss={bests['best_worst_domain']:.4f} | "
+        f"{metrics_str}"
+    )
+    if metrics_acc_str:
+        print(f"[eval] per-domain token_accuracy: {metrics_acc_str}", flush=True)
+    if metrics_ppl_str:
+        print(f"[eval] per-domain perplexity: {metrics_ppl_str}", flush=True)
+    if pfl_block:
+        print(
+            f"[eval] personalization round={round_idx + 1} "
+            f"primary local tok_acc={pfl_block['client_local_macro_token_accuracy']:.4f} "
+            f"local_ppl={pfl_block['client_local_macro_perplexity']:.2f} | "
+            f"off tok_acc={pfl_block['off_domain_macro_token_accuracy']:.4f} "
+            f"off_ppl={pfl_block['off_domain_macro_perplexity']:.2f} | "
+            f"in_dom_test tok_acc={pfl_block['in_domain_domain_test_macro_token_accuracy']:.4f} "
+            f"in_dom_test ppl={pfl_block['in_domain_domain_test_macro_perplexity']:.2f} | "
+            f"gap_tok_acc(local-off)={pfl_block['personalization_gap_token_accuracy']:.4f} "
+            f"gap_ppl(off-local)={pfl_block['personalization_gap_perplexity']:.2f} | "
+            f"aux local_loss={pfl_block['client_local_macro_loss']:.4f} "
+            f"aux off_loss={pfl_block['off_domain_macro_loss']:.4f} "
+            f"gap_loss(off-local)={pfl_block['personalization_gap_loss']:.4f}",
+            flush=True,
+        )
+
+    round_payload = {
+        "round": round_idx + 1,
+        "domain_macro_token_accuracy": domain_macro_token_accuracy,
+        "best_domain_macro_token_accuracy": bests["best_domain_macro_token_accuracy"],
+        "worst_domain_token_accuracy": worst_domain_token_accuracy,
+        "best_worst_domain_token_accuracy": bests["best_worst_domain_token_accuracy"],
+        "domain_macro_perplexity": domain_macro_perplexity,
+        "best_domain_macro_perplexity": bests["best_domain_macro_perplexity"],
+        "worst_domain_perplexity": worst_domain_perplexity,
+        "best_worst_domain_perplexity": bests["best_worst_domain_perplexity"],
+        "domain_macro_loss": domain_macro,
+        "best_domain_macro_loss": bests["best_domain_macro"],
+        "worst_domain_loss": worst_domain,
+        "best_worst_domain_loss": bests["best_worst_domain"],
+        "domain_metrics": domain_metrics,
+    }
+    if is_fedplora_oneshot_agg(args.agg_type):
+        round_payload["fedplora_oneshot_conflict"] = getattr(
+            args, "_fedplora_oneshot_conflict_stats", {}
+        ).get("_summary", {})
+    round_payload.update(pfl_block)
+    return round_payload
+
+
+def _metrics_path_from_checkpoint_eval(args, split_dir, ckpt_dir):
+    split_tag = os.path.basename(os.path.normpath(split_dir))
+    model_tag = os.path.basename(os.path.normpath(args.model.rstrip("/")))
+    ckpt_tag = os.path.basename(os.path.normpath(ckpt_dir)).replace(" ", "_")
+    fname = (
+        f"{args.agg_type}_{model_tag}_{split_tag}_eval_ckpt_{ckpt_tag}_"
+        f"r{args.rounds}_e{args.local_epochs}_seed{args.seed}.json"
+    )
+    os.makedirs(args.metrics_output_dir, exist_ok=True)
+    return os.path.join(args.metrics_output_dir, fname)
+
+
+def _save_run_checkpoint(
+    global_model,
+    client_store,
+    client_ids,
+    client_states_for_agg,
+    args,
+    split_dir,
+    metrics_path,
+):
+    root = os.path.abspath(os.path.expanduser(args.save_run_checkpoint_dir))
+    os.makedirs(root, exist_ok=True)
+    clients_dir = os.path.join(root, "clients")
+    os.makedirs(clients_dir, exist_ok=True)
+    meta = {
+        "run_checkpoint_version": RUN_CHECKPOINT_VERSION,
+        "agg_type": args.agg_type,
+        "model": os.path.abspath(os.path.expanduser(args.model)),
+        "benchmark_dir": os.path.abspath(os.path.expanduser(split_dir)),
+        "seed": int(args.seed),
+        "num_clients": int(args.num_clients),
+        "client_ids": [int(x) for x in client_ids],
+        "disk_sequential_protocol": bool(is_lora_a_disk_agg(args.agg_type)),
+        "use_ffa_peft": args.agg_type == "ffa",
+        "train_rounds": int(args.rounds),
+        "train_local_epochs": int(args.local_epochs),
+        "lora_r": int(args.lora_r),
+        "lora_alpha": int(args.lora_alpha),
+        "lora_dropout": float(args.lora_dropout),
+        "rslora": bool(getattr(args, "rslora", False)),
+        "target_modules": str(args.target_modules),
+        "torch_dtype": str(args.torch_dtype),
+        "trust_remote_code": bool(args.trust_remote_code),
+        "gradient_checkpointing": bool(args.gradient_checkpointing),
+        "metrics_path": os.path.abspath(metrics_path) if metrics_path else "",
+    }
+    if is_fedplora_oneshot_agg(args.agg_type):
+        summ = getattr(args, "_fedplora_oneshot_conflict_stats", {}).get("_summary", {})
+        if summ:
+            meta["fedplora_oneshot_conflict_summary"] = summ
+    if is_lora_a_disk_agg(args.agg_type):
+        shared_names = get_fedplora_shared_param_names(global_model)
+        sd = {
+            k: v.detach().cpu().clone()
+            for k, v in global_model.state_dict().items()
+            if k in shared_names
+        }
+        torch.save(sd, os.path.join(root, "global_shared.pt"))
+        if client_store["mode"] == "disk":
+            src_dir = client_store["state_dir"]
+            for cid in client_ids:
+                src = _client_state_path(src_dir, cid)
+                if not os.path.isfile(src):
+                    raise FileNotFoundError(
+                        f"[checkpoint] missing client state {src}; ensure --save_client_state_to_disk "
+                        "for disk-protocol methods."
+                    )
+                dst = os.path.join(clients_dir, f"client_{int(cid):03d}.pt")
+                shutil.copy2(src, dst)
+        else:
+            for cid in client_ids:
+                st = client_store["local_states"][int(cid)]
+                torch.save(st, os.path.join(clients_dir, f"client_{int(cid):03d}.pt"))
+    else:
+        if not client_states_for_agg:
+            raise RuntimeError(
+                "[checkpoint] full-state agg requires non-empty client_states_for_agg at end of training."
+            )
+        torch.save(client_states_for_agg, os.path.join(root, "full_clients.pt"))
+    meta_path = os.path.join(root, "run_checkpoint_meta.json")
+    with open(meta_path, "w", encoding="utf-8") as f:
+        json.dump(meta, f, indent=2, ensure_ascii=False)
+    print(f"[checkpoint] saved run bundle to {root}", flush=True)
+
+
+def eval_only_from_checkpoint(args):
+    ckpt = os.path.abspath(os.path.expanduser(args.eval_only_from_checkpoint))
+    meta_path = os.path.join(ckpt, "run_checkpoint_meta.json")
+    if not os.path.isfile(meta_path):
+        raise FileNotFoundError(f"missing {meta_path}")
+    with open(meta_path, "r", encoding="utf-8") as f:
+        meta = json.load(f)
+    if int(meta.get("run_checkpoint_version", 0)) != RUN_CHECKPOINT_VERSION:
+        raise ValueError(
+            f"unsupported run_checkpoint_version={meta.get('run_checkpoint_version')!r} "
+            f"(expected {RUN_CHECKPOINT_VERSION})"
+        )
+    split_dir = args.benchmark_dir or meta.get("benchmark_dir") or ""
+    if not split_dir:
+        raise ValueError("provide --benchmark_dir or ensure meta['benchmark_dir'] exists")
+    split_dir = os.path.abspath(os.path.expanduser(split_dir))
+    benchmark = load_domain_sft_benchmark(split_dir)
+    print(f"[benchmark] loaded from {split_dir} (eval-only)", flush=True)
+
+    from transformers import AutoTokenizer
+
+    tokenizer = AutoTokenizer.from_pretrained(
+        args.model,
+        use_fast=False,
+        trust_remote_code=args.trust_remote_code,
+    )
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token
+
+    by_c = group_rows_by_client(benchmark["train"])
+    client_ids = sorted(by_c.keys())
+    args.num_clients = len(client_ids)
+    _relocate_legacy_artifact_dirs(args, args.num_clients)
+    print(
+        f"[setup] eval-only client_state_dir={args.client_state_dir} "
+        f"metrics_output_dir={args.metrics_output_dir}",
+        flush=True,
+    )
+
+    if meta.get("model") and os.path.normpath(meta["model"]) != os.path.normpath(
+        os.path.abspath(os.path.expanduser(args.model))
+    ):
+        print(
+            f"[warn] --model ({args.model}) differs from checkpoint meta model ({meta.get('model')}); "
+            "continuing with CLI --model.",
+            flush=True,
+        )
+
+    if meta["agg_type"] != args.agg_type:
+        print(
+            f"[warn] --agg_type ({args.agg_type}) differs from checkpoint ({meta['agg_type']}); "
+            "using checkpoint agg_type for loading.",
+            flush=True,
+        )
+        args.agg_type = meta["agg_type"]
+
+    args.rounds = int(meta.get("train_rounds", args.rounds))
+    args.local_epochs = int(meta.get("train_local_epochs", args.local_epochs))
+    args.lora_r = int(meta.get("lora_r", args.lora_r))
+    args.lora_alpha = int(meta.get("lora_alpha", args.lora_alpha))
+    args.lora_dropout = float(meta.get("lora_dropout", args.lora_dropout))
+    if "rslora" in meta:
+        args.rslora = bool(meta["rslora"])
+    args.target_modules = meta.get("target_modules", args.target_modules)
+    args.torch_dtype = meta.get("torch_dtype", args.torch_dtype)
+
+    if meta.get("use_ffa_peft"):
+        global_model = create_peft_causal_lm_ffa_model(args)
+    else:
+        global_model = create_peft_causal_lm_model(args)
+
+    if is_lora_a_disk_agg(args.agg_type):
+        init_fedplora_adapters(global_model)
+        shared_path = os.path.join(ckpt, "global_shared.pt")
+        if not os.path.isfile(shared_path):
+            raise FileNotFoundError(f"missing {shared_path}")
+        shared_sd = torch.load(shared_path, map_location="cpu")
+        broadcast_fedplora_shared_state(global_model, shared_sd)
+        clients_dir = os.path.join(ckpt, "clients")
+        client_store = {"mode": "disk", "state_dir": clients_dir}
+        _disk_assert_all_client_states(client_store, client_ids, context="eval-only load")
+        client_states_for_agg = None
+    else:
+        fc_path = os.path.join(ckpt, "full_clients.pt")
+        if not os.path.isfile(fc_path):
+            raise FileNotFoundError(f"missing {fc_path}")
+        client_states_for_agg = torch.load(fc_path, map_location="cpu")
+        if len(client_states_for_agg) != len(client_ids):
+            print(
+                f"[warn] checkpoint has {len(client_states_for_agg)} client tensors "
+                f"but benchmark has {len(client_ids)} clients.",
+                flush=True,
+            )
+        scratch = os.path.join(ckpt, "_eval_materialized")
+        os.makedirs(scratch, exist_ok=True)
+        for idx, st in enumerate(client_states_for_agg):
+            torch.save(st, _client_state_path(scratch, idx))
+        client_store = {"mode": "disk", "state_dir": scratch}
+
+    comm_info = estimate_round_communication_bytes(
+        global_model.state_dict(),
+        args.agg_type,
+        trainable_param_names=get_trainable_param_names(global_model),
+    )
+    metrics_history = {
+        "args": vars(args).copy(),
+        "benchmark_dir": split_dir,
+        "eval_only_from_checkpoint": ckpt,
+        "checkpoint_meta": meta,
+        "recommended_primary_metrics": [
+            "domain_macro_token_accuracy",
+            "domain_macro_perplexity",
+            "worst_domain_token_accuracy",
+            "worst_domain_perplexity",
+        ],
+        "communication": {
+            "agg_type": args.agg_type,
+            "down_bytes_per_client": int(comm_info["down_bytes_per_client"]),
+            "up_bytes_per_client": int(comm_info["up_bytes_per_client"]),
+        },
+        "rounds": [],
+    }
+    metrics_history["recommended_kpis"] = _metrics_recommended_kpis(
+        getattr(args, "eval_personalization_metrics", False)
+    )
+    if getattr(args, "eval_personalization_metrics", False):
+        metrics_history["recommended_primary_personalization_metrics"] = [
+            "client_local_macro_token_accuracy",
+            "client_local_macro_perplexity",
+            "off_domain_macro_token_accuracy",
+            "off_domain_macro_perplexity",
+            "personalization_gap_token_accuracy",
+            "personalization_gap_perplexity",
+        ]
+
+    bests = {
+        "best_domain_macro": float("inf"),
+        "best_worst_domain": float("inf"),
+        "best_domain_macro_token_accuracy": float("-inf"),
+        "best_worst_domain_token_accuracy": float("-inf"),
+        "best_domain_macro_perplexity": float("inf"),
+        "best_worst_domain_perplexity": float("inf"),
+    }
+    round_payload = _sft_eval_phase(
+        global_model,
+        client_ids,
+        client_store,
+        client_states_for_agg,
+        benchmark,
+        tokenizer,
+        args,
+        0,
+        bests,
+    )
+    round_payload["eval_note"] = "eval_only_from_checkpoint (no training)"
+    summ = meta.get("fedplora_oneshot_conflict_summary")
+    if summ:
+        round_payload["fedplora_oneshot_conflict"] = summ
+    elif is_fedplora_oneshot_agg(args.agg_type):
+        round_payload["fedplora_oneshot_conflict"] = {}
+    metrics_history["rounds"].append(round_payload)
+
+    out_path = _metrics_path_from_checkpoint_eval(args, split_dir, ckpt)
+    _write_metrics_file(out_path, metrics_history)
+    print(f"[metrics] eval-only saved to {out_path}", flush=True)
+
+
 def federated_sft(args):
     if (is_yoco_agg(args.agg_type) or is_fedplora_oneshot_agg(args.agg_type)) and args.rounds != 1:
         tag = "YOCO" if is_yoco_agg(args.agg_type) else "FedPLoRA-Oneshot"
@@ -732,12 +1249,14 @@ def federated_sft(args):
         client_store = None
         initial_A_for_oneshot = {}
 
-    best_domain_macro = float("inf")
-    best_worst_domain = float("inf")
-    best_domain_macro_token_accuracy = float("-inf")
-    best_worst_domain_token_accuracy = float("-inf")
-    best_domain_macro_perplexity = float("inf")
-    best_worst_domain_perplexity = float("inf")
+    bests = {
+        "best_domain_macro": float("inf"),
+        "best_worst_domain": float("inf"),
+        "best_domain_macro_token_accuracy": float("-inf"),
+        "best_worst_domain_token_accuracy": float("-inf"),
+        "best_domain_macro_perplexity": float("inf"),
+        "best_worst_domain_perplexity": float("inf"),
+    }
     metrics_history = {
         "args": vars(args).copy(),
         "benchmark_dir": split_dir,
@@ -754,6 +1273,9 @@ def federated_sft(args):
         },
         "rounds": [],
     }
+    metrics_history["recommended_kpis"] = _metrics_recommended_kpis(
+        getattr(args, "eval_personalization_metrics", False)
+    )
 
     if getattr(args, "eval_personalization_metrics", False):
         metrics_history["recommended_primary_personalization_metrics"] = [
@@ -768,6 +1290,7 @@ def federated_sft(args):
     if is_fedplora_oneshot_agg(args.agg_type):
         args._fedplora_initial_A = initial_A_for_oneshot
 
+    client_states_for_agg = []
     for round_idx in range(args.rounds):
         print(f"Round {round_idx + 1}/{args.rounds}")
 
@@ -878,192 +1401,34 @@ def federated_sft(args):
             raise ValueError(f"Unknown agg_type: {args.agg_type}")
 
         print(f"[round {round_idx + 1}] aggregation done; running evaluation ...", flush=True)
-        pfl_block = {}
-        if is_lora_a_disk_agg(args.agg_type):
-            (
-                domain_metrics,
-                domain_macro,
-                worst_domain,
-                domain_macro_token_accuracy,
-                worst_domain_token_accuracy,
-                domain_macro_perplexity,
-                worst_domain_perplexity,
-            ) = _evaluate_domain_macro_sequential(
-                global_model,
-                client_ids,
-                client_store,
-                benchmark["test_domain"],
-                tokenizer,
-                args,
-            )
-            if getattr(args, "eval_personalization_metrics", False):
-                pfl_block = _evaluate_personalization_metrics(
-                    global_model,
-                    client_ids,
-                    client_store,
-                    benchmark,
-                    tokenizer,
-                    args,
-                )
-        else:
-            state_dir = os.path.join(args.client_state_dir, f"eval_seed_{args.seed}")
-            os.makedirs(state_dir, exist_ok=True)
-            eval_client_ids = list(range(len(client_states_for_agg)))
-            eval_store = {"mode": "disk", "state_dir": state_dir}
-            for idx, state in enumerate(client_states_for_agg):
-                torch.save(state, _client_state_path(state_dir, idx))
-            device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-            by_domain = group_rows_by_domain(benchmark["test_domain"])
-            eval_cap = int(getattr(args, "eval_max_batches", 0) or 0)
-            domains_sorted = sorted(by_domain.items())
-            print(
-                f"[eval] full-state clients: {len(domains_sorted)} domains × {len(eval_client_ids)} clients; "
-                f"eval_max_batches={eval_cap or 'all'}",
-                flush=True,
-            )
-            metrics = {}
-            for domain, rows in domains_sorted:
-                dl = create_domain_eval_dataloader(rows, tokenizer, args)
-                stats_per_client = []
-                for idx in tqdm(
-                    eval_client_ids,
-                    desc=f"eval {domain}",
-                    leave=False,
-                    dynamic_ncols=True,
-                ):
-                    state = _get_client_local_state(eval_store, idx)
-                    load_partial_state_dict(global_model, state)
-                    stats_per_client.append(
-                        compute_lm_eval_stats(
-                            global_model, dl, device, max_batches=eval_cap
-                        )
-                    )
-                metrics[domain] = {
-                    "loss": float(np.mean([s["loss"] for s in stats_per_client])),
-                    "token_accuracy": float(
-                        np.mean([s["token_accuracy"] for s in stats_per_client])
-                    ),
-                    "perplexity": float(
-                        np.mean([s["perplexity"] for s in stats_per_client])
-                    ),
-                }
-            domain_metrics = metrics
-            losses = [v["loss"] for v in metrics.values()]
-            accs = [v["token_accuracy"] for v in metrics.values()]
-            domain_macro = float(np.mean(losses)) if losses else float("nan")
-            worst_domain = float(max(losses)) if losses else float("nan")
-            domain_macro_token_accuracy = (
-                float(np.mean(accs)) if accs else float("nan")
-            )
-            worst_domain_token_accuracy = float(min(accs)) if accs else float("nan")
-            ppls = [v["perplexity"] for v in metrics.values()]
-            domain_macro_perplexity = (
-                float(np.mean(ppls)) if ppls else float("nan")
-            )
-            worst_domain_perplexity = float(max(ppls)) if ppls else float("nan")
-            if getattr(args, "eval_personalization_metrics", False):
-                pfl_block = _evaluate_personalization_metrics_full_state(
-                    global_model,
-                    eval_store,
-                    eval_client_ids,
-                    benchmark,
-                    tokenizer,
-                    args,
-                )
-        best_domain_macro = min(best_domain_macro, domain_macro)
-        best_worst_domain = min(best_worst_domain, worst_domain)
-        if not math.isnan(domain_macro_token_accuracy):
-            best_domain_macro_token_accuracy = max(
-                best_domain_macro_token_accuracy, domain_macro_token_accuracy
-            )
-        if not math.isnan(worst_domain_token_accuracy):
-            best_worst_domain_token_accuracy = max(
-                best_worst_domain_token_accuracy, worst_domain_token_accuracy
-            )
-        if not math.isnan(domain_macro_perplexity):
-            best_domain_macro_perplexity = min(
-                best_domain_macro_perplexity, domain_macro_perplexity
-            )
-        if not math.isnan(worst_domain_perplexity):
-            best_worst_domain_perplexity = min(
-                best_worst_domain_perplexity, worst_domain_perplexity
-            )
-        loss_parts = []
-        acc_parts = []
-        ppl_parts = []
-        for d, v in domain_metrics.items():
-            if isinstance(v, dict):
-                loss_parts.append(f"{d}_loss={v['loss']:.4f}")
-                acc_parts.append(f"{d}_tok_acc={v['token_accuracy']:.4f}")
-                ppl_parts.append(f"{d}_ppl={v['perplexity']:.2f}")
-            else:
-                loss_parts.append(f"{d}_loss={float(v):.4f}")
-        metrics_str = " | ".join(loss_parts)
-        metrics_acc_str = " | ".join(acc_parts) if acc_parts else ""
-        metrics_ppl_str = " | ".join(ppl_parts) if ppl_parts else ""
-        print(
-            f"[eval] round={round_idx + 1} "
-            f"primary_macro_tok_acc={domain_macro_token_accuracy:.4f} "
-            f"best_macro_tok_acc={best_domain_macro_token_accuracy:.4f} "
-            f"primary_macro_ppl={domain_macro_perplexity:.2f} "
-            f"best_macro_ppl={best_domain_macro_perplexity:.2f} | "
-            f"worst_domain_tok_acc={worst_domain_token_accuracy:.4f} "
-            f"best_worst_domain_tok_acc={best_worst_domain_token_accuracy:.4f} "
-            f"worst_domain_ppl={worst_domain_perplexity:.2f} "
-            f"best_worst_domain_ppl={best_worst_domain_perplexity:.2f} | "
-            f"aux_macro_loss={domain_macro:.4f} "
-            f"best_aux_macro_loss={best_domain_macro:.4f} "
-            f"aux_worst_domain_loss={worst_domain:.4f} "
-            f"best_aux_worst_domain_loss={best_worst_domain:.4f} | "
-            f"{metrics_str}"
+        round_payload = _sft_eval_phase(
+            global_model,
+            client_ids,
+            client_store,
+            client_states_for_agg,
+            benchmark,
+            tokenizer,
+            args,
+            round_idx,
+            bests,
         )
-        if metrics_acc_str:
-            print(f"[eval] per-domain token_accuracy: {metrics_acc_str}", flush=True)
-        if metrics_ppl_str:
-            print(f"[eval] per-domain perplexity: {metrics_ppl_str}", flush=True)
-        if pfl_block:
-            print(
-                f"[eval] personalization round={round_idx + 1} "
-                f"primary local tok_acc={pfl_block['client_local_macro_token_accuracy']:.4f} "
-                f"local_ppl={pfl_block['client_local_macro_perplexity']:.2f} | "
-                f"off tok_acc={pfl_block['off_domain_macro_token_accuracy']:.4f} "
-                f"off_ppl={pfl_block['off_domain_macro_perplexity']:.2f} | "
-                f"in_dom_test tok_acc={pfl_block['in_domain_domain_test_macro_token_accuracy']:.4f} "
-                f"in_dom_test ppl={pfl_block['in_domain_domain_test_macro_perplexity']:.2f} | "
-                f"gap_tok_acc(local-off)={pfl_block['personalization_gap_token_accuracy']:.4f} "
-                f"gap_ppl(off-local)={pfl_block['personalization_gap_perplexity']:.2f} | "
-                f"aux local_loss={pfl_block['client_local_macro_loss']:.4f} "
-                f"aux off_loss={pfl_block['off_domain_macro_loss']:.4f} "
-                f"gap_loss(off-local)={pfl_block['personalization_gap_loss']:.4f}",
-                flush=True,
-            )
-
-        round_payload = {
-            "round": round_idx + 1,
-            "domain_macro_token_accuracy": domain_macro_token_accuracy,
-            "best_domain_macro_token_accuracy": best_domain_macro_token_accuracy,
-            "worst_domain_token_accuracy": worst_domain_token_accuracy,
-            "best_worst_domain_token_accuracy": best_worst_domain_token_accuracy,
-            "domain_macro_perplexity": domain_macro_perplexity,
-            "best_domain_macro_perplexity": best_domain_macro_perplexity,
-            "worst_domain_perplexity": worst_domain_perplexity,
-            "best_worst_domain_perplexity": best_worst_domain_perplexity,
-            "domain_macro_loss": domain_macro,
-            "best_domain_macro_loss": best_domain_macro,
-            "worst_domain_loss": worst_domain,
-            "best_worst_domain_loss": best_worst_domain,
-            "domain_metrics": domain_metrics,
-        }
-        if is_fedplora_oneshot_agg(args.agg_type):
-            round_payload["fedplora_oneshot_conflict"] = getattr(
-                args, "_fedplora_oneshot_conflict_stats", {}
-            ).get("_summary", {})
-        round_payload.update(pfl_block)
         metrics_history["rounds"].append(round_payload)
 
     metrics_path = _metrics_path(args, split_dir)
     _write_metrics_file(metrics_path, metrics_history)
     print(f"[metrics] saved to {metrics_path}")
+
+    save_ckpt = getattr(args, "save_run_checkpoint_dir", None) or ""
+    if str(save_ckpt).strip():
+        _save_run_checkpoint(
+            global_model,
+            client_store,
+            client_ids,
+            client_states_for_agg,
+            args,
+            split_dir,
+            metrics_path,
+        )
 
 
 if __name__ == "__main__":
@@ -1071,6 +1436,11 @@ if __name__ == "__main__":
     set_seed(args.seed)
     log_file, orig_out, orig_err, _ = setup_run_logging(args, filename_prefix="sft")
     try:
-        federated_sft(args)
+        if getattr(args, "eval_only_from_checkpoint", None):
+            if args.build_benchmark:
+                raise ValueError("--eval_only_from_checkpoint cannot be combined with --build_benchmark")
+            eval_only_from_checkpoint(args)
+        else:
+            federated_sft(args)
     finally:
         restore_logging(log_file, orig_out, orig_err)
