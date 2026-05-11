@@ -18,7 +18,8 @@ source "${_REPO_ROOT}/configs/cuda_resolve.inc.sh"
 cuda_resolve_devices "${GPU_CLI}"
 
 MODEL_PATH="${MODEL_PATH:-/data/yaominghao/gb/models/Meta-Llama-3.1-8B}"
-BENCHMARK_DIR="${BENCHMARK_DIR:-data/domain_benchmark/seed_42}"
+BENCHMARK_DIR="${BENCHMARK_DIR:-data/domain_benchmark_35c/seed_42}"
+EVAL_MAX_BATCHES="${EVAL_MAX_BATCHES:-50}"
 AGG_TYPE="${AGG_TYPE:-fedplora}"
 ROUNDS="${ROUNDS:-10}"
 LOCAL_EPOCHS="${LOCAL_EPOCHS:-1}"
@@ -64,6 +65,9 @@ CMD=(
   --client_state_dir "${CLIENT_STATE_DIR}"
   --gradient_checkpointing
 )
+if [[ -n "${EVAL_MAX_BATCHES}" && "${EVAL_MAX_BATCHES}" != "0" ]]; then
+  CMD+=(--eval_max_batches "${EVAL_MAX_BATCHES}")
+fi
 
 if [[ "${SAVE_CLIENT_STATE_TO_DISK}" == "1" ]]; then
   CMD+=(--save_client_state_to_disk)

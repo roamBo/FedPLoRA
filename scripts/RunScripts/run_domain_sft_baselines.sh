@@ -21,7 +21,8 @@ cuda_resolve_devices "${GPU_CLI}"
 
 # 未配置 env 时的回退（与 domain_sft_baselines.env 默认一致）
 MODEL_PATH="${MODEL_PATH:-/data/yaominghao/gb/models/Meta-Llama-3.1-8B}"
-BENCHMARK_DIR="${BENCHMARK_DIR:-data/domain_benchmark/seed_42}"
+BENCHMARK_DIR="${BENCHMARK_DIR:-data/domain_benchmark_35c/seed_42}"
+EVAL_MAX_BATCHES="${EVAL_MAX_BATCHES:-50}"
 ROUNDS="${ROUNDS:-10}"
 LOCAL_EPOCHS="${LOCAL_EPOCHS:-1}"
 LR="${LR:-2e-4}"
@@ -70,6 +71,9 @@ for AGG_TYPE in "${METHODS[@]}"; do
     --client_state_dir "${CLIENT_STATE_DIR}"
     --gradient_checkpointing
   )
+  if [[ -n "${EVAL_MAX_BATCHES}" && "${EVAL_MAX_BATCHES}" != "0" ]]; then
+    CMD+=(--eval_max_batches "${EVAL_MAX_BATCHES}")
+  fi
 
   if [[ "${AGG_TYPE}" == "fedplora" || "${AGG_TYPE}" == "fedplora-oneshot" ]]; then
     CMD+=(--save_client_state_to_disk)

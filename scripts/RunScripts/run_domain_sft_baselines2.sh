@@ -55,6 +55,7 @@ CLIENT_STATE_DIR="${CLIENT_STATE_DIR:-artifacts/domain_client_states}"
 TRUST_REMOTE_CODE="${TRUST_REMOTE_CODE:-0}"
 YOCO_SPARSE_LAMBDA="${YOCO_SPARSE_LAMBDA:-1e-4}"
 YOCO_PCWA_COMPONENTS="${YOCO_PCWA_COMPONENTS:-3}"
+EVAL_MAX_BATCHES="${EVAL_MAX_BATCHES:-50}"
 
 METHODS=("yoco" "fedsa_lora" "ffa")
 
@@ -81,6 +82,9 @@ for AGG_TYPE in "${METHODS[@]}"; do
     --client_state_dir "${CLIENT_STATE_DIR}"
     --gradient_checkpointing
   )
+  if [[ -n "${EVAL_MAX_BATCHES}" && "${EVAL_MAX_BATCHES}" != "0" ]]; then
+    CMD+=(--eval_max_batches "${EVAL_MAX_BATCHES}")
+  fi
 
   case "${AGG_TYPE}" in
     fedplora|fedplora-oneshot|fedalt|fedsa_lora|fedsa|yoco)

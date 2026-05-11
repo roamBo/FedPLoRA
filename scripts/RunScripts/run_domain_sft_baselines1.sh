@@ -62,6 +62,7 @@ ONESHOT_CONFLICT_BLEND="${ONESHOT_CONFLICT_BLEND:-1.0}"
 ONESHOT_SCALE_CLIP_RATIO="${ONESHOT_SCALE_CLIP_RATIO:-0.0}"
 ONESHOT_NO_KEEP_INIT_ON_CONFLICT="${ONESHOT_NO_KEEP_INIT_ON_CONFLICT:-0}"
 ONESHOT_ORTHOGONALIZE="${ONESHOT_ORTHOGONALIZE:-0}"
+EVAL_MAX_BATCHES="${EVAL_MAX_BATCHES:-50}"
 
 METHODS=("fedplora-oneshot" "fedalt" "flora" "normal")
 
@@ -88,6 +89,9 @@ for AGG_TYPE in "${METHODS[@]}"; do
     --client_state_dir "${CLIENT_STATE_DIR}"
     --gradient_checkpointing
   )
+  if [[ -n "${EVAL_MAX_BATCHES}" && "${EVAL_MAX_BATCHES}" != "0" ]]; then
+    CMD+=(--eval_max_batches "${EVAL_MAX_BATCHES}")
+  fi
 
   case "${AGG_TYPE}" in
     fedplora|fedplora-oneshot|fedalt|fedsa_lora|fedsa|yoco)
