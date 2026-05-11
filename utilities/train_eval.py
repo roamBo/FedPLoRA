@@ -149,6 +149,51 @@ def _add_yoco_sparse(loss, model, args):
     return loss
 
 
+def _add_fedplora_oneshot_anchor(loss, model, args):
+    if not is_fedplora_oneshot_agg(getattr(args, "agg_type", None)):
+        return loss
+    initial_A = getattr(args, "_fedplora_initial_A", None)
+    if not isinstance(initial_A, dict) or not initial_A:
+        return loss
+
+    anchor_lam = float(getattr(args, "oneshot_anchor_lambda", 1e-4))
+    prox_lam = float(getattr(args, "oneshot_prox_lambda", 0.0))
+    if anchor_lam <= 0 and prox_lam <= 0:
+        return loss
+
+    eps = 1e-8
+    anchor_terms = []
+    prox_terms = []
+    for key, A_local in model.named_parameters():
+        if "lora_A" not in key or not key.endswith("default.weight"):
+            continue
+        if not A_local.requires_grad:
+            continue
+        A0 = initial_A.get(key, None)
+        if A0 is None:
+            continue
+        A0 = A0.to(device=A_local.device, dtype=A_local.dtype)
+        if tuple(A0.shape) != tuple(A_local.shape):
+            continue
+
+        if anchor_lam > 0:
+            A_dir = A_local.float() / A_local.float().norm(dim=1, keepdim=True).clamp_min(eps)
+            A0_dir = A0.float() / A0.float().norm(dim=1, keepdim=True).clamp_min(eps)
+            # Sign-invariant row anchor keeps A/B row coordinates compatible without
+            # forcing every client to learn the same row magnitude.
+            row_cos = (A_dir * A0_dir).sum(dim=1).abs().clamp(max=1.0)
+            anchor_terms.append((1.0 - row_cos).mean())
+
+        if prox_lam > 0:
+            prox_terms.append(torch.mean((A_local.float() - A0.float()) ** 2))
+
+    if anchor_terms:
+        loss = loss + anchor_lam * torch.stack(anchor_terms).mean()
+    if prox_terms:
+        loss = loss + prox_lam * torch.stack(prox_terms).mean()
+    return loss
+
+
 def train_client(model, dataloader, args, client_idx=0):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device)
@@ -188,6 +233,7 @@ def train_client(model, dataloader, args, client_idx=0):
                 loss = outputs.loss
                 loss = _add_fedplora_regularization(loss, model, args)
                 loss = _add_yoco_sparse(loss, model, args)
+                loss = _add_fedplora_oneshot_anchor(loss, model, args)
 
             scaler.scale(loss).backward()
             scaler.step(optimizer)
