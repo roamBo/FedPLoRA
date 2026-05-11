@@ -40,6 +40,9 @@ esac
 source "${_REPO_ROOT}/configs/cuda_resolve.inc.sh"
 cuda_resolve_devices "${GPU_CLI}"
 
+# shellcheck disable=SC1091
+source "${_SCRIPT_DIR}/_fed_train_speed.inc.sh"
+
 MODEL_PATH="${MODEL_PATH:-/data/yaominghao/gb/models/Meta-Llama-3.1-8B}"
 ROUNDS="${ROUNDS:-10}"
 LOCAL_EPOCHS="${LOCAL_EPOCHS:-1}"
@@ -102,6 +105,8 @@ for AGG_TYPE in "${METHODS[@]}"; do
   if [[ "${TRUST_REMOTE_CODE}" == "1" ]]; then
     CMD+=(--trust_remote_code)
   fi
+
+  fed_train_append_speed_flags CMD
 
   CUDA_VISIBLE_DEVICES="${CUDA_DEVICES}" "${CMD[@]}"
 done

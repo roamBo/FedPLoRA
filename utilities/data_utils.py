@@ -14,6 +14,7 @@ import pandas as pd
 from peft import get_peft_model, LoraConfig, TaskType
 import os
 import json
+import random
 from collections import defaultdict
 
 
@@ -616,21 +617,39 @@ def group_rows_by_domain(rows):
     return by_domain
 
 
+def _dataloader_worker_kwargs(args):
+    nw = int(getattr(args, "dataloader_num_workers", 0) or 0)
+    pin = bool(getattr(args, "dataloader_pin_memory", True)) and torch.cuda.is_available()
+    persist = nw > 0 and bool(getattr(args, "dataloader_persistent_workers", False))
+    kw = {"num_workers": nw, "pin_memory": pin}
+    if persist:
+        kw["persistent_workers"] = True
+    return kw
+
+
 def create_domain_client_dataloaders(rows, tokenizer, args):
     by_client = group_rows_by_client(rows)
     client_ids = sorted(by_client.keys())
     loaders = []
+    cap = int(getattr(args, "max_train_samples_per_client", 0) or 0)
+    seed = int(getattr(args, "seed", 42))
+    dl_kw = _dataloader_worker_kwargs(args)
     for client_id in client_ids:
         ds = DomainSFTDataset(
             by_client[client_id],
             tokenizer=tokenizer,
             max_seq_length=args.max_seq_length,
         )
+        if cap > 0 and len(ds) > cap:
+            rng = random.Random(seed + int(client_id))
+            idx = rng.sample(range(len(ds)), cap)
+            ds = Subset(ds, idx)
         loaders.append(
             DataLoader(
                 ds,
                 batch_size=args.batch_size,
                 shuffle=True,
+                **dl_kw,
             )
         )
     return client_ids, loaders
@@ -638,4 +657,5 @@ def create_domain_client_dataloaders(rows, tokenizer, args):
 
 def create_domain_eval_dataloader(rows, tokenizer, args):
     ds = DomainSFTDataset(rows, tokenizer=tokenizer, max_seq_length=args.max_seq_length)
-    return DataLoader(ds, batch_size=args.batch_size, shuffle=False)
+    dl_kw = _dataloader_worker_kwargs(args)
+    return DataLoader(ds, batch_size=args.batch_size, shuffle=False, **dl_kw)

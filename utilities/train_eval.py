@@ -201,7 +201,9 @@ def train_client(model, dataloader, args, client_idx=0):
     if is_lora_a2_agg(getattr(args, "agg_type", None)):
         _apply_lora_a2_freeze(model, args)
 
-    steps_this_round = len(dataloader) * args.local_epochs
+    full_steps = len(dataloader) * args.local_epochs
+    cap_steps = int(getattr(args, "train_max_steps_per_client", 0) or 0)
+    steps_this_round = min(full_steps, cap_steps) if cap_steps > 0 else full_steps
 
     trainable = [p for p in model.parameters() if p.requires_grad]
     if not trainable:
@@ -217,6 +219,7 @@ def train_client(model, dataloader, args, client_idx=0):
 
     model.train()
 
+    global_step = 0
     for epoch in range(args.local_epochs):
         for step, data in enumerate(
             tqdm(
@@ -226,6 +229,8 @@ def train_client(model, dataloader, args, client_idx=0):
                 desc=getattr(args, "_tqdm_desc", None),
             )
         ):
+            if global_step >= steps_this_round:
+                break
             data = {k: v.to(device) for k, v in data.items()}
 
             with autocast():
@@ -240,6 +245,9 @@ def train_client(model, dataloader, args, client_idx=0):
             scaler.update()
             scheduler.step()
             optimizer.zero_grad()
+            global_step += 1
+        if global_step >= steps_this_round:
+            break
 
     return model.state_dict()
 

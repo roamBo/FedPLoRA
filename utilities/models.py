@@ -44,11 +44,16 @@ def _resolve_target_modules(args, default_modules):
 
 def create_peft_causal_lm_model(args):
     dtype = _resolve_torch_dtype(args)
+    attn = (getattr(args, "attn_implementation", None) or "").strip()
+    extra_kw = {}
+    if attn:
+        extra_kw["attn_implementation"] = attn
     model = AutoModelForCausalLM.from_pretrained(
         args.model,
         torch_dtype=dtype,
         device_map=None,
         trust_remote_code=getattr(args, "trust_remote_code", False),
+        **extra_kw,
     )
     if getattr(args, "gradient_checkpointing", False):
         model.gradient_checkpointing_enable()
