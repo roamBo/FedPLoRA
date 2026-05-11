@@ -399,16 +399,27 @@ def create_e2e_data():
 
 
 class DomainSFTDataset(Dataset):
+    """
+    Each row needs prompt/response masking for causal LM. The naive path runs two
+    HF tokenizer passes (full sequence + prompt-only) per __getitem__. Doing that
+    inside the training step stalls the GPU for every agg_type (YOCO, fedplora, …).
+
+    For split sizes typical of domain benchmarks (<=50k rows per shard), we
+    pre-tokenize once at construction so DataLoader only performs tensor Collate.
+    Larger shards fall back to on-the-fly encoding (avoid RAM explosion).
+    """
+
+    _PRETOKENIZE_CAP = 50000
+
     def __init__(self, records, tokenizer, max_seq_length=2048):
-        self.records = records
+        self.records = list(records)
         self.tokenizer = tokenizer
         self.max_seq_length = max_seq_length
+        self._cached_items = None
+        if len(self.records) <= self._PRETOKENIZE_CAP:
+            self._cached_items = [self._encode_record(r) for r in self.records]
 
-    def __len__(self):
-        return len(self.records)
-
-    def __getitem__(self, idx):
-        record = self.records[idx]
+    def _encode_record(self, record):
         prompt = (record.get("prompt") or "").strip()
         response = (record.get("response") or "").strip()
         text = f"{prompt}\n{response}{self.tokenizer.eos_token or ''}"
@@ -436,6 +447,14 @@ class DomainSFTDataset(Dataset):
         labels[prompt_mask] = -100
         item["labels"] = labels
         return item
+
+    def __len__(self):
+        return len(self.records)
+
+    def __getitem__(self, idx):
+        if self._cached_items is not None:
+            return self._cached_items[idx]
+        return self._encode_record(self.records[idx])
 
 
 def _load_jsonl(path):

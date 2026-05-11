@@ -64,7 +64,12 @@ def _fedplora_regularization_losses(model, args):
     """
     if not is_fedplora_multiround_agg(getattr(args, "agg_type", None)):
         return {}
-    A_global = getattr(args, "_fedplora_global_A", None)
+    A_global_gpu = getattr(args, "_fedplora_global_A_gpu", None)
+    A_global = (
+        A_global_gpu
+        if isinstance(A_global_gpu, dict) and A_global_gpu
+        else getattr(args, "_fedplora_global_A", None)
+    )
     if not isinstance(A_global, dict) or not A_global:
         return {}
 
@@ -76,7 +81,9 @@ def _fedplora_regularization_losses(model, args):
             continue
         if kA_local not in A_global:
             continue
-        A_ref = A_global[kA_local].to(device=A_local.device, dtype=A_local.dtype)
+        A_ref = A_global[kA_local]
+        if A_ref.device != A_local.device or A_ref.dtype != A_local.dtype:
+            A_ref = A_ref.to(device=A_local.device, dtype=A_local.dtype)
 
         prox_term = torch.mean((A_local.float() - A_ref.float()) ** 2)
         reg["prox"] = prox_term if reg["prox"] is None else (reg["prox"] + prox_term)
@@ -143,16 +150,25 @@ def _add_yoco_sparse(loss, model, args):
     if not (is_yoco_agg(agg) or is_fedplora_oneshot_agg(agg)):
         return loss
     lam = float(getattr(args, "yoco_sparse_lambda", 1e-4))
-    for _n, p in model.named_parameters():
-        if "lora_A" in _n and p.requires_grad:
-            loss = loss + lam * p.abs().mean()
+    terms = [
+        p.abs().mean()
+        for _n, p in model.named_parameters()
+        if "lora_A" in _n and p.requires_grad
+    ]
+    if terms:
+        loss = loss + lam * torch.stack(terms).mean()
     return loss
 
 
 def _add_fedplora_oneshot_anchor(loss, model, args):
     if not is_fedplora_oneshot_agg(getattr(args, "agg_type", None)):
         return loss
-    initial_A = getattr(args, "_fedplora_initial_A", None)
+    initial_gpu = getattr(args, "_fedplora_initial_A_gpu", None)
+    initial_A = (
+        initial_gpu
+        if isinstance(initial_gpu, dict) and initial_gpu
+        else getattr(args, "_fedplora_initial_A", None)
+    )
     if not isinstance(initial_A, dict) or not initial_A:
         return loss
 
@@ -172,7 +188,8 @@ def _add_fedplora_oneshot_anchor(loss, model, args):
         A0 = initial_A.get(key, None)
         if A0 is None:
             continue
-        A0 = A0.to(device=A_local.device, dtype=A_local.dtype)
+        if A0.device != A_local.device or A0.dtype != A_local.dtype:
+            A0 = A0.to(device=A_local.device, dtype=A_local.dtype)
         if tuple(A0.shape) != tuple(A_local.shape):
             continue
 
@@ -194,12 +211,50 @@ def _add_fedplora_oneshot_anchor(loss, model, args):
     return loss
 
 
+def _fedplora_refresh_reg_tensor_gpu_cache(model, args):
+    """
+    `_fedplora_initial_A` / `_fedplora_global_A` live on CPU for checkpointing;
+    copying them H2D inside every optimizer step dominated wall time. Materialize once
+    per local training run.
+    """
+    args._fedplora_initial_A_gpu = None
+    args._fedplora_global_A_gpu = None
+
+    if is_fedplora_oneshot_agg(getattr(args, "agg_type", None)):
+        init = getattr(args, "_fedplora_initial_A", None)
+        if isinstance(init, dict) and init:
+            gpu_map = {}
+            for key, A_local in model.named_parameters():
+                if key not in init:
+                    continue
+                if "lora_A" not in key or not key.endswith("default.weight"):
+                    continue
+                gpu_map[key] = init[key].to(device=A_local.device, dtype=A_local.dtype)
+            if gpu_map:
+                args._fedplora_initial_A_gpu = gpu_map
+
+    if is_fedplora_multiround_agg(getattr(args, "agg_type", None)):
+        Ag = getattr(args, "_fedplora_global_A", None)
+        if isinstance(Ag, dict) and Ag:
+            sd = model.state_dict()
+            gpu_map = {}
+            for kA_local, A_cpu in Ag.items():
+                if kA_local not in sd or "lora_A" not in kA_local:
+                    continue
+                A_local = sd[kA_local]
+                gpu_map[kA_local] = A_cpu.to(device=A_local.device, dtype=A_local.dtype)
+            if gpu_map:
+                args._fedplora_global_A_gpu = gpu_map
+
+
 def train_client(model, dataloader, args, client_idx=0):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device)
 
     if is_lora_a2_agg(getattr(args, "agg_type", None)):
         _apply_lora_a2_freeze(model, args)
+
+    _fedplora_refresh_reg_tensor_gpu_cache(model, args)
 
     full_steps = len(dataloader) * args.local_epochs
     cap_steps = int(getattr(args, "train_max_steps_per_client", 0) or 0)
@@ -220,36 +275,40 @@ def train_client(model, dataloader, args, client_idx=0):
     model.train()
 
     global_step = 0
-    for epoch in range(args.local_epochs):
-        for step, data in enumerate(
-            tqdm(
-                dataloader,
-                leave=True,
-                dynamic_ncols=True,
-                desc=getattr(args, "_tqdm_desc", None),
-            )
-        ):
+    try:
+        for epoch in range(args.local_epochs):
+            for step, data in enumerate(
+                tqdm(
+                    dataloader,
+                    leave=True,
+                    dynamic_ncols=True,
+                    desc=getattr(args, "_tqdm_desc", None),
+                )
+            ):
+                if global_step >= steps_this_round:
+                    break
+                data = {k: v.to(device) for k, v in data.items()}
+
+                with autocast():
+                    outputs = model(**data)
+                    loss = outputs.loss
+                    loss = _add_fedplora_regularization(loss, model, args)
+                    loss = _add_yoco_sparse(loss, model, args)
+                    loss = _add_fedplora_oneshot_anchor(loss, model, args)
+
+                scaler.scale(loss).backward()
+                scaler.step(optimizer)
+                scaler.update()
+                scheduler.step()
+                optimizer.zero_grad()
+                global_step += 1
             if global_step >= steps_this_round:
                 break
-            data = {k: v.to(device) for k, v in data.items()}
 
-            with autocast():
-                outputs = model(**data)
-                loss = outputs.loss
-                loss = _add_fedplora_regularization(loss, model, args)
-                loss = _add_yoco_sparse(loss, model, args)
-                loss = _add_fedplora_oneshot_anchor(loss, model, args)
-
-            scaler.scale(loss).backward()
-            scaler.step(optimizer)
-            scaler.update()
-            scheduler.step()
-            optimizer.zero_grad()
-            global_step += 1
-        if global_step >= steps_this_round:
-            break
-
-    return model.state_dict()
+        return model.state_dict()
+    finally:
+        args._fedplora_initial_A_gpu = None
+        args._fedplora_global_A_gpu = None
 
 
 def compute_accuracy(model, dataloader):
