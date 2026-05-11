@@ -141,7 +141,9 @@ parser.add_argument(
 parser.add_argument(
     "--eval_personalization_metrics",
     action="store_true",
-    help="Also report client-local test loss (in-domain) and off-domain test loss for personalization analysis.",
+    help="Also report personalization block: local / in-domain / off-domain macro "
+    "token_accuracy, perplexity, loss; plus gap_token_accuracy (local-off), gap_perplexity (off-local), "
+    "gap_loss (off-local).",
 )
 parser.add_argument(
     "--fedplora_ablation_no_consensus",
@@ -391,15 +393,33 @@ def _evaluate_domain_macro_sequential(global_model, client_ids, client_store, do
         }
     losses = [v["loss"] for v in metrics.values()]
     accs = [v["token_accuracy"] for v in metrics.values()]
+    ppls = [v["perplexity"] for v in metrics.values()]
     macro = float(np.mean(losses)) if losses else float("nan")
     worst = float(max(losses)) if losses else float("nan")
     macro_tok = float(np.mean(accs)) if accs else float("nan")
     worst_tok = float(min(accs)) if accs else float("nan")
-    return metrics, macro, worst, macro_tok, worst_tok
+    macro_ppl = float(np.mean(ppls)) if ppls else float("nan")
+    worst_ppl = float(max(ppls)) if ppls else float("nan")
+    return metrics, macro, worst, macro_tok, worst_tok, macro_ppl, worst_ppl
 
 
 def _client_id_to_home_domain(clients_manifest):
     return {int(c["client_id"]): str(c["domain"]) for c in clients_manifest}
+
+
+def _mean_eval_stats(stats_list):
+    """Macro mean over a list of compute_lm_eval_stats dicts (loss / token_accuracy / perplexity)."""
+    if not stats_list:
+        return {
+            "loss": float("nan"),
+            "token_accuracy": float("nan"),
+            "perplexity": float("nan"),
+        }
+    return {
+        "loss": float(np.mean([s["loss"] for s in stats_list])),
+        "token_accuracy": float(np.mean([s["token_accuracy"] for s in stats_list])),
+        "perplexity": float(np.mean([s["perplexity"] for s in stats_list])),
+    }
 
 
 def _evaluate_personalization_metrics(
@@ -426,7 +446,7 @@ def _evaluate_personalization_metrics(
     by_client_local = group_rows_by_client(benchmark["test_local"])
     by_domain_test = group_rows_by_domain(benchmark["test_domain"])
 
-    local_losses = []
+    local_stats = []
     for client_id in client_ids:
         rows = by_client_local.get(int(client_id), [])
         if not rows:
@@ -435,14 +455,12 @@ def _evaluate_personalization_metrics(
         broadcast_fedplora_shared_state(global_model, shared_state)
         local_state = _get_client_local_state(client_store, client_id)
         load_fedplora_local_state(global_model, local_state)
-        local_losses.append(
-            compute_lm_loss(global_model, dl, device, max_batches=eval_cap)
+        local_stats.append(
+            compute_lm_eval_stats(global_model, dl, device, max_batches=eval_cap)
         )
-    client_local_macro = (
-        float(np.mean(local_losses)) if local_losses else float("nan")
-    )
+    loc = _mean_eval_stats(local_stats)
 
-    off_losses = []
+    off_stats = []
     for client_id in client_ids:
         home = id2home.get(int(client_id))
         if not home:
@@ -454,12 +472,12 @@ def _evaluate_personalization_metrics(
             broadcast_fedplora_shared_state(global_model, shared_state)
             local_state = _get_client_local_state(client_store, client_id)
             load_fedplora_local_state(global_model, local_state)
-            off_losses.append(
-                compute_lm_loss(global_model, dl, device, max_batches=eval_cap)
+            off_stats.append(
+                compute_lm_eval_stats(global_model, dl, device, max_batches=eval_cap)
             )
-    off_domain_macro = float(np.mean(off_losses)) if off_losses else float("nan")
+    off = _mean_eval_stats(off_stats)
 
-    in_dom_dt_losses = []
+    in_dom_dt_stats = []
     for client_id in client_ids:
         home = id2home.get(int(client_id))
         if not home:
@@ -471,17 +489,28 @@ def _evaluate_personalization_metrics(
         broadcast_fedplora_shared_state(global_model, shared_state)
         local_state = _get_client_local_state(client_store, client_id)
         load_fedplora_local_state(global_model, local_state)
-        in_dom_dt_losses.append(
-            compute_lm_loss(global_model, dl, device, max_batches=eval_cap)
+        in_dom_dt_stats.append(
+            compute_lm_eval_stats(global_model, dl, device, max_batches=eval_cap)
         )
-    in_domain_domain_test_macro = (
-        float(np.mean(in_dom_dt_losses)) if in_dom_dt_losses else float("nan")
-    )
+    indt = _mean_eval_stats(in_dom_dt_stats)
+
+    gap_loss = off["loss"] - loc["loss"]
+    gap_tok = loc["token_accuracy"] - off["token_accuracy"]
+    gap_ppl = off["perplexity"] - loc["perplexity"]
 
     return {
-        "client_local_macro_loss": client_local_macro,
-        "off_domain_macro_loss": off_domain_macro,
-        "in_domain_domain_test_macro_loss": in_domain_domain_test_macro,
+        "client_local_macro_token_accuracy": loc["token_accuracy"],
+        "client_local_macro_perplexity": loc["perplexity"],
+        "client_local_macro_loss": loc["loss"],
+        "off_domain_macro_token_accuracy": off["token_accuracy"],
+        "off_domain_macro_perplexity": off["perplexity"],
+        "off_domain_macro_loss": off["loss"],
+        "in_domain_domain_test_macro_token_accuracy": indt["token_accuracy"],
+        "in_domain_domain_test_macro_perplexity": indt["perplexity"],
+        "in_domain_domain_test_macro_loss": indt["loss"],
+        "personalization_gap_token_accuracy": gap_tok,
+        "personalization_gap_perplexity": gap_ppl,
+        "personalization_gap_loss": gap_loss,
     }
 
 
@@ -500,7 +529,7 @@ def _evaluate_personalization_metrics_full_state(
     by_client_local = group_rows_by_client(benchmark["test_local"])
     by_domain_test = group_rows_by_domain(benchmark["test_domain"])
 
-    local_losses = []
+    local_stats = []
     for idx in eval_client_ids:
         rows = by_client_local.get(int(idx), [])
         if not rows:
@@ -508,14 +537,12 @@ def _evaluate_personalization_metrics_full_state(
         dl = create_domain_eval_dataloader(rows, tokenizer, args)
         state = _get_client_local_state(eval_store, idx)
         load_partial_state_dict(global_model, state)
-        local_losses.append(
-            compute_lm_loss(global_model, dl, device, max_batches=eval_cap)
+        local_stats.append(
+            compute_lm_eval_stats(global_model, dl, device, max_batches=eval_cap)
         )
-    client_local_macro = (
-        float(np.mean(local_losses)) if local_losses else float("nan")
-    )
+    loc = _mean_eval_stats(local_stats)
 
-    off_losses = []
+    off_stats = []
     for idx in eval_client_ids:
         home = id2home.get(int(idx))
         if not home:
@@ -526,12 +553,12 @@ def _evaluate_personalization_metrics_full_state(
             dl = create_domain_eval_dataloader(rows, tokenizer, args)
             state = _get_client_local_state(eval_store, idx)
             load_partial_state_dict(global_model, state)
-            off_losses.append(
-                compute_lm_loss(global_model, dl, device, max_batches=eval_cap)
+            off_stats.append(
+                compute_lm_eval_stats(global_model, dl, device, max_batches=eval_cap)
             )
-    off_domain_macro = float(np.mean(off_losses)) if off_losses else float("nan")
+    off = _mean_eval_stats(off_stats)
 
-    in_dom_dt_losses = []
+    in_dom_dt_stats = []
     for idx in eval_client_ids:
         home = id2home.get(int(idx))
         if not home:
@@ -542,17 +569,28 @@ def _evaluate_personalization_metrics_full_state(
         dl = create_domain_eval_dataloader(rows, tokenizer, args)
         state = _get_client_local_state(eval_store, idx)
         load_partial_state_dict(global_model, state)
-        in_dom_dt_losses.append(
-            compute_lm_loss(global_model, dl, device, max_batches=eval_cap)
+        in_dom_dt_stats.append(
+            compute_lm_eval_stats(global_model, dl, device, max_batches=eval_cap)
         )
-    in_domain_domain_test_macro = (
-        float(np.mean(in_dom_dt_losses)) if in_dom_dt_losses else float("nan")
-    )
+    indt = _mean_eval_stats(in_dom_dt_stats)
+
+    gap_loss = off["loss"] - loc["loss"]
+    gap_tok = loc["token_accuracy"] - off["token_accuracy"]
+    gap_ppl = off["perplexity"] - loc["perplexity"]
 
     return {
-        "client_local_macro_loss": client_local_macro,
-        "off_domain_macro_loss": off_domain_macro,
-        "in_domain_domain_test_macro_loss": in_domain_domain_test_macro,
+        "client_local_macro_token_accuracy": loc["token_accuracy"],
+        "client_local_macro_perplexity": loc["perplexity"],
+        "client_local_macro_loss": loc["loss"],
+        "off_domain_macro_token_accuracy": off["token_accuracy"],
+        "off_domain_macro_perplexity": off["perplexity"],
+        "off_domain_macro_loss": off["loss"],
+        "in_domain_domain_test_macro_token_accuracy": indt["token_accuracy"],
+        "in_domain_domain_test_macro_perplexity": indt["perplexity"],
+        "in_domain_domain_test_macro_loss": indt["loss"],
+        "personalization_gap_token_accuracy": gap_tok,
+        "personalization_gap_perplexity": gap_ppl,
+        "personalization_gap_loss": gap_loss,
     }
 
 
@@ -633,9 +671,17 @@ def federated_sft(args):
     best_worst_domain = float("inf")
     best_domain_macro_token_accuracy = float("-inf")
     best_worst_domain_token_accuracy = float("-inf")
+    best_domain_macro_perplexity = float("inf")
+    best_worst_domain_perplexity = float("inf")
     metrics_history = {
         "args": vars(args).copy(),
         "benchmark_dir": split_dir,
+        "recommended_primary_metrics": [
+            "domain_macro_token_accuracy",
+            "domain_macro_perplexity",
+            "worst_domain_token_accuracy",
+            "worst_domain_perplexity",
+        ],
         "communication": {
             "agg_type": args.agg_type,
             "down_bytes_per_client": int(comm_info["down_bytes_per_client"]),
@@ -643,6 +689,15 @@ def federated_sft(args):
         },
         "rounds": [],
     }
+    if getattr(args, "eval_personalization_metrics", False):
+        metrics_history["recommended_primary_personalization_metrics"] = [
+            "client_local_macro_token_accuracy",
+            "client_local_macro_perplexity",
+            "off_domain_macro_token_accuracy",
+            "off_domain_macro_perplexity",
+            "personalization_gap_token_accuracy",
+            "personalization_gap_perplexity",
+        ]
 
     for round_idx in range(args.rounds):
         print(f"Round {round_idx + 1}/{args.rounds}")
@@ -751,6 +806,8 @@ def federated_sft(args):
                 worst_domain,
                 domain_macro_token_accuracy,
                 worst_domain_token_accuracy,
+                domain_macro_perplexity,
+                worst_domain_perplexity,
             ) = _evaluate_domain_macro_sequential(
                 global_model,
                 client_ids,
@@ -819,6 +876,11 @@ def federated_sft(args):
                 float(np.mean(accs)) if accs else float("nan")
             )
             worst_domain_token_accuracy = float(min(accs)) if accs else float("nan")
+            ppls = [v["perplexity"] for v in metrics.values()]
+            domain_macro_perplexity = (
+                float(np.mean(ppls)) if ppls else float("nan")
+            )
+            worst_domain_perplexity = float(max(ppls)) if ppls else float("nan")
             if getattr(args, "eval_personalization_metrics", False):
                 pfl_block = _evaluate_personalization_metrics_full_state(
                     global_model,
@@ -838,48 +900,78 @@ def federated_sft(args):
             best_worst_domain_token_accuracy = max(
                 best_worst_domain_token_accuracy, worst_domain_token_accuracy
             )
+        if not math.isnan(domain_macro_perplexity):
+            best_domain_macro_perplexity = min(
+                best_domain_macro_perplexity, domain_macro_perplexity
+            )
+        if not math.isnan(worst_domain_perplexity):
+            best_worst_domain_perplexity = min(
+                best_worst_domain_perplexity, worst_domain_perplexity
+            )
         loss_parts = []
         acc_parts = []
+        ppl_parts = []
         for d, v in domain_metrics.items():
             if isinstance(v, dict):
                 loss_parts.append(f"{d}_loss={v['loss']:.4f}")
                 acc_parts.append(f"{d}_tok_acc={v['token_accuracy']:.4f}")
+                ppl_parts.append(f"{d}_ppl={v['perplexity']:.2f}")
             else:
                 loss_parts.append(f"{d}_loss={float(v):.4f}")
         metrics_str = " | ".join(loss_parts)
         metrics_acc_str = " | ".join(acc_parts) if acc_parts else ""
+        metrics_ppl_str = " | ".join(ppl_parts) if ppl_parts else ""
         print(
-            f"[eval] round={round_idx + 1} domain_macro_loss={domain_macro:.4f} "
-            f"best_domain_macro_loss={best_domain_macro:.4f} "
-            f"worst_domain_loss={worst_domain:.4f} "
-            f"best_worst_domain_loss={best_worst_domain:.4f} "
-            f"domain_macro_tok_acc={domain_macro_token_accuracy:.4f} "
-            f"best_domain_macro_tok_acc={best_domain_macro_token_accuracy:.4f} "
+            f"[eval] round={round_idx + 1} "
+            f"primary_macro_tok_acc={domain_macro_token_accuracy:.4f} "
+            f"best_macro_tok_acc={best_domain_macro_token_accuracy:.4f} "
+            f"primary_macro_ppl={domain_macro_perplexity:.2f} "
+            f"best_macro_ppl={best_domain_macro_perplexity:.2f} | "
             f"worst_domain_tok_acc={worst_domain_token_accuracy:.4f} "
-            f"best_worst_domain_tok_acc={best_worst_domain_token_accuracy:.4f} | "
+            f"best_worst_domain_tok_acc={best_worst_domain_token_accuracy:.4f} "
+            f"worst_domain_ppl={worst_domain_perplexity:.2f} "
+            f"best_worst_domain_ppl={best_worst_domain_perplexity:.2f} | "
+            f"aux_macro_loss={domain_macro:.4f} "
+            f"best_aux_macro_loss={best_domain_macro:.4f} "
+            f"aux_worst_domain_loss={worst_domain:.4f} "
+            f"best_aux_worst_domain_loss={best_worst_domain:.4f} | "
             f"{metrics_str}"
         )
         if metrics_acc_str:
             print(f"[eval] per-domain token_accuracy: {metrics_acc_str}", flush=True)
+        if metrics_ppl_str:
+            print(f"[eval] per-domain perplexity: {metrics_ppl_str}", flush=True)
         if pfl_block:
             print(
                 f"[eval] personalization round={round_idx + 1} "
-                f"client_local_macro_loss={pfl_block['client_local_macro_loss']:.4f} "
-                f"in_domain_domain_test_macro_loss={pfl_block['in_domain_domain_test_macro_loss']:.4f} "
-                f"off_domain_macro_loss={pfl_block['off_domain_macro_loss']:.4f}",
+                f"primary local tok_acc={pfl_block['client_local_macro_token_accuracy']:.4f} "
+                f"local_ppl={pfl_block['client_local_macro_perplexity']:.2f} | "
+                f"off tok_acc={pfl_block['off_domain_macro_token_accuracy']:.4f} "
+                f"off_ppl={pfl_block['off_domain_macro_perplexity']:.2f} | "
+                f"in_dom_test tok_acc={pfl_block['in_domain_domain_test_macro_token_accuracy']:.4f} "
+                f"in_dom_test ppl={pfl_block['in_domain_domain_test_macro_perplexity']:.2f} | "
+                f"gap_tok_acc(local-off)={pfl_block['personalization_gap_token_accuracy']:.4f} "
+                f"gap_ppl(off-local)={pfl_block['personalization_gap_perplexity']:.2f} | "
+                f"aux local_loss={pfl_block['client_local_macro_loss']:.4f} "
+                f"aux off_loss={pfl_block['off_domain_macro_loss']:.4f} "
+                f"gap_loss(off-local)={pfl_block['personalization_gap_loss']:.4f}",
                 flush=True,
             )
 
         round_payload = {
             "round": round_idx + 1,
-            "domain_macro_loss": domain_macro,
-            "best_domain_macro_loss": best_domain_macro,
-            "worst_domain_loss": worst_domain,
-            "best_worst_domain_loss": best_worst_domain,
             "domain_macro_token_accuracy": domain_macro_token_accuracy,
             "best_domain_macro_token_accuracy": best_domain_macro_token_accuracy,
             "worst_domain_token_accuracy": worst_domain_token_accuracy,
             "best_worst_domain_token_accuracy": best_worst_domain_token_accuracy,
+            "domain_macro_perplexity": domain_macro_perplexity,
+            "best_domain_macro_perplexity": best_domain_macro_perplexity,
+            "worst_domain_perplexity": worst_domain_perplexity,
+            "best_worst_domain_perplexity": best_worst_domain_perplexity,
+            "domain_macro_loss": domain_macro,
+            "best_domain_macro_loss": best_domain_macro,
+            "worst_domain_loss": worst_domain,
+            "best_worst_domain_loss": best_worst_domain,
             "domain_metrics": domain_metrics,
         }
         round_payload.update(pfl_block)

@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
-# 【个性化收益分析】跑 fedplora 与 normal，开启 --eval_personalization_metrics
+# 【个性化收益分析】跑 fedplora-oneshot 与 normal，开启 --eval_personalization_metrics
 # 读 artifacts_{N}c/sft_metrics/*.json 中的 client_local_macro_loss vs off_domain_macro_loss（N=客户端数）
+# fedplora-oneshot 在 fed_train_sft 中强制单轮（--rounds 会被置为 1）
 #
 # Usage (repo root):
-#   source configs/domain_sft_baselines.env   # 可选
-#   bash scripts/RunScripts/run_exp_personalization.sh [7|14|21|35]
+#   bash scripts/RunScripts/run_exp_personalization.sh [7|14|21|35] [gpu]
 #
-# 环境变量可覆盖：MODEL_PATH, CUDA_DEVICES, ROUNDS, BENCHMARK_ROOT（默认 data/domain_benchmark_${N}c）
+# 可选第二参数 gpu：单卡或多卡列表（如 1 或 0,1）。不写且未 export CUDA_DEVICES 时，
+# 按 nvidia-smi 选空闲显存最大的卡。环境变量仍可覆盖：CUDA_DEVICES=1 bash ...
 
 set -euo pipefail
 
@@ -22,15 +23,19 @@ if [[ -f "${_REPO_ROOT}/configs/domain_sft_baselines.env" ]]; then
 fi
 
 NC="${1:-35}"
+GPU_CLI="${2:-}"
 case "${NC}" in
   7|14|21|35) ;;
-  *) echo "Usage: $0 [7|14|21|35]" >&2; exit 1 ;;
+  *) echo "Usage: $0 [7|14|21|35] [gpu]" >&2; exit 1 ;;
 esac
+
+# shellcheck disable=SC1091
+source "${_REPO_ROOT}/configs/cuda_resolve.inc.sh"
+cuda_resolve_devices "${GPU_CLI}"
 
 BENCHMARK_DIR="${BENCHMARK_DIR:-data/domain_benchmark_${NC}c/seed_42}"
 MODEL_PATH="${MODEL_PATH:-/data/yaominghao/gb/models/Meta-Llama-3.1-8B}"
-CUDA_DEVICES="${CUDA_DEVICES:-0,1}"
-ROUNDS="${ROUNDS:-10}"
+ROUNDS="${ROUNDS:-1}"
 
 COMMON=(
   python tasks/fed_train_sft.py
@@ -53,9 +58,9 @@ COMMON=(
 
 echo "[exp_personalization] benchmark_dir=${BENCHMARK_DIR}"
 
-echo "[run] fedplora + personalization metrics"
+echo "[run] fedplora-oneshot + personalization metrics"
 CUDA_VISIBLE_DEVICES="${CUDA_DEVICES}" "${COMMON[@]}" \
-  --agg_type fedplora \
+  --agg_type fedplora-oneshot \
   --save_client_state_to_disk
 
 echo "[run] normal + personalization metrics"

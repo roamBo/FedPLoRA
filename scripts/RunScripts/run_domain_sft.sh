@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Optional first argument: GPU index or list. If omitted, auto-pick or fallback; see configs/cuda_resolve.inc.sh.
 set -euo pipefail
 
 _SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -11,10 +12,14 @@ if [[ -f "${_REPO_ROOT}/configs/domain_sft_pilot.env" ]]; then
   set +a
 fi
 
+GPU_CLI="${1:-}"
+# shellcheck disable=SC1091
+source "${_REPO_ROOT}/configs/cuda_resolve.inc.sh"
+cuda_resolve_devices "${GPU_CLI}"
+
 MODEL_PATH="${MODEL_PATH:-/data/yaominghao/gb/models/Meta-Llama-3.1-8B}"
 BENCHMARK_DIR="${BENCHMARK_DIR:-data/domain_benchmark/seed_42}"
 AGG_TYPE="${AGG_TYPE:-fedplora}"
-CUDA_DEVICES="${CUDA_DEVICES:-0,1}"
 ROUNDS="${ROUNDS:-10}"
 LOCAL_EPOCHS="${LOCAL_EPOCHS:-1}"
 LR="${LR:-2e-4}"

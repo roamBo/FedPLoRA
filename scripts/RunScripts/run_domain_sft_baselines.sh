@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Optional first argument: GPU index or comma list (e.g. 1). If omitted and CUDA_DEVICES unset,
+# auto-select GPU with most free VRAM. See configs/cuda_resolve.inc.sh.
 set -euo pipefail
 
 _SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -12,10 +14,14 @@ if [[ -f "${_REPO_ROOT}/configs/domain_sft_baselines.env" ]]; then
   set +a
 fi
 
+GPU_CLI="${1:-}"
+# shellcheck disable=SC1091
+source "${_REPO_ROOT}/configs/cuda_resolve.inc.sh"
+cuda_resolve_devices "${GPU_CLI}"
+
 # 未配置 env 时的回退（与 domain_sft_baselines.env 默认一致）
 MODEL_PATH="${MODEL_PATH:-/data/yaominghao/gb/models/Meta-Llama-3.1-8B}"
 BENCHMARK_DIR="${BENCHMARK_DIR:-data/domain_benchmark/seed_42}"
-CUDA_DEVICES="${CUDA_DEVICES:-0,1}"
 ROUNDS="${ROUNDS:-10}"
 LOCAL_EPOCHS="${LOCAL_EPOCHS:-1}"
 LR="${LR:-2e-4}"
