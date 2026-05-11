@@ -498,7 +498,7 @@ cat data/domain_benchmark_35c/seed_42/clients.json | head
 
 ### 11.0 终版约定（35c、指标、GPU、一次训练多次 eval）
 
-- **数据**：主实验与各训练类脚本默认 `**data/domain_benchmark_35c/seed_42`**（7 域 × 每域 5 客户端）。`configs/domain_sft_baselines.env` / `domain_sft_pilot.env` 已对齐。
+- **数据**：主实验与各训练类脚本默认 `**data/domain_benchmark_35c/seed_42`**（7 域 × 每域 5 客户端）。`configs/domain_sft.env` / `domain_sft_pilot.env` 已对齐。
 - **7 域主实验**：**§11.1** 保留「每个 `agg_type` 一条」的手敲命令；指标 JSON 顶层含 `**recommended_kpis`**（索引 **token 准确率、PPL、`communication`、FedPLoRA-Oneshot 的 `fedplora_oneshot_conflict`**），与 `**recommended_primary_metrics**` / 各轮 `**rounds[]**` 字段一致。
 - **个性化实验**：脚本 `**scripts/RunScripts/run_exp_personalization.sh`**；指标与主实验同一套 **acc / PPL / communication / conflict（oneshot 有）**，并额外有个性化字段；读同一 JSON 中的 `**recommended_kpis`**（含 `personalization_gaps`）。
 - **通信–性能实验**：脚本 `**scripts/RunScripts/run_exp_comm_profile.sh`**，指标仍为各 `**agg_type` 的 `down_bytes_per_client` / `up_bytes_per_client**`（与现实现一致）。
@@ -511,7 +511,23 @@ cat data/domain_benchmark_35c/seed_42/clients.json | head
 
 ### 11.1 直接用准备好的 benchmark 训练（推荐：逐方法手敲命令）
 
-以下命令均在**仓库根目录**执行。主表默认使用 **35 客户端** benchmark：`--benchmark_dir data/domain_benchmark_35c/seed_42`（与 `build_domain_benchmark.py` 里 `num_clients_per_domain=5` × 7 域一致）。请把 `**MODEL`** 换成你机器上的基座路径或 HF id（示例沿用 `configs/domain_sft_*.env` 里的 Llama 路径）。
+以下命令均在**仓库根目录**执行。主表默认使用 **35 客户端** benchmark：`--benchmark_dir data/domain_benchmark_35c/seed_42`（与 `build_domain_benchmark.py` 里 `num_clients_per_domain=5` × 7 域一致）。
+
+**复制下面任一条 `python` 命令之前，先加载环境（与本地数据 / 本地模型一致）**
+
+单条手敲命令**不会**自动 `source` env。请先 **`source configs/domain_sft.env`**：其中 **`MODEL_PATH`** 指向本地基座目录（默认与 Meta-Llama 示例一致，可按机器修改该文件）。若 `--model` 仍写成 Hub 上的 repo id、或本地路径不存在，在无外网时会触发 `AutoTokenizer.from_pretrained` 连 `huggingface.co` 失败。
+
+```bash
+cd /path/to/FedPLoRA   # 本仓库根目录（含 tasks、configs）
+set -a
+source configs/domain_sft.env
+set +a
+# 下面各命令里的 MODEL 请改为「本地模型目录」，例如：
+#   --model "$MODEL_PATH"
+# 或把 domain_sft.env 里的 MODEL_PATH 改成你的绝对路径后再 source。
+```
+
+`configs/domain_sft.env` 与批量脚本 `run_domain_sft_baselines*.sh`、`run_exp_*.sh` 自动加载的是**同一份**默认（含 `BENCHMARK_DIR`、`EVAL_MAX_BATCHES` 等）。单机一键跑单次实验仍可用 `configs/domain_sft_pilot.env`（`run_domain_sft.sh` 会自行 source）。若仍需 `trust_remote_code`，在 `domain_sft.env` 中设 `TRUST_REMOTE_CODE=1` 或命令行加 `--trust_remote_code`。
 
 **加快每轮「评估 / 测评」阶段（只影响 eval，不影响训练步）**
 
@@ -638,7 +654,7 @@ CUDA_VISIBLE_DEVICES=0,1 python tasks/fed_train_sft.py \
 #### 5) `fedplora-oneshot`（冲突门控；入口会强制 `--rounds 1`）
 
 ```bash
-CUDA_VISIBLE_DEVICES=0,1 python tasks/fed_train_sft.py \
+CUDA_VISIBLE_DEVICES=0 python tasks/fed_train_sft.py \
   --model MODEL \
   --benchmark_dir data/domain_benchmark_35c/seed_42 \
   --agg_type fedplora-oneshot \
@@ -668,7 +684,7 @@ CUDA_VISIBLE_DEVICES=0,1 python tasks/fed_train_sft.py \
 #### 6) `yoco`（单轮 PCWA；入口会强制 `--rounds 1`）
 
 ```bash
-CUDA_VISIBLE_DEVICES=0,1 python tasks/fed_train_sft.py \
+CUDA_VISIBLE_DEVICES=01 python tasks/fed_train_sft.py \
   --model MODEL \
   --benchmark_dir data/domain_benchmark_35c/seed_42 \
   --agg_type yoco \
@@ -887,7 +903,7 @@ CUDA_VISIBLE_DEVICES=0,1 python tasks/fed_train_sft.py \
 - [scripts/RunScripts/run_domain_sft_baselines2.sh](scripts/RunScripts/run_domain_sft_baselines2.sh)（分组 baseline ②：YOCO、FedSA-LoRA、FFA）
 - 扩展实验脚本（详见 **§十四**）：`[run_exp_personalization.sh](scripts/RunScripts/run_exp_personalization.sh)`、`[run_exp_comm_profile.sh](scripts/RunScripts/run_exp_comm_profile.sh)`、`[run_exp_ablation_fedplora.sh](scripts/RunScripts/run_exp_ablation_fedplora.sh)`
 - [configs/domain_sft_pilot.env](configs/domain_sft_pilot.env)（单机 pilot 默认环境）
-- [configs/domain_sft_baselines.env](configs/domain_sft_baselines.env)（批量 baseline 默认环境）
+- [configs/domain_sft.env](configs/domain_sft.env)（批量 baseline 默认环境）
 
 默认模型目录已配置为（可按机器修改 env 文件或命令行覆盖）：
 
@@ -928,7 +944,7 @@ bash /path/to/FedPLoRA/scripts/RunScripts/run_domain_sft.sh
 
 #### 11.3.2 自动批量 baseline（默认顺序）
 
-[scripts/RunScripts/run_domain_sft_baselines.sh](scripts/RunScripts/run_domain_sft_baselines.sh) 同样会 **cd 到仓库根** 并自动 **source `configs/domain_sft_baselines.env`**。当前顺序为：**先 `fedplora-oneshot`，再 `fedplora`**，随后 `normal`、`ffa`、`fedex`（后三项在脚本里顺序可任意调整）。
+[scripts/RunScripts/run_domain_sft_baselines.sh](scripts/RunScripts/run_domain_sft_baselines.sh) 同样会 **cd 到仓库根** 并自动 **source `configs/domain_sft.env`**。当前顺序为：**先 `fedplora-oneshot`，再 `fedplora`**，随后 `normal`、`ffa`、`fedex`（后三项在脚本里顺序可任意调整）。
 
 ```bash
 bash /path/to/FedPLoRA/scripts/RunScripts/run_domain_sft_baselines.sh
@@ -936,7 +952,7 @@ bash /path/to/FedPLoRA/scripts/RunScripts/run_domain_sft_baselines.sh
 bash /path/to/FedPLoRA/scripts/RunScripts/run_domain_sft_baselines.sh 1
 ```
 
-`domain_sft_baselines.env` 中已写入 `MODEL_PATH`（**不再**写入 `CUDA_DEVICES`，避免覆盖命令行前缀）。需要临时改 GPU 或轮数时：
+`domain_sft.env` 中已写入 `MODEL_PATH`（**不再**写入 `CUDA_DEVICES`，避免覆盖命令行前缀）。需要临时改 GPU 或轮数时：
 
 ```bash
 CUDA_DEVICES=1 ROUNDS=10 bash /path/to/FedPLoRA/scripts/RunScripts/run_domain_sft_baselines.sh
@@ -944,7 +960,7 @@ CUDA_DEVICES=1 ROUNDS=10 bash /path/to/FedPLoRA/scripts/RunScripts/run_domain_sf
 
 #### 11.3.3 分组 baseline 脚本（可选客户端数 7 / 14 / 21 / 35）
 
-以下两个脚本会 **cd 到仓库根**、自动 **source `configs/domain_sft_baselines.env`**（若存在），并根据**第一个命令行参数**选择 benchmark；**第二个可选参数**为 GPU（与 `run_domain_sft_baselines.sh` 的首参同理，见 `configs/cuda_resolve.inc.sh`）。
+以下两个脚本会 **cd 到仓库根**、自动 **source `configs/domain_sft.env`**（若存在），并根据**第一个命令行参数**选择 benchmark；**第二个可选参数**为 GPU（与 `run_domain_sft_baselines.sh` 的首参同理，见 `configs/cuda_resolve.inc.sh`）。
 
 
 | 参数       | `benchmark_dir`                     |
@@ -976,10 +992,10 @@ CUDA_DEVICES=1 ROUNDS=10 bash /path/to/FedPLoRA/scripts/RunScripts/run_domain_sf
 | FFA        | `ffa`        |
 
 
-**示例**（与 `domain_sft_baselines.env` 联用）：
+**示例**（与 `domain_sft.env` 联用）：
 
 ```bash
-source configs/domain_sft_baselines.env
+source configs/domain_sft.env
 bash scripts/RunScripts/run_domain_sft_baselines1.sh 7
 bash scripts/RunScripts/run_domain_sft_baselines2.sh 35
 # 35 客户端 + 指定 GPU 1：
@@ -1204,7 +1220,7 @@ python scripts/DataProcessScripts/merge_domain_jsonl.py \
 **一键脚本**
 
 ```bash
-source configs/domain_sft_baselines.env
+source configs/domain_sft.env
 bash scripts/RunScripts/run_exp_personalization.sh 35
 # 第二个参数可指定 GPU，与 §11.3.3 一致，例如 35 客户端、1 号卡：
 bash scripts/RunScripts/run_exp_personalization.sh 35 1
@@ -1230,7 +1246,7 @@ bash scripts/RunScripts/run_exp_personalization.sh 35 1
 **一键脚本（只打通信表，不训练）**
 
 ```bash
-source configs/domain_sft_baselines.env
+source configs/domain_sft.env
 bash scripts/RunScripts/run_exp_comm_profile.sh
 bash scripts/RunScripts/run_exp_comm_profile.sh 1
 ```
@@ -1298,7 +1314,7 @@ bash scripts/RunScripts/run_exp_comm_profile.sh 1
 **一键脚本（仅覆盖 A 类）**
 
 ```bash
-source configs/domain_sft_baselines.env
+source configs/domain_sft.env
 bash scripts/RunScripts/run_exp_ablation_fedplora.sh 35
 bash scripts/RunScripts/run_exp_ablation_fedplora.sh 35 1
 ```
@@ -1456,7 +1472,7 @@ bash scripts/RunScripts/run_domain_sft.sh
 可直接批量运行：
 
 ```bash
-source configs/domain_sft_baselines.env
+source configs/domain_sft.env
 bash scripts/RunScripts/run_domain_sft_baselines.sh
 # 分组 baseline + 客户端数（7/14/21/35）见 §11.3.3
 bash scripts/RunScripts/run_domain_sft_baselines1.sh 7

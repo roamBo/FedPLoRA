@@ -6,11 +6,11 @@ set -euo pipefail
 _SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 _REPO_ROOT="$(cd "${_SCRIPT_DIR}/../.." && pwd)"
 cd "${_REPO_ROOT}"
-# 与 README 一致：优先加载 configs/domain_sft_baselines.env（无需先手动 source）
-if [[ -f "${_REPO_ROOT}/configs/domain_sft_baselines.env" ]]; then
+# 与 README 一致：优先加载 configs/domain_sft.env（无需先手动 source）
+if [[ -f "${_REPO_ROOT}/configs/domain_sft.env" ]]; then
   set -a
   # shellcheck disable=SC1091
-  source "${_REPO_ROOT}/configs/domain_sft_baselines.env"
+  source "${_REPO_ROOT}/configs/domain_sft.env"
   set +a
 fi
 
@@ -19,7 +19,7 @@ GPU_CLI="${1:-}"
 source "${_REPO_ROOT}/configs/cuda_resolve.inc.sh"
 cuda_resolve_devices "${GPU_CLI}"
 
-# 未配置 env 时的回退（与 domain_sft_baselines.env 默认一致）
+# 未配置 env 时的回退（与 domain_sft.env 默认一致）
 MODEL_PATH="${MODEL_PATH:-/data/yaominghao/gb/models/Meta-Llama-3.1-8B}"
 BENCHMARK_DIR="${BENCHMARK_DIR:-data/domain_benchmark_35c/seed_42}"
 EVAL_MAX_BATCHES="${EVAL_MAX_BATCHES:-50}"
