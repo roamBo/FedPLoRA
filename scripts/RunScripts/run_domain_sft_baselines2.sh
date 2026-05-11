@@ -47,6 +47,8 @@ TORCH_DTYPE="${TORCH_DTYPE:-bfloat16}"
 TARGET_MODULES="${TARGET_MODULES:-q_proj,k_proj,v_proj,o_proj,up_proj,down_proj,gate_proj}"
 CLIENT_STATE_DIR="${CLIENT_STATE_DIR:-artifacts/domain_client_states}"
 TRUST_REMOTE_CODE="${TRUST_REMOTE_CODE:-0}"
+YOCO_SPARSE_LAMBDA="${YOCO_SPARSE_LAMBDA:-1e-4}"
+YOCO_PCWA_COMPONENTS="${YOCO_PCWA_COMPONENTS:-3}"
 
 METHODS=("yoco" "fedsa_lora" "ffa")
 
@@ -79,6 +81,13 @@ for AGG_TYPE in "${METHODS[@]}"; do
       CMD+=(--save_client_state_to_disk)
       ;;
   esac
+
+  if [[ "${AGG_TYPE}" == "yoco" ]]; then
+    CMD+=(
+      --yoco_sparse_lambda "${YOCO_SPARSE_LAMBDA}"
+      --yoco_pcwa_components "${YOCO_PCWA_COMPONENTS}"
+    )
+  fi
 
   if [[ "${TRUST_REMOTE_CODE}" == "1" ]]; then
     CMD+=(--trust_remote_code)
