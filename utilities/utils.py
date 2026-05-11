@@ -16,9 +16,9 @@ def is_fedplora_agg(agg_type):
 
 def is_fedplora_oneshot_agg(agg_type):
     """
-    FedP-LoRA communication pattern (upload A + heads, keep B local) + YOCO one-shot:
-    exactly one federated round; server uses PCWA on A (see methods/yoco.py);
-    local training uses YOCO sparse prior on A (train_eval --yoco_sparse_lambda).
+    FedPLoRA-Oneshot: exactly one federated round; clients upload LoRA A,
+    trainable heads, and row-importance stats while B stays local. Server uses
+    conflict-gated A aggregation against the initial shared A0.
     """
     return _norm_agg_type(agg_type) == "fedplora_oneshot"
 
@@ -186,7 +186,7 @@ def estimate_round_communication_bytes(
 
     agg_type = _norm_agg_type(agg_type) or "normal"
 
-    if is_fedplora_multiround_agg(agg_type):
+    if is_fedplora_multiround_agg(agg_type) or is_fedplora_oneshot_agg(agg_type):
         down = lora_a + task_head
         up = lora_a + task_head + gp_stats
     elif is_lora_a_disk_agg(agg_type):
