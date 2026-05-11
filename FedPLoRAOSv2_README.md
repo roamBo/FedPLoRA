@@ -1073,7 +1073,7 @@ CUDA_VISIBLE_DEVICES=0,1 python tasks/fed_train_sft.py \
 - [scripts/RunScripts/run_domain_sft_baselines2.sh](scripts/RunScripts/run_domain_sft_baselines2.sh)（分组 baseline ②：YOCO、FedSA-LoRA、FFA）
 - 扩展实验脚本（详见 **§十四**）：[`run_exp_personalization.sh`](scripts/RunScripts/run_exp_personalization.sh)、[`run_exp_comm_profile.sh`](scripts/RunScripts/run_exp_comm_profile.sh)、[`run_exp_ablation_fedplora.sh`](scripts/RunScripts/run_exp_ablation_fedplora.sh)
 - [configs/domain_sft_pilot.env](configs/domain_sft_pilot.env)（单机 pilot 默认环境）
-- [configs/domain_sft_baselines.env](configs/domain_sft_baselines.env)（批量 baseline 默认环境）
+- [configs/domain_sft.env](configs/domain_sft.env)（批量 baseline 默认环境）
 
 默认模型目录已配置为（可按机器修改 env 文件或命令行覆盖）：
 
@@ -1102,13 +1102,13 @@ bash /path/to/FedPLoRA/scripts/RunScripts/run_domain_sft.sh
 
 #### 11.3.2 自动批量 baseline（推荐顺序）
 
-[scripts/RunScripts/run_domain_sft_baselines.sh](scripts/RunScripts/run_domain_sft_baselines.sh) 同样会 **cd 到仓库根** 并自动 **source `configs/domain_sft_baselines.env`**。当前顺序为：**先 `fedplora-oneshot`，再 `fedplora`**，随后 `normal`、`ffa`、`fedex`（后三项在脚本里顺序可任意调整）。
+[scripts/RunScripts/run_domain_sft_baselines.sh](scripts/RunScripts/run_domain_sft_baselines.sh) 同样会 **cd 到仓库根** 并自动 **source `configs/domain_sft.env`**。当前顺序为：**先 `fedplora-oneshot`，再 `fedplora`**，随后 `normal`、`ffa`、`fedex`（后三项在脚本里顺序可任意调整）。
 
 ```bash
 bash /path/to/FedPLoRA/scripts/RunScripts/run_domain_sft_baselines.sh
 ```
 
-`domain_sft_baselines.env` 中已写入 `MODEL_PATH`。需要临时改 GPU 或轮数时：
+`domain_sft.env` 中已写入 `MODEL_PATH`。需要临时改 GPU 或轮数时：
 
 ```bash
 CUDA_DEVICES=0,1 ROUNDS=10 bash /path/to/FedPLoRA/scripts/RunScripts/run_domain_sft_baselines.sh
@@ -1116,7 +1116,7 @@ CUDA_DEVICES=0,1 ROUNDS=10 bash /path/to/FedPLoRA/scripts/RunScripts/run_domain_
 
 #### 11.3.3 分组 baseline 脚本（可选客户端数 7 / 14 / 21 / 35）
 
-以下两个脚本会 **cd 到仓库根**、自动 **source `configs/domain_sft_baselines.env`**（若存在），并根据**第一个命令行参数**选择 benchmark：
+以下两个脚本会 **cd 到仓库根**、自动 **source `configs/domain_sft.env`**（若存在），并根据**第一个命令行参数**选择 benchmark：
 
 | 参数 | `benchmark_dir` |
 |------|-----------------|
@@ -1142,10 +1142,10 @@ CUDA_DEVICES=0,1 ROUNDS=10 bash /path/to/FedPLoRA/scripts/RunScripts/run_domain_
 | FedSA-LoRA | `fedsa_lora` |
 | FFA | `ffa` |
 
-**示例**（与 `domain_sft_baselines.env` 联用）：
+**示例**（与 `domain_sft.env` 联用）：
 
 ```bash
-source configs/domain_sft_baselines.env
+source configs/domain_sft.env
 bash scripts/RunScripts/run_domain_sft_baselines1.sh 7
 bash scripts/RunScripts/run_domain_sft_baselines2.sh 35
 ```
@@ -1166,10 +1166,10 @@ artifacts_{num_clients}c/sft_metrics/
 
 - [scripts/RunScripts/run_domain_sft_baselines.sh](scripts/RunScripts/run_domain_sft_baselines.sh)（全量默认顺序）
 - [scripts/RunScripts/run_domain_sft_baselines1.sh](scripts/RunScripts/run_domain_sft_baselines1.sh)、[scripts/RunScripts/run_domain_sft_baselines2.sh](scripts/RunScripts/run_domain_sft_baselines2.sh)（分组 + `7|14|21|35` 选 benchmark，见 **§11.3.3**）
-- [configs/domain_sft_baselines.env](configs/domain_sft_baselines.env)
+- [configs/domain_sft.env](configs/domain_sft.env)
 
 ```bash
-source configs/domain_sft_baselines.env
+source configs/domain_sft.env
 bash scripts/RunScripts/run_domain_sft_baselines.sh
 # 或（示例：7 客户端数据）
 bash scripts/RunScripts/run_domain_sft_baselines1.sh 7
@@ -1401,7 +1401,7 @@ python scripts/DataProcessScripts/merge_domain_jsonl.py \
 **一键脚本**
 
 ```bash
-source configs/domain_sft_baselines.env
+source configs/domain_sft.env
 bash scripts/RunScripts/run_exp_personalization.sh 35
 ```
 
@@ -1423,7 +1423,7 @@ bash scripts/RunScripts/run_exp_personalization.sh 35
 **一键脚本（只打通信表，不训练）**
 
 ```bash
-source configs/domain_sft_baselines.env
+source configs/domain_sft.env
 bash scripts/RunScripts/run_exp_comm_profile.sh
 ```
 
@@ -1447,7 +1447,7 @@ bash scripts/RunScripts/run_exp_comm_profile.sh
 **一键脚本**
 
 ```bash
-source configs/domain_sft_baselines.env
+source configs/domain_sft.env
 bash scripts/RunScripts/run_exp_ablation_fedplora.sh 35
 ```
 
@@ -1600,7 +1600,7 @@ bash scripts/RunScripts/run_domain_sft.sh
 可直接批量运行：
 
 ```bash
-source configs/domain_sft_baselines.env
+source configs/domain_sft.env
 bash scripts/RunScripts/run_domain_sft_baselines.sh
 # 分组 baseline + 客户端数（7/14/21/35）见 §11.3.3
 bash scripts/RunScripts/run_domain_sft_baselines1.sh 7

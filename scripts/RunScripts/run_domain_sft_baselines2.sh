@@ -15,10 +15,10 @@ _SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 _REPO_ROOT="$(cd "${_SCRIPT_DIR}/../.." && pwd)"
 cd "${_REPO_ROOT}"
 
-if [[ -f "${_REPO_ROOT}/configs/domain_sft_baselines.env" ]]; then
+if [[ -f "${_REPO_ROOT}/configs/domain_sft.env" ]]; then
   set -a
   # shellcheck disable=SC1091
-  source "${_REPO_ROOT}/configs/domain_sft_baselines.env"
+  source "${_REPO_ROOT}/configs/domain_sft.env"
   set +a
 fi
 

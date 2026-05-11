@@ -19,7 +19,7 @@
 #   PERSONALIZATION_FROM_CHECKPOINT=0          旧行为：当场训练 + 开个性化指标（仍可用 SAVE_RUN_CHECKPOINT_ROOT 另存）
 #   CHECKPOINT_ROOT=artifacts/checkpoints      与 README §11.1 中 --save_run_checkpoint_dir 父目录一致
 #   PERSONALIZATION_AGG_LIST=fedplora-oneshot,normal   逗号分隔；可改成 fedplora,normal,yoco,... 以扫多种方法
-#   BENCHMARK_DIR / MODEL_PATH / EVAL_MAX_BATCHES / CUDA_DEVICES 等同 domain_sft_baselines.env
+#   BENCHMARK_DIR / MODEL_PATH / EVAL_MAX_BATCHES / CUDA_DEVICES 等同 configs/domain_sft.env
 #
 # GPU：第二参数传 0 / 1 / 0,1；不写且未 export CUDA_DEVICES 时，nvidia-smi 选空闲显存最大的卡（configs/cuda_resolve.inc.sh）
 
@@ -29,10 +29,10 @@ _SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 _REPO_ROOT="$(cd "${_SCRIPT_DIR}/../.." && pwd)"
 cd "${_REPO_ROOT}"
 
-if [[ -f "${_REPO_ROOT}/configs/domain_sft_baselines.env" ]]; then
+if [[ -f "${_REPO_ROOT}/configs/domain_sft.env" ]]; then
   set -a
   # shellcheck disable=SC1091
-  source "${_REPO_ROOT}/configs/domain_sft_baselines.env"
+  source "${_REPO_ROOT}/configs/domain_sft.env"
   set +a
 fi
 
