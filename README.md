@@ -893,12 +893,14 @@ CUDA_VISIBLE_DEVICES=0,1 python tasks/fed_train_sft.py \
 
 - [scripts/RunScripts/run_domain_sft.sh](scripts/RunScripts/run_domain_sft.sh)（单次跑一个 `AGG_TYPE`）
 - [scripts/RunScripts/run_domain_sft_baselines.sh](scripts/RunScripts/run_domain_sft_baselines.sh)（按固定顺序自动串行多种 `AGG_TYPE`）
-- **主实验推荐（三脚本，全量训练 + 每方法保存 checkpoint，见 §11.3.3）**  
+- **主实验推荐（四脚本，全量训练 + 每方法保存 checkpoint，见 §11.3.3）**  
   - [run_domain_sft_batch_group1_oneshot_fedalt.sh](scripts/RunScripts/run_domain_sft_batch_group1_oneshot_fedalt.sh)：`fedplora-oneshot`、`fedalt`  
   - [run_domain_sft_batch_group2_yoco_fedsa.sh](scripts/RunScripts/run_domain_sft_batch_group2_yoco_fedsa.sh)：`yoco`、`fedsa_lora`  
-  - [run_domain_sft_batch_group3_normal_flora_ffa.sh](scripts/RunScripts/run_domain_sft_batch_group3_normal_flora_ffa.sh)：`normal`、`flora`、`ffa`  
+  - [run_domain_sft_batch_group3_normal.sh](scripts/RunScripts/run_domain_sft_batch_group3_normal.sh)：`normal`  
+  - [run_domain_sft_batch_group4_flora_ffa.sh](scripts/RunScripts/run_domain_sft_batch_group4_flora_ffa.sh)：`flora`、`ffa`  
+  - 兼容旧路径（等价于依次执行 group3 + group4）：[run_domain_sft_batch_group3_normal_flora_ffa.sh](scripts/RunScripts/run_domain_sft_batch_group3_normal_flora_ffa.sh)  
   - 共享逻辑：`[_run_domain_sft_batch.inc.sh](scripts/RunScripts/_run_domain_sft_batch.inc.sh)`、`[_fed_train_speed.inc.sh](scripts/RunScripts/_fed_train_speed.inc.sh)`
-- [scripts/RunScripts/run_domain_sft_baselines1.sh](scripts/RunScripts/run_domain_sft_baselines1.sh)（旧版四合一分组：oneshot、fedalt、flora、normal；无统一 checkpoint 命名时可改用 §11.3.3 三脚本）
+- [scripts/RunScripts/run_domain_sft_baselines1.sh](scripts/RunScripts/run_domain_sft_baselines1.sh)（旧版四合一分组：oneshot、fedalt、flora、normal；无统一 checkpoint 命名时可改用 §11.3.3 四脚本）
 - [scripts/RunScripts/run_domain_sft_baselines2.sh](scripts/RunScripts/run_domain_sft_baselines2.sh)（旧版：yoco、fedsa_lora、ffa）
 - 扩展实验脚本（详见 **§十四**）：`[run_exp_personalization.sh](scripts/RunScripts/run_exp_personalization.sh)`、`[run_exp_comm_profile.sh](scripts/RunScripts/run_exp_comm_profile.sh)`、`[run_exp_ablation_fedplora.sh](scripts/RunScripts/run_exp_ablation_fedplora.sh)`
 - [configs/domain_sft_pilot.env](configs/domain_sft_pilot.env)（单机 pilot 默认环境）
@@ -970,7 +972,7 @@ CUDA_DEVICES=1 ROUNDS=10 bash /path/to/FedPLoRA/scripts/RunScripts/run_domain_sf
 | `35`（默认） | `data/domain_benchmark_35c/seed_42` |
 
 
-**推荐：三脚本（全量本地 epoch，带 `--save_run_checkpoint_dir`）**
+**推荐：四脚本（全量本地 epoch，带 `--save_run_checkpoint_dir`）**
 
 每个方法跑完后会把 checkpoint 写到 `SAVE_RUN_CHECKPOINT_ROOT`（默认 `artifacts/checkpoints`，见 `configs/domain_sft.env`）下，目录名为：
 
@@ -985,7 +987,8 @@ CUDA_DEVICES=1 ROUNDS=10 bash /path/to/FedPLoRA/scripts/RunScripts/run_domain_sf
 | --------------------------------------------------------------------------------------------------------------------- | ----------------------------- |
 | [run_domain_sft_batch_group1_oneshot_fedalt.sh](scripts/RunScripts/run_domain_sft_batch_group1_oneshot_fedalt.sh)     | `fedplora-oneshot` → `fedalt` |
 | [run_domain_sft_batch_group2_yoco_fedsa.sh](scripts/RunScripts/run_domain_sft_batch_group2_yoco_fedsa.sh)             | `yoco` → `fedsa_lora`         |
-| [run_domain_sft_batch_group3_normal_flora_ffa.sh](scripts/RunScripts/run_domain_sft_batch_group3_normal_flora_ffa.sh) | `normal` → `flora` → `ffa`    |
+| [run_domain_sft_batch_group3_normal.sh](scripts/RunScripts/run_domain_sft_batch_group3_normal.sh)                     | `normal`                      |
+| [run_domain_sft_batch_group4_flora_ffa.sh](scripts/RunScripts/run_domain_sft_batch_group4_flora_ffa.sh)               | `flora` → `ffa`               |
 
 
 **运行示例**（在仓库根目录，或任意路径用 bash 调用下列绝对/相对路径均可；脚本内部会 `cd` 到仓库根）：
@@ -996,7 +999,8 @@ set -a && source configs/domain_sft.env && set +a
 # 35 客户端，自动选 GPU
 bash scripts/RunScripts/run_domain_sft_batch_group1_oneshot_fedalt.sh 35
 bash scripts/RunScripts/run_domain_sft_batch_group2_yoco_fedsa.sh 35
-bash scripts/RunScripts/run_domain_sft_batch_group3_normal_flora_ffa.sh 35
+bash scripts/RunScripts/run_domain_sft_batch_group3_normal.sh 35
+bash scripts/RunScripts/run_domain_sft_batch_group4_flora_ffa.sh 35
 
 # 7 客户端 + 指定物理 GPU 0
 bash scripts/RunScripts/run_domain_sft_batch_group1_oneshot_fedalt.sh 7 0
@@ -1485,10 +1489,11 @@ bash scripts/RunScripts/run_domain_sft.sh
 ```bash
 source configs/domain_sft.env
 bash scripts/RunScripts/run_domain_sft_baselines.sh
-# 分组 + 客户端数（7/14/21/35）见 §11.3.3：推荐三脚本（checkpoint + 全量）
+# 分组 + 客户端数（7/14/21/35）见 §11.3.3：推荐四脚本（checkpoint + 全量）
 bash scripts/RunScripts/run_domain_sft_batch_group1_oneshot_fedalt.sh 35
 bash scripts/RunScripts/run_domain_sft_batch_group2_yoco_fedsa.sh 35
-bash scripts/RunScripts/run_domain_sft_batch_group3_normal_flora_ffa.sh 35
+bash scripts/RunScripts/run_domain_sft_batch_group3_normal.sh 35
+bash scripts/RunScripts/run_domain_sft_batch_group4_flora_ffa.sh 35
 # 旧版分组（可选）
 bash scripts/RunScripts/run_domain_sft_baselines1.sh 7
 bash scripts/RunScripts/run_domain_sft_baselines2.sh 7
