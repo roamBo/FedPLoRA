@@ -674,7 +674,39 @@ def create_domain_client_dataloaders(rows, tokenizer, args):
     return client_ids, loaders
 
 
+def shutdown_dataloader_workers(dataloader):
+    """
+    When a DataLoader with num_workers>0 is iterated with an early break (e.g.
+    eval_max_batches), PyTorch may not tear down worker processes promptly, which
+    can accumulate pipes/sockets and trigger OSError [Errno 24] Too many open files
+    across many eval loops. Call this after eval-style partial iteration.
+    """
+    if dataloader is None:
+        return
+    it = getattr(dataloader, "_iterator", None)
+    if it is None:
+        return
+    shutdown = getattr(it, "_shutdown_workers", None)
+    if callable(shutdown):
+        try:
+            shutdown()
+        except Exception:
+            pass
+    try:
+        dataloader._iterator = None
+    except Exception:
+        pass
+
+
 def create_domain_eval_dataloader(rows, tokenizer, args):
+    """
+    Eval uses its own worker count (eval_dataloader_num_workers). Do not enable
+    persistent_workers here: many short-lived eval DataLoaders + persistent workers
+    worsens file-descriptor pressure. Pair with shutdown_dataloader_workers() after
+    partial iteration (see tasks/fed_train_sft.compute_lm_eval_stats).
+    """
     ds = DomainSFTDataset(rows, tokenizer=tokenizer, max_seq_length=args.max_seq_length)
-    dl_kw = _dataloader_worker_kwargs(args)
+    eval_nw = int(getattr(args, "eval_dataloader_num_workers", 0) or 0)
+    pin = bool(getattr(args, "dataloader_pin_memory", True)) and torch.cuda.is_available()
+    dl_kw = {"num_workers": eval_nw, "pin_memory": pin}
     return DataLoader(ds, batch_size=args.batch_size, shuffle=False, **dl_kw)

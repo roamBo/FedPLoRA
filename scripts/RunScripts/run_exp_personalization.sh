@@ -1,24 +1,18 @@
 #!/usr/bin/env bash
-# 【个性化收益分析】在固定 benchmark 上额外统计：
-#   - 各客户端本地 held-out（test_local）上的 macro；
-#   - 本域 test_domain / 非本域 test_domain 上的 macro；
-#   - gap（local vs off-domain 等），见 fed_train_sft.py 中 --eval_personalization_metrics。
-# 与仅看 domain-macro 平均相比，用来衡量「 specialization 是否以牺牲跨域为代价」。
-#
-# 默认（推荐）：不再训练，直接读取 7 域主实验在 §11.1 里保存的 run checkpoint，只做前向 eval。
-#   路径约定与 README 一致：${CHECKPOINT_ROOT}/${NC}c_<agg_type>/
-#   例如 NC=35 时：artifacts/checkpoints/35c_fedplora-oneshot、artifacts/checkpoints/35c_normal
-# 任意在主实验里用过 --save_run_checkpoint_dir 的方法，只要把对应目录加进 PERSONALIZATION_AGG_LIST 即可复评
-#（agg_type 与目录名后缀一致，如 fedsa_lora、lora_a2、fedplora-oneshot）。
+# 【个性化收益分析】在固定 benchmark 上额外统计 client_local / in-domain / off-domain macro 等，
+# 见 fed_train_sft.py 中 --eval_personalization_metrics。
+# 默认（推荐）：不再训练，直接读取主实验保存的 run checkpoint，只做前向 eval。
+#  路径与训练时 Python 解析的默认 bundle 一致（../trained_models/<stem>/）。
+#  任意在主实验里跑过的 agg_type，把名字加进 PERSONALIZATION_AGG_LIST 即可复评。
 #
 # Usage (repo root):
 #   bash scripts/RunScripts/run_exp_personalization.sh [7|14|21|35] [gpu]
 #
 # 环境变量：
 #   PERSONALIZATION_FROM_CHECKPOINT=1（默认）  eval-only，读主实验 checkpoint
-#   PERSONALIZATION_FROM_CHECKPOINT=0          旧行为：当场训练 + 开个性化指标（仍可用 SAVE_RUN_CHECKPOINT_ROOT 另存）
-#   CHECKPOINT_ROOT=artifacts/checkpoints      与 README §11.1 中 --save_run_checkpoint_dir 父目录一致
-#   PERSONALIZATION_AGG_LIST=fedplora-oneshot,normal   逗号分隔；可改成 fedplora,normal,yoco,... 以扫多种方法
+#   PERSONALIZATION_FROM_CHECKPOINT=0          旧行为：当场训练 + 开个性化指标
+#   TRAINED_MODELS_ROOT=…                      与训练时一致（默认同训练：仓库同级 trained_models）
+#   PERSONALIZATION_AGG_LIST=fedplora-oneshot,normal   逗号分隔
 #   BENCHMARK_DIR / MODEL_PATH / EVAL_MAX_BATCHES / CUDA_DEVICES 等同 configs/domain_sft.env
 #
 # GPU：第二参数传 0 / 1 / 0,1；不写且未 export CUDA_DEVICES 时，nvidia-smi 选空闲显存最大的卡（configs/cuda_resolve.inc.sh）
@@ -51,7 +45,6 @@ BENCHMARK_DIR="${BENCHMARK_DIR:-data/domain_benchmark_${NC}c/seed_42}"
 MODEL_PATH="${MODEL_PATH:-/data/yaominghao/gb/models/Meta-Llama-3.1-8B}"
 ROUNDS="${ROUNDS:-1}"
 EVAL_MAX_BATCHES="${EVAL_MAX_BATCHES:-50}"
-CHECKPOINT_ROOT="${CHECKPOINT_ROOT:-artifacts/checkpoints}"
 PERSONALIZATION_FROM_CHECKPOINT="${PERSONALIZATION_FROM_CHECKPOINT:-1}"
 PERSONALIZATION_AGG_LIST="${PERSONALIZATION_AGG_LIST:-fedplora-oneshot,normal}"
 
@@ -73,20 +66,36 @@ if [[ "${TRUST_REMOTE_CODE:-0}" == "1" ]]; then
   COMMON_BASE+=(--trust_remote_code)
 fi
 
-echo "[exp_personalization] benchmark_dir=${BENCHMARK_DIR} NC=${NC} EVAL_MAX_BATCHES=${EVAL_MAX_BATCHES:-off} CHECKPOINT_ROOT=${CHECKPOINT_ROOT} FROM_CKPT=${PERSONALIZATION_FROM_CHECKPOINT} AGG_LIST=${PERSONALIZATION_AGG_LIST}"
+echo "[exp_personalization] benchmark_dir=${BENCHMARK_DIR} NC=${NC} EVAL_MAX_BATCHES=${EVAL_MAX_BATCHES:-off} TRAINED_MODELS_ROOT=${TRAINED_MODELS_ROOT:-<default>} FROM_CKPT=${PERSONALIZATION_FROM_CHECKPOINT} AGG_LIST=${PERSONALIZATION_AGG_LIST}"
 
 if [[ "${PERSONALIZATION_FROM_CHECKPOINT}" == "1" ]]; then
+  _resolve_bundle_ckpt() {
+    local agg="$1"
+    local bench="${BENCHMARK_DIR}"
+    if [[ "${bench}" != /* ]]; then
+      bench="${_REPO_ROOT}/${bench}"
+    fi
+    local _extra=()
+    if [[ -n "${TRAINED_MODELS_ROOT:-}" ]]; then
+      _extra=(--trained_models_root "${TRAINED_MODELS_ROOT}")
+    fi
+    python "${_REPO_ROOT}/utilities/sft_checkpoint_paths.py" \
+      --repo_root "${_REPO_ROOT}" \
+      --agg_type "${agg}" \
+      --model "${MODEL_PATH}" \
+      --benchmark_dir "${bench}" \
+      --rounds "${ROUNDS}" \
+      --local_epochs "${LOCAL_EPOCHS:-1}" \
+      --seed "${SEED:-42}" \
+      "${_extra[@]}"
+  }
+
   _run_eval_only() {
     local agg="$1"
-    local rel="${CHECKPOINT_ROOT}/${NC}c_${agg}"
     local ckpt
-    if [[ "${rel}" = /* ]]; then
-      ckpt="${rel}"
-    else
-      ckpt="${_REPO_ROOT}/${rel}"
-    fi
+    ckpt="$(_resolve_bundle_ckpt "${agg}")"
     if [[ ! -f "${ckpt}/run_checkpoint_meta.json" ]]; then
-      echo "[error] 缺少主实验 checkpoint（请先按 README §11.1 训练并保存）：${ckpt}" >&2
+      echo "[error] 缺少主实验 checkpoint（请先训练或检查路径）：${ckpt}" >&2
       echo "  期望存在: ${ckpt}/run_checkpoint_meta.json" >&2
       exit 1
     fi
@@ -131,8 +140,8 @@ fi
 if [[ "${ONESHOT_ORTHOGONALIZE:-0}" == "1" ]]; then
   ONESHOT_EXTRA+=(--oneshot_orthogonalize)
 fi
-if [[ -n "${SAVE_RUN_CHECKPOINT_ROOT:-}" ]]; then
-  ONESHOT_EXTRA+=(--save_run_checkpoint_dir "${SAVE_RUN_CHECKPOINT_ROOT}/fedplora-oneshot")
+if [[ -n "${TRAINED_MODELS_ROOT:-}" ]]; then
+  ONESHOT_EXTRA+=(--trained_models_root "${TRAINED_MODELS_ROOT}")
 fi
 
 echo "[run] train fedplora-oneshot + personalization metrics"
@@ -151,8 +160,8 @@ CUDA_VISIBLE_DEVICES="${CUDA_DEVICES}" "${COMMON_TRAIN[@]}" \
   "${ONESHOT_EXTRA[@]}"
 
 NORMAL_EXTRA=()
-if [[ -n "${SAVE_RUN_CHECKPOINT_ROOT:-}" ]]; then
-  NORMAL_EXTRA+=(--save_run_checkpoint_dir "${SAVE_RUN_CHECKPOINT_ROOT}/normal")
+if [[ -n "${TRAINED_MODELS_ROOT:-}" ]]; then
+  NORMAL_EXTRA+=(--trained_models_root "${TRAINED_MODELS_ROOT}")
 fi
 
 echo "[run] train normal + personalization metrics"

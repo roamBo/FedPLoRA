@@ -109,4 +109,8 @@ fi
 
 fed_train_append_speed_flags CMD
 
+if [[ -n "${TRAINED_MODELS_ROOT:-}" ]]; then
+  CMD+=(--trained_models_root "${TRAINED_MODELS_ROOT}")
+fi
+
 CUDA_VISIBLE_DEVICES="${CUDA_DEVICES}" "${CMD[@]}"
