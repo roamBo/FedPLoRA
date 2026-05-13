@@ -3,8 +3,9 @@
 #   cd repo root, source configs/domain_sft.env, cuda_resolve.inc.sh, _fed_train_speed.inc.sh
 #
 # Requires: NC, BENCHMARK_DIR, CUDA_DEVICES; cwd = repo root.
-# Uses: SAVE_RUN_CHECKPOINT_ROOT (default artifacts/checkpoints), SEED (default 42),
-#       MODEL_PATH, ROUNDS, LR, LoRA/hyper vars from env.
+# Uses: SEED (default 42), MODEL_PATH, ROUNDS, LR, LoRA/hyper vars from env.
+# Run checkpoints default inside Python to <repo>/../trained_models/<stem>/ (no --save_run_checkpoint_dir).
+# Optional: export TRAINED_MODELS_ROOT=/abs/path to override the parent directory.
 
 domain_sft_run_batch() {
   local batch_tag="$1"
@@ -37,15 +38,12 @@ domain_sft_run_batch() {
   local ONESHOT_NO_KEEP_INIT_ON_CONFLICT="${ONESHOT_NO_KEEP_INIT_ON_CONFLICT:-0}"
   local ONESHOT_ORTHOGONALIZE="${ONESHOT_ORTHOGONALIZE:-0}"
   local EVAL_MAX_BATCHES="${EVAL_MAX_BATCHES:-50}"
-  local CHECKPOINT_ROOT="${SAVE_RUN_CHECKPOINT_ROOT:-artifacts/checkpoints}"
   local SEED="${SEED:-42}"
 
-  echo "[${batch_tag}] clients=${NC} benchmark_dir=${BENCHMARK_DIR} checkpoint_root=${CHECKPOINT_ROOT} seed=${SEED}"
+  echo "[${batch_tag}] clients=${NC} benchmark_dir=${BENCHMARK_DIR} trained_models_root=${TRAINED_MODELS_ROOT:-<default ../trained_models>} seed=${SEED}"
 
   for AGG_TYPE in "${_methods[@]}"; do
-    local safe_agg="${AGG_TYPE//-/_}"
-    local ckpt_dir="${CHECKPOINT_ROOT}/${NC}c_${safe_agg}_seed${SEED}"
-    echo "[run] agg_type=${AGG_TYPE} save_run_checkpoint_dir=${ckpt_dir}"
+    echo "[run] agg_type=${AGG_TYPE} (auto checkpoint path in Python under trained_models/)"
 
     local CMD=(
       python tasks/fed_train_sft.py
@@ -64,8 +62,10 @@ domain_sft_run_batch() {
       --target_modules "${TARGET_MODULES}"
       --client_state_dir "${CLIENT_STATE_DIR}"
       --seed "${SEED}"
-      --save_run_checkpoint_dir "${ckpt_dir}"
     )
+    if [[ -n "${TRAINED_MODELS_ROOT:-}" ]]; then
+      CMD+=(--trained_models_root "${TRAINED_MODELS_ROOT}")
+    fi
     # 默认开启以省显存；显存充足时 export GRADIENT_CHECKPOINTING=0 可明显加速单 step。
     if [[ "${GRADIENT_CHECKPOINTING:-1}" != "0" ]]; then
       CMD+=(--gradient_checkpointing)

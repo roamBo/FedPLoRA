@@ -9,6 +9,8 @@ import json
 import math
 import shutil
 import sys
+import time
+import traceback
 import warnings
 from pathlib import Path
 
@@ -27,6 +29,7 @@ from utilities.data_utils import (
     group_rows_by_client,
     group_rows_by_domain,
     load_domain_sft_benchmark,
+    shutdown_dataloader_workers,
 )
 from methods.fedavg_normal import aggregate_models_normal
 from methods.fedex import aggregate_models_fedex
@@ -50,6 +53,7 @@ from utilities.state_dict_ops import (
     load_fedplora_local_state,
     load_partial_state_dict,
 )
+from utilities.sft_checkpoint_paths import default_save_run_checkpoint_dir, run_bundle_stem
 from utilities.train_eval import train_client
 from utilities.utils import (
     estimate_round_communication_bytes,
@@ -126,16 +130,41 @@ parser.add_argument(
     "--save_run_checkpoint_dir",
     type=str,
     default="",
-    help="If set, after training saves global shared weights + per-client states and "
-    "run_checkpoint_meta.json for reuse with --eval_only_from_checkpoint.",
+    help="Run checkpoint bundle root. If empty, auto-set to "
+        "<trained_models_root>/<agg>_<model>_<benchmark_tail>_r<R>_e<E>_seed<S> (no timestamps). "
+        "After each round's aggregation (before eval) writes snapshots/round_XXX_post_agg/ unless "
+        "--skip_post_agg_snapshots; after all rounds + metrics JSON, writes the final bundle here.",
+)
+parser.add_argument(
+    "--skip_post_agg_snapshots",
+    action="store_true",
+    help="With --save_run_checkpoint_dir, skip per-round snapshots under snapshots/ (saves disk IO).",
+)
+parser.add_argument(
+    "--trained_models_root",
+    type=str,
+    default="",
+    help="When --save_run_checkpoint_dir is empty: store bundles under this directory "
+        "(default: <repo>/../trained_models). Env TRAINED_MODELS_ROOT overrides when this flag is empty.",
+)
+parser.add_argument(
+    "--no_auto_save_run_checkpoint",
+    action="store_true",
+    help="Do not auto-set --save_run_checkpoint_dir to trained_models/<stem> (disables default on-disk bundle).",
+)
+parser.add_argument(
+    "--force_retrain",
+    action="store_true",
+    help="Ignore an existing successful bundle at the resolved save path and train from scratch.",
 )
 parser.add_argument(
     "--eval_only_from_checkpoint",
     type=str,
     default="",
-    help="Path to a directory created by --save_run_checkpoint_dir; skips training and runs "
-    "the same eval as the end of a round (domain macro + optional --eval_personalization_metrics). "
-    "Does not replace mechanism ablation (those need retraining). Pass the same --model as in meta.",
+    help="Path to a directory from --save_run_checkpoint_dir (final root or snapshots/round_XXX_post_agg); "
+    "skips training and runs the same eval as the end of a round (domain macro + optional "
+    "--eval_personalization_metrics). Does not replace mechanism ablation (those need retraining). "
+    "Pass the same --model as in meta.",
 )
 parser.add_argument("--gp_align_lambda", type=float, default=0.01)
 parser.add_argument("--gp_prox_lambda", type=float, default=0.001)
@@ -234,7 +263,16 @@ parser.add_argument(
     "--dataloader_num_workers",
     type=int,
     default=0,
-    help="DataLoader workers for train/eval (Linux: try 4–8 if CPU allows). 0 loads in the main process.",
+    help="DataLoader workers for training (Linux: try 4–8 if CPU allows). 0 loads in the main process.",
+)
+parser.add_argument(
+    "--eval_dataloader_num_workers",
+    type=int,
+    default=2,
+    help="DataLoader workers for eval only (training still uses --dataloader_num_workers). "
+    "Default 2 balances CPU prefetch vs FD usage; eval uses explicit worker shutdown after each "
+    "partial pass (eval_max_batches) to avoid OSError [Errno 24]. Set 0 for maximum safety on "
+    "tight ulimits.",
 )
 parser.add_argument(
     "--dataloader_pin_memory",
@@ -318,23 +356,35 @@ def compute_lm_eval_stats(model, dataloader, device, max_batches=0):
     steps = 0
     total_correct = 0
     total_valid = 0
-    with torch.no_grad():
-        for batch in dataloader:
-            if max_batches and steps >= max_batches:
-                break
-            batch = {k: v.to(device) for k, v in batch.items()}
-            labels = batch["labels"]
-            outputs = model(**batch)
-            total_loss += float(outputs.loss.detach().cpu().item())
-            logits = outputs.logits
-            shift_logits = logits[..., :-1, :].contiguous()
-            shift_labels = labels[..., 1:].contiguous()
-            preds = shift_logits.argmax(dim=-1)
-            mask = shift_labels.ne(-100)
-            if mask.any():
-                total_correct += int((preds[mask] == shift_labels[mask]).sum().cpu())
-                total_valid += int(mask.sum().cpu())
-            steps += 1
+    stopped_early = False
+    try:
+        it = iter(dataloader)
+        with torch.no_grad():
+            while True:
+                if max_batches and steps >= max_batches:
+                    stopped_early = True
+                    break
+                try:
+                    batch = next(it)
+                except StopIteration:
+                    break
+                batch = {k: v.to(device) for k, v in batch.items()}
+                labels = batch["labels"]
+                outputs = model(**batch)
+                total_loss += float(outputs.loss.detach().cpu().item())
+                logits = outputs.logits
+                shift_logits = logits[..., :-1, :].contiguous()
+                shift_labels = labels[..., 1:].contiguous()
+                preds = shift_logits.argmax(dim=-1)
+                mask = shift_labels.ne(-100)
+                if mask.any():
+                    total_correct += int((preds[mask] == shift_labels[mask]).sum().cpu())
+                    total_valid += int(mask.sum().cpu())
+                steps += 1
+    finally:
+        # num_workers>0 + early stop leaks pipes/sockets without this (Errno 24 on large eval grids).
+        if stopped_early:
+            shutdown_dataloader_workers(dataloader)
     mean_loss = total_loss / max(steps, 1)
     tok_acc = total_correct / max(total_valid, 1)
     try:
@@ -716,6 +766,170 @@ def _evaluate_personalization_metrics_full_state(
     }
 
 
+def _norm_path(p: str) -> str:
+    return os.path.normpath(os.path.abspath(os.path.expanduser(p)))
+
+
+def _maybe_apply_default_save_run_checkpoint_dir(args, split_dir):
+    if getattr(args, "no_auto_save_run_checkpoint", False):
+        return
+    if str(getattr(args, "save_run_checkpoint_dir", "") or "").strip():
+        return
+    tmr = getattr(args, "trained_models_root", None)
+    args.save_run_checkpoint_dir = default_save_run_checkpoint_dir(
+        _ROOT,
+        (tmr or "").strip() or None,
+        agg_type=args.agg_type,
+        model_path=args.model,
+        benchmark_split_dir=split_dir,
+        rounds=int(args.rounds),
+        local_epochs=int(args.local_epochs),
+        seed=int(args.seed),
+    )
+    print(f"[setup] auto save_run_checkpoint_dir={args.save_run_checkpoint_dir}", flush=True)
+
+
+def _load_checkpoint_ok(bundle_dir: str):
+    p = os.path.join(bundle_dir, "checkpoint_ok.json")
+    if not os.path.isfile(p):
+        return None
+    try:
+        with open(p, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except (OSError, json.JSONDecodeError):
+        return None
+
+
+def _resume_meta_matches(meta: dict, args, split_dir: str, client_ids) -> bool:
+    def _bad(reason: str) -> bool:
+        print(f"[resume] checkpoint meta mismatch ({reason}); will retrain.", flush=True)
+        return False
+
+    if meta.get("agg_type") != args.agg_type:
+        return _bad("agg_type")
+    if int(meta.get("train_rounds", -1)) != int(args.rounds):
+        return _bad("train_rounds")
+    if int(meta.get("train_local_epochs", -1)) != int(args.local_epochs):
+        return _bad("train_local_epochs")
+    if _norm_path(str(meta.get("benchmark_dir", ""))) != _norm_path(split_dir):
+        return _bad("benchmark_dir")
+    if _norm_path(str(meta.get("model", ""))) != _norm_path(args.model):
+        return _bad("model")
+    if int(meta.get("seed", -1)) != int(args.seed):
+        return _bad("seed")
+    if int(meta.get("num_clients", -1)) != int(args.num_clients):
+        return _bad("num_clients")
+    meta_cids = meta.get("client_ids")
+    want = [int(x) for x in client_ids]
+    if meta_cids != want:
+        return _bad("client_ids")
+    if int(meta.get("lora_r", -1)) != int(args.lora_r):
+        return _bad("lora_r")
+    if int(meta.get("lora_alpha", -1)) != int(args.lora_alpha):
+        return _bad("lora_alpha")
+    if float(meta.get("lora_dropout", -1.0)) != float(args.lora_dropout):
+        return _bad("lora_dropout")
+    if str(meta.get("target_modules", "")) != str(args.target_modules):
+        return _bad("target_modules")
+    if str(meta.get("torch_dtype", "")) != str(args.torch_dtype):
+        return _bad("torch_dtype")
+    if bool(meta.get("use_ffa_peft", False)) != (args.agg_type == "ffa"):
+        return _bad("use_ffa_peft")
+    if bool(meta.get("disk_sequential_protocol", False)) != bool(is_lora_a_disk_agg(args.agg_type)):
+        return _bad("disk_sequential_protocol")
+    return True
+
+
+def _try_skip_if_run_fully_complete(args, split_dir, client_ids) -> bool:
+    """eval-after bundle at root: skip training and evaluation (method already done)."""
+    if getattr(args, "force_retrain", False):
+        return False
+    bundle = str(getattr(args, "save_run_checkpoint_dir", "") or "").strip()
+    if not bundle:
+        return False
+    bundle = os.path.abspath(os.path.expanduser(bundle))
+    ok = _load_checkpoint_ok(bundle)
+    meta_path = os.path.join(bundle, "run_checkpoint_meta.json")
+    if not ok or not ok.get("ok") or not os.path.isfile(meta_path):
+        return False
+    phase = str(ok.get("checkpoint_phase", "final") or "final")
+    if phase != "final":
+        return False
+    try:
+        with open(meta_path, "r", encoding="utf-8") as f:
+            meta = json.load(f)
+    except (OSError, json.JSONDecodeError):
+        return False
+    if not _resume_meta_matches(meta, args, split_dir, client_ids):
+        return False
+    print(
+        f"[resume] Run fully complete (root checkpoint_ok phase=final) at {bundle}; "
+        "skipping training and evaluation.",
+        flush=True,
+    )
+    return True
+
+
+def _list_post_agg_snapshot_dirs(bundle_dir: str):
+    snap = os.path.join(bundle_dir, "snapshots")
+    if not os.path.isdir(snap):
+        return []
+    out = []
+    for name in os.listdir(snap):
+        path = os.path.join(snap, name)
+        if not os.path.isdir(path):
+            continue
+        if not (name.startswith("round_") and name.endswith("_post_agg")):
+            continue
+        if name.endswith("_failed"):
+            continue
+        mid = name[len("round_") : -len("_post_agg")]
+        try:
+            rid = int(mid)
+        except ValueError:
+            continue
+        out.append((rid, path))
+    out.sort(key=lambda x: -x[0])
+    return [p for _, p in out]
+
+
+def _try_resume_eval_only_from_latest_post_agg_snapshot(args, split_dir, client_ids) -> bool:
+    """
+    Latest eval-before (post-aggregation) snapshot: same tensors eval would use next; skip training, run eval.
+    """
+    if getattr(args, "force_retrain", False):
+        return False
+    bundle = str(getattr(args, "save_run_checkpoint_dir", "") or "").strip()
+    if not bundle:
+        return False
+    bundle = os.path.abspath(os.path.expanduser(bundle))
+    for snap_dir in _list_post_agg_snapshot_dirs(bundle):
+        ok = _load_checkpoint_ok(snap_dir)
+        meta_path = os.path.join(snap_dir, "run_checkpoint_meta.json")
+        if not ok or not ok.get("ok") or not os.path.isfile(meta_path):
+            continue
+        if str(ok.get("checkpoint_phase", "")) != "post_aggregation":
+            continue
+        try:
+            with open(meta_path, "r", encoding="utf-8") as f:
+                meta = json.load(f)
+        except (OSError, json.JSONDecodeError):
+            continue
+        if str(meta.get("checkpoint_phase", "")) != "post_aggregation":
+            continue
+        if not _resume_meta_matches(meta, args, split_dir, client_ids):
+            continue
+        print(
+            f"[resume] Found latest post-aggregation snapshot (eval-before save) at {snap_dir}; "
+            "skipping training and running evaluation only.",
+            flush=True,
+        )
+        args.eval_only_from_checkpoint = snap_dir
+        eval_only_from_checkpoint(args)
+        return True
+    return False
+
+
 def _metrics_path(args, split_dir):
     split_tag = os.path.basename(os.path.normpath(split_dir))
     model_tag = os.path.basename(os.path.normpath(args.model.rstrip("/")))
@@ -994,6 +1208,48 @@ def _metrics_path_from_checkpoint_eval(args, split_dir, ckpt_dir):
     return os.path.join(args.metrics_output_dir, fname)
 
 
+def _write_checkpoint_ok_file(root, checkpoint_phase, round_saved_1based=None):
+    payload = {
+        "ok": True,
+        "checkpoint_phase": str(checkpoint_phase),
+        "saved_at_unix": int(time.time()),
+    }
+    if round_saved_1based is not None:
+        payload["round_saved_1based"] = int(round_saved_1based)
+    with open(os.path.join(root, "checkpoint_ok.json"), "w", encoding="utf-8") as f:
+        json.dump(payload, f, indent=2, ensure_ascii=False)
+
+
+def _checkpoint_failure_cleanup(root: str, exc: BaseException, checkpoint_phase: str) -> str:
+    failed_root = root + "_failed"
+    if os.path.isdir(root):
+        if os.path.isdir(failed_root):
+            shutil.rmtree(failed_root, ignore_errors=True)
+        try:
+            shutil.move(root, failed_root)
+        except OSError:
+            os.makedirs(failed_root, exist_ok=True)
+    else:
+        os.makedirs(failed_root, exist_ok=True)
+    with open(
+        os.path.join(failed_root, "checkpoint_failed.json"),
+        "w",
+        encoding="utf-8",
+    ) as f:
+        json.dump(
+            {
+                "ok": False,
+                "error": repr(exc),
+                "traceback": traceback.format_exc(),
+                "checkpoint_phase": checkpoint_phase,
+            },
+            f,
+            indent=2,
+            ensure_ascii=False,
+        )
+    return failed_root
+
+
 def _save_run_checkpoint(
     global_model,
     client_store,
@@ -1002,70 +1258,115 @@ def _save_run_checkpoint(
     args,
     split_dir,
     metrics_path,
+    *,
+    bundle_subdir="",
+    checkpoint_phase="final",
+    round_saved_1based=None,
 ):
-    root = os.path.abspath(os.path.expanduser(args.save_run_checkpoint_dir))
-    os.makedirs(root, exist_ok=True)
-    clients_dir = os.path.join(root, "clients")
-    os.makedirs(clients_dir, exist_ok=True)
-    meta = {
-        "run_checkpoint_version": RUN_CHECKPOINT_VERSION,
-        "agg_type": args.agg_type,
-        "model": os.path.abspath(os.path.expanduser(args.model)),
-        "benchmark_dir": os.path.abspath(os.path.expanduser(split_dir)),
-        "seed": int(args.seed),
-        "num_clients": int(args.num_clients),
-        "client_ids": [int(x) for x in client_ids],
-        "disk_sequential_protocol": bool(is_lora_a_disk_agg(args.agg_type)),
-        "use_ffa_peft": args.agg_type == "ffa",
-        "train_rounds": int(args.rounds),
-        "train_local_epochs": int(args.local_epochs),
-        "lora_r": int(args.lora_r),
-        "lora_alpha": int(args.lora_alpha),
-        "lora_dropout": float(args.lora_dropout),
-        "rslora": bool(getattr(args, "rslora", False)),
-        "target_modules": str(args.target_modules),
-        "torch_dtype": str(args.torch_dtype),
-        "trust_remote_code": bool(args.trust_remote_code),
-        "gradient_checkpointing": bool(args.gradient_checkpointing),
-        "metrics_path": os.path.abspath(metrics_path) if metrics_path else "",
-    }
-    if is_fedplora_oneshot_agg(args.agg_type):
-        summ = getattr(args, "_fedplora_oneshot_conflict_stats", {}).get("_summary", {})
-        if summ:
-            meta["fedplora_oneshot_conflict_summary"] = summ
-    if is_lora_a_disk_agg(args.agg_type):
-        shared_names = get_fedplora_shared_param_names(global_model)
-        sd = {
-            k: v.detach().cpu().clone()
-            for k, v in global_model.state_dict().items()
-            if k in shared_names
+    """
+    bundle_subdir: e.g. "snapshots/round_001_post_agg" under save_run_checkpoint_dir for mid-run recovery.
+    checkpoint_phase: "post_aggregation" | "final" (recorded in run_checkpoint_meta.json).
+
+    Writes checkpoint_ok.json on success. On failure, moves partial tree to a sibling directory whose
+    name ends with "_failed" and writes checkpoint_failed.json (post_aggregation errors are swallowed).
+    """
+    base = os.path.abspath(os.path.expanduser(args.save_run_checkpoint_dir))
+    root = os.path.join(base, bundle_subdir) if bundle_subdir else base
+    if checkpoint_phase == "post_aggregation" and os.path.isdir(root):
+        shutil.rmtree(root, ignore_errors=True)
+    failed_adjacent = root + "_failed"
+    if checkpoint_phase == "post_aggregation" and os.path.isdir(failed_adjacent):
+        shutil.rmtree(failed_adjacent, ignore_errors=True)
+
+    bundle_stem = run_bundle_stem(
+        args.agg_type,
+        args.model,
+        split_dir,
+        int(args.rounds),
+        int(args.local_epochs),
+        int(args.seed),
+    )
+
+    try:
+        os.makedirs(root, exist_ok=True)
+        clients_dir = os.path.join(root, "clients")
+        os.makedirs(clients_dir, exist_ok=True)
+        meta = {
+            "run_checkpoint_version": RUN_CHECKPOINT_VERSION,
+            "checkpoint_phase": str(checkpoint_phase),
+            "saved_after_aggregation_before_eval": checkpoint_phase == "post_aggregation",
+            "bundle_stem": bundle_stem,
+            "agg_type": args.agg_type,
+            "model": os.path.abspath(os.path.expanduser(args.model)),
+            "benchmark_dir": os.path.abspath(os.path.expanduser(split_dir)),
+            "seed": int(args.seed),
+            "num_clients": int(args.num_clients),
+            "client_ids": [int(x) for x in client_ids],
+            "disk_sequential_protocol": bool(is_lora_a_disk_agg(args.agg_type)),
+            "use_ffa_peft": args.agg_type == "ffa",
+            "train_rounds": int(args.rounds),
+            "train_local_epochs": int(args.local_epochs),
+            "lora_r": int(args.lora_r),
+            "lora_alpha": int(args.lora_alpha),
+            "lora_dropout": float(args.lora_dropout),
+            "rslora": bool(getattr(args, "rslora", False)),
+            "target_modules": str(args.target_modules),
+            "torch_dtype": str(args.torch_dtype),
+            "trust_remote_code": bool(args.trust_remote_code),
+            "gradient_checkpointing": bool(args.gradient_checkpointing),
+            "metrics_path": os.path.abspath(metrics_path) if metrics_path else "",
         }
-        torch.save(sd, os.path.join(root, "global_shared.pt"))
-        if client_store["mode"] == "disk":
-            src_dir = client_store["state_dir"]
-            for cid in client_ids:
-                src = _client_state_path(src_dir, cid)
-                if not os.path.isfile(src):
-                    raise FileNotFoundError(
-                        f"[checkpoint] missing client state {src}; ensure --save_client_state_to_disk "
-                        "for disk-protocol methods."
-                    )
-                dst = os.path.join(clients_dir, f"client_{int(cid):03d}.pt")
-                shutil.copy2(src, dst)
+        if round_saved_1based is not None:
+            meta["round_saved_1based"] = int(round_saved_1based)
+        if is_fedplora_oneshot_agg(args.agg_type):
+            summ = getattr(args, "_fedplora_oneshot_conflict_stats", {}).get("_summary", {})
+            if summ:
+                meta["fedplora_oneshot_conflict_summary"] = summ
+        if is_lora_a_disk_agg(args.agg_type):
+            shared_names = get_fedplora_shared_param_names(global_model)
+            sd = {
+                k: v.detach().cpu().clone()
+                for k, v in global_model.state_dict().items()
+                if k in shared_names
+            }
+            torch.save(sd, os.path.join(root, "global_shared.pt"))
+            if client_store["mode"] == "disk":
+                src_dir = client_store["state_dir"]
+                for cid in client_ids:
+                    src = _client_state_path(src_dir, cid)
+                    if not os.path.isfile(src):
+                        raise FileNotFoundError(
+                            f"[checkpoint] missing client state {src}; ensure --save_client_state_to_disk "
+                            "for disk-protocol methods."
+                        )
+                    dst = os.path.join(clients_dir, f"client_{int(cid):03d}.pt")
+                    shutil.copy2(src, dst)
+            else:
+                for cid in client_ids:
+                    st = client_store["local_states"][int(cid)]
+                    torch.save(st, os.path.join(clients_dir, f"client_{int(cid):03d}.pt"))
         else:
-            for cid in client_ids:
-                st = client_store["local_states"][int(cid)]
-                torch.save(st, os.path.join(clients_dir, f"client_{int(cid):03d}.pt"))
-    else:
-        if not client_states_for_agg:
-            raise RuntimeError(
-                "[checkpoint] full-state agg requires non-empty client_states_for_agg at end of training."
+            if not client_states_for_agg:
+                raise RuntimeError(
+                    "[checkpoint] full-state agg requires non-empty client_states_for_agg at end of training."
+                )
+            torch.save(client_states_for_agg, os.path.join(root, "full_clients.pt"))
+        meta_path = os.path.join(root, "run_checkpoint_meta.json")
+        with open(meta_path, "w", encoding="utf-8") as f:
+            json.dump(meta, f, indent=2, ensure_ascii=False)
+        _write_checkpoint_ok_file(root, checkpoint_phase, round_saved_1based)
+        tag = "post-aggregation snapshot" if checkpoint_phase == "post_aggregation" else "final bundle"
+        print(f"[checkpoint] {tag} -> {root}", flush=True)
+    except Exception as e:
+        fr = _checkpoint_failure_cleanup(root, e, checkpoint_phase)
+        print(f"[checkpoint][error] save failed -> {fr}", flush=True)
+        if checkpoint_phase == "post_aggregation":
+            print(
+                f"[checkpoint][warn] post-aggregation snapshot failed ({e!r}); continuing to eval.",
+                flush=True,
             )
-        torch.save(client_states_for_agg, os.path.join(root, "full_clients.pt"))
-    meta_path = os.path.join(root, "run_checkpoint_meta.json")
-    with open(meta_path, "w", encoding="utf-8") as f:
-        json.dump(meta, f, indent=2, ensure_ascii=False)
-    print(f"[checkpoint] saved run bundle to {root}", flush=True)
+            return
+        raise
 
 
 def eval_only_from_checkpoint(args):
@@ -1262,7 +1563,13 @@ def federated_sft(args):
     args.num_clients = len(client_ids)
     args._runtime_client_sizes = client_sizes
     _relocate_legacy_artifact_dirs(args, args.num_clients)
+    _maybe_apply_default_save_run_checkpoint_dir(args, split_dir)
+    if _try_skip_if_run_fully_complete(args, split_dir, client_ids):
+        return
+    if _try_resume_eval_only_from_latest_post_agg_snapshot(args, split_dir, client_ids):
+        return
     nw = int(getattr(args, "dataloader_num_workers", 0) or 0)
+    enw = int(getattr(args, "eval_dataloader_num_workers", 0) or 0)
     tcap = int(getattr(args, "train_max_steps_per_client", 0) or 0)
     scap = int(getattr(args, "max_train_samples_per_client", 0) or 0)
     print(
@@ -1270,9 +1577,10 @@ def federated_sft(args):
         f"metrics_output_dir={args.metrics_output_dir}",
         flush=True,
     )
-    if nw > 0 or tcap > 0 or scap > 0:
+    if nw > 0 or enw > 0 or tcap > 0 or scap > 0:
         print(
             f"[setup] speed: dataloader_num_workers={nw} "
+            f"eval_dataloader_num_workers={enw} "
             f"train_max_steps_per_client={tcap or 'off'} "
             f"max_train_samples_per_client={scap or 'off'}",
             flush=True,
@@ -1460,6 +1768,24 @@ def federated_sft(args):
             raise ValueError(f"Unknown agg_type: {args.agg_type}")
 
         print(f"[round {round_idx + 1}] aggregation done; running evaluation ...", flush=True)
+        save_ckpt = getattr(args, "save_run_checkpoint_dir", None) or ""
+        if (
+            str(save_ckpt).strip()
+            and not getattr(args, "skip_post_agg_snapshots", False)
+        ):
+            snap_rel = os.path.join("snapshots", f"round_{round_idx + 1:03d}_post_agg")
+            _save_run_checkpoint(
+                global_model,
+                client_store,
+                client_ids,
+                client_states_for_agg,
+                args,
+                split_dir,
+                "",
+                bundle_subdir=snap_rel,
+                checkpoint_phase="post_aggregation",
+                round_saved_1based=round_idx + 1,
+            )
         round_payload = _sft_eval_phase(
             global_model,
             client_ids,
@@ -1487,6 +1813,7 @@ def federated_sft(args):
             args,
             split_dir,
             metrics_path,
+            checkpoint_phase="final",
         )
 
 

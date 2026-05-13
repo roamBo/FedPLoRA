@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Group 1 — FedPLoRA-Oneshot, FedALT (full training; checkpoints saved under SAVE_RUN_CHECKPOINT_ROOT).
+# Group 1 — FedPLoRA-Oneshot, FedALT (full training; checkpoints default to ../trained_models/<stem>/).
 #
 # Usage (from anywhere):
 #   bash scripts/RunScripts/run_domain_sft_batch_group1_oneshot_fedalt.sh [7|14|21|35] [gpu]

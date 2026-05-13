@@ -28,7 +28,7 @@
 - `**methods/`**：各 baseline 的服务端聚合与（部分）上传逻辑，**每个方法一个 `.py` 文件**；不含 `__init__.py`（使用隐式命名空间包，便于 `from methods.xxx import ...`）。
 - `**tasks/`**：可执行入口：`fed_train_sft.py`（域 SFT）、`fed_train_glue.py`、`fed_train_e2e.py`。
 - `**utilities/`**：`data_utils.py`、`models.py`、`utils.py`、训练/评估 `train_eval.py`、联邦状态 `state_dict_ops.py`。
-- `**scripts/`**：子目录 `**DataProcessScripts/**`（数据准备、benchmark 构建）、`**RunScripts/**`（`run_domain_sft*.sh`、`run_script.py` 等训练/批量实验入口）。
+- `**scripts/`**：子目录 `**DataProcessScripts/`**（数据准备、benchmark 构建）、`**RunScripts/**`（`run_domain_sft*.sh`、`run_script.py` 等训练/批量实验入口）。
 - `**__pycache__/**`：Python 解释器自动生成的字节码缓存，**可删**；运行后会再次出现，已写入 `.gitignore` 建议不要提交。
 
 当前仓库包含三条能力线：
@@ -347,6 +347,7 @@ python -m py_compile \
   utilities/models.py \
   utilities/data_utils.py \
   utilities/utils.py \
+  utilities/sft_checkpoint_paths.py \
   scripts/RunScripts/run_script.py \
   scripts/DataProcessScripts/prepare_domain_jsonl_template.py \
   scripts/DataProcessScripts/build_domain_benchmark.py \
@@ -501,13 +502,12 @@ cat data/domain_benchmark_35c/seed_42/clients.json | head
 - **消融**：`**run_exp_ablation_fedplora.sh`** 按你的要求**不改实验设计**；已默认带 `**EVAL_MAX_BATCHES`** 以加快 eval。
 - **GPU**：上述脚本均 `**source configs/cuda_resolve.inc.sh`**：优先环境变量 `**CUDA_DEVICES`**，否则可选 **命令行第二参数（或 comm 脚本的第一参数）** 传 `0`、`1`、`0,1`；再否则 **nvidia-smi 选空闲显存最大的单卡**。
 - **加快 eval**：全局环境变量 `**EVAL_MAX_BATCHES=50`**（已在 `domain_sft_*.env` 与各 RunScripts 默认）；主表全量测评前设为 `**0`** 或 **unset** 并去掉命令行中的 `--eval_max_batches`。
-- **一次训练，多次实验**：**§11.1** 每条方法命令已默认带 `**--save_run_checkpoint_dir artifacts/checkpoints/35c_<agg_type>`**（磁盘协议方法同时保留 `**--save_client_state_to_disk`**）。后续只做测评或补开个性化：**  
-`**python tasks/fed_train_sft.py --eval_only_from_checkpoint <dir> --model /data/yaominghao/gb/models/Meta-Llama-3.1-8B --benchmark_dir data/domain_benchmark_35c/seed_42 --agg_type <与训练一致> [--eval_personalization_metrics] [--eval_max_batches 50] ...`（`--model` 须与训练时及 `run_checkpoint_meta.json` 一致，换机器请改路径）**  
-**哪些实验能复用该目录见 §11.1 表（个性化补评、改 eval 截断等 能；换方法、通信 profiling 不能 / 不必）。Oneshot 的 conflict 摘要会写入 checkpoint 的 `**run_checkpoint_meta.json`**，eval-only 时会写回 `**rounds[].fedplora_oneshot_conflict**`。
+- **一次训练，多次实验**：未手填 `--save_run_checkpoint_dir` 时，Python 默认把 bundle 写到 **仓库同级** `**../trained_models/<stem>/`**（无时间戳）。**两类落盘与自动恢复**：① **eval 前**（每轮聚合后、`snapshots/round_XXX_post_agg/`）：与紧接着要跑的 `_sft_eval_phase` **同一份** `global_shared.pt` / `full_clients.pt` + `clients/**` + meta，仅缺当轮 eval 指标；若再次启动且 meta 与当前 CLI 一致，则 **跳过训练、只做 eval-only**（防 eval 阶段崩溃白训）。② **eval 后**（全部 rounds 跑完且已写 metrics JSON 之后、根目录最终保存）：根下 `**checkpoint_ok.json`** 的 `**checkpoint_phase: final**`；若检测到，则 **训练与评估均跳过**（本方法本次配置已完整跑完）。失败落盘为同级 `**…_failed/**`。磁盘协议方法仍需 `**--save_client_state_to_disk**`。手动复评：`**python tasks/fed_train_sft.py --eval_only_from_checkpoint <子目录或根> ...**`。强制重训：`**--force_retrain**`。  
+**哪些实验能复用该目录见下表**（个性化补评、改 eval 截断等 能；换方法、通信 profiling 不能 / 不必）。Oneshot 的 conflict 摘要会写入 `**run_checkpoint_meta.json**`，eval-only 时会写回 `**rounds[].fedplora_oneshot_conflict**`。
 
 ### 11.1 直接用准备好的 benchmark 训练（推荐：逐方法手敲命令）
 
-以下命令均在**仓库根目录**执行。主表默认使用 **35 客户端** benchmark：`--benchmark_dir data/domain_benchmark_35c/seed_42`（与 `build_domain_benchmark.py` 里 `num_clients_per_domain=5` × 7 域一致）。
+以下命令均在**仓库根目录**执行。主表默认使用 **35 客户端** benchmark：`--benchmark_dir data/domain_benchmark_35c/seed_42`（与 `build_domain_benchmark.py` 里 `num_clients_per_domain=5` × 7 域一致）。不写 `--save_run_checkpoint_dir` 时，权重默认落到 **`../trained_models/<stem>/`**，并按上节规则 **自动跳过已完成的训练 / 或仅补 eval**；需要固定到其它目录时再显式传 `--save_run_checkpoint_dir`。
 
 **复制下面任一条 `python` 命令之前，先加载环境（与本地数据 / 本地模型一致）**
 
@@ -528,12 +528,15 @@ set +a
 - 下面每条命令都带有 `**--eval_max_batches 50`**：每个 eval 子循环最多跑 50 个 batch（按「域 × 客户端 × dataloader」截断）。调参或排队时可保留；写论文主表前可改为更大、`0`（或不写该参数）表示**全量 eval**。
 - 客户端数更少时 eval 也更短：可把 `--benchmark_dir` 换成 `data/domain_benchmark_7c/seed_42` 等（见 **§11.1.1**）。
 
-**保存训练结果（run checkpoint，默认已写在下面每条命令里）**
+**保存训练结果（run checkpoint，默认启用）**
 
-- 每条方法命令末尾带有 `**--save_run_checkpoint_dir artifacts/checkpoints/35c_<agg_type>`**：训完后该目录内有 `**run_checkpoint_meta.json`**，以及 `**full_clients.pt**`（如 `normal` / `fedex` 等全量状态路径）或 `**global_shared.pt` + `clients/**`（FedP / 磁盘协议路径）。你可把路径改成自己的命名规则。
-- 需要磁盘协议的方法：**必须保留** `**--save_client_state_to_disk`**（与 checkpoint 同时开），否则 FedP 族客户端本地权重没收齐，`**--save_run_checkpoint_dir` 会报错或缺文件**。
+- 默认 bundle 根：**`<仓库>/../trained_models/<stem>/`**。可用 `**TRAINED_MODELS_ROOT**` / `**--trained_models_root**` 改父目录；完全不要自动落盘：`**--no_auto_save_run_checkpoint**`。
+- **eval 前 vs eval 后（内容是否一样？）**：**权重张量与 eval 前一刻一致**。eval 前快照里已是聚合后的 `global_shared`（或 `full_clients`）及各客户端磁盘状态拷贝，**就是**紧接着 `_sft_eval_phase` 会加载做前向的那套；eval 本身不反传、不改权重。eval 后在根目录再写一遍最终 bundle，**权重与当轮聚合结果相同**（最后一轮），额外多的是已写入磁盘的 **metrics JSON 路径**记在 meta 里。因此用 eval 前快照做 `--eval_only_from_checkpoint`，与「当时若 eval 没挂跑出来的前向」一致，**不会白训聚合阶段**。
+- **自动恢复顺序**（`--force_retrain` 时均不启用）：若根目录 `checkpoint_ok.json` 为 **`final`** → 本方法本次配置 **训练 + eval 均跳过**；否则若存在最新的 `snapshots/round_XXX_post_agg/` 且其中 `checkpoint_ok` + meta 与当前 CLI 一致 → **只跳过训练、跑 eval-only**；否则正常训练。
+- 每条目录内有 `**run_checkpoint_meta.json**` + `**full_clients.pt**` 或 `**global_shared.pt` + `clients/**`**。每轮 eval 前另有 `**snapshots/round_XXX_post_agg/**`（除非 `--skip_post_agg_snapshots`）。失败为 `**…_failed/**` + `checkpoint_failed.json`。
+- 需要磁盘协议的方法：**必须保留** `**--save_client_state_to_disk**`，否则 FedP 族在写 checkpoint 时可能缺 `client_*.pt`。
 
-`**artifacts/checkpoints/...` 在哪些实验里能重复用？**
+`**../trained_models/<stem>/` 在哪些实验里能重复用？**
 
 
 | 实验                                                          | 能否直接用该 checkpoint？  | 说明                                                                                                                                                                                                                                       |
@@ -575,7 +578,6 @@ CUDA_VISIBLE_DEVICES=0,1 python tasks/fed_train_sft.py \
   --gradient_checkpointing \
   --torch_dtype bfloat16 \
   --target_modules q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj \
-  --save_run_checkpoint_dir artifacts/checkpoints/35c_normal
 ```
 
 #### 2) `fedex`
@@ -597,7 +599,6 @@ CUDA_VISIBLE_DEVICES=0,1 python tasks/fed_train_sft.py \
   --gradient_checkpointing \
   --torch_dtype bfloat16 \
   --target_modules q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj \
-  --save_run_checkpoint_dir artifacts/checkpoints/35c_fedex
 ```
 
 #### 3) `ffa`
@@ -619,7 +620,6 @@ CUDA_VISIBLE_DEVICES=0,1 python tasks/fed_train_sft.py \
   --gradient_checkpointing \
   --torch_dtype bfloat16 \
   --target_modules q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj \
-  --save_run_checkpoint_dir artifacts/checkpoints/35c_ffa
 ```
 
 #### 4) `fedplora`（多轮 FedP-LoRA）
@@ -642,7 +642,6 @@ CUDA_VISIBLE_DEVICES=0,1 python tasks/fed_train_sft.py \
   --torch_dtype bfloat16 \
   --target_modules q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj \
   --save_client_state_to_disk \
-  --save_run_checkpoint_dir artifacts/checkpoints/35c_fedplora
 ```
 
 #### 5) `fedplora-oneshot`（冲突门控；入口会强制 `--rounds 1`）
@@ -672,7 +671,6 @@ CUDA_VISIBLE_DEVICES= python tasks/fed_train_sft.py \
   --oneshot_conflict_threshold 0.35 \
   --oneshot_conflict_blend 1.0 \
   --save_client_state_to_disk \
-  --save_run_checkpoint_dir artifacts/checkpoints/35c_fedplora-oneshot
 ```
 
 #### 6) `yoco`（单轮 PCWA；入口会强制 `--rounds 1`）
@@ -697,7 +695,6 @@ CUDA_VISIBLE_DEVICES=01 python tasks/fed_train_sft.py \
   --yoco_sparse_lambda 1e-4 \
   --yoco_pcwa_components 3 \
   --save_client_state_to_disk \
-  --save_run_checkpoint_dir artifacts/checkpoints/35c_yoco
 ```
 
 #### 7) `fedsa_lora`（可用 `--agg_type fedsa` 等价）
@@ -720,7 +717,6 @@ CUDA_VISIBLE_DEVICES=0,1 python tasks/fed_train_sft.py \
   --torch_dtype bfloat16 \
   --target_modules q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj \
   --save_client_state_to_disk \
-  --save_run_checkpoint_dir artifacts/checkpoints/35c_fedsa_lora
 ```
 
 #### 8) `fedalt`
@@ -743,7 +739,6 @@ CUDA_VISIBLE_DEVICES=0,1 python tasks/fed_train_sft.py \
   --torch_dtype bfloat16 \
   --target_modules q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj \
   --save_client_state_to_disk \
-  --save_run_checkpoint_dir artifacts/checkpoints/35c_fedalt
 ```
 
 #### 9) `hetlora`（可用 `--agg_type het_lora` 等价）
@@ -765,7 +760,6 @@ CUDA_VISIBLE_DEVICES=0,1 python tasks/fed_train_sft.py \
   --gradient_checkpointing \
   --torch_dtype bfloat16 \
   --target_modules q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj \
-  --save_run_checkpoint_dir artifacts/checkpoints/35c_hetlora
 ```
 
 #### 10) `flora`
@@ -787,7 +781,6 @@ CUDA_VISIBLE_DEVICES=0,1 python tasks/fed_train_sft.py \
   --gradient_checkpointing \
   --torch_dtype bfloat16 \
   --target_modules q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj \
-  --save_run_checkpoint_dir artifacts/checkpoints/35c_flora
 ```
 
 #### 11) `lora_a2`（可用 `--agg_type loraa2` 等价）
@@ -809,7 +802,6 @@ CUDA_VISIBLE_DEVICES=0,1 python tasks/fed_train_sft.py \
   --gradient_checkpointing \
   --torch_dtype bfloat16 \
   --target_modules q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj \
-  --save_run_checkpoint_dir artifacts/checkpoints/35c_lora_a2
 ```
 
 #### 12) `fdlora`（可用 `--agg_type fd_lora` 等价）
@@ -831,7 +823,6 @@ CUDA_VISIBLE_DEVICES=0,1 python tasks/fed_train_sft.py \
   --gradient_checkpointing \
   --torch_dtype bfloat16 \
   --target_modules q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj \
-  --save_run_checkpoint_dir artifacts/checkpoints/35c_fdlora
 ```
 
 ### 11.1.1 换一套 benchmark（7c / 14c / 21c）
@@ -884,7 +875,6 @@ CUDA_VISIBLE_DEVICES=0,1 python tasks/fed_train_sft.py \
   --torch_dtype bfloat16 \
   --target_modules q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj \
   --save_client_state_to_disk \
-  --save_run_checkpoint_dir artifacts/checkpoints/35c_fedplora_build
 ```
 
 ### 11.3 可选：一键脚本（无人值守时再开）
@@ -972,23 +962,19 @@ CUDA_DEVICES=1 ROUNDS=10 bash /path/to/FedPLoRA/scripts/RunScripts/run_domain_sf
 | `35`（默认） | `data/domain_benchmark_35c/seed_42` |
 
 
-**推荐：四脚本（全量本地 epoch，带 `--save_run_checkpoint_dir`）**
+**推荐：四脚本（全量本地 epoch；checkpoint 由 Python 默认写入 `../trained_models/<stem>/`）**
 
-每个方法跑完后会把 checkpoint 写到 `SAVE_RUN_CHECKPOINT_ROOT`（默认 `artifacts/checkpoints`，见 `configs/domain_sft.env`）下，目录名为：
-
-`{N}c_{agg_type 把连字符换成下划线}_seed{SEED}`  
-
-例如：`artifacts/checkpoints/35c_fedplora_oneshot_seed42`。同一脚本内串行的多种方法各占独立子目录。
+批量入口 `_run_domain_sft_batch.inc.sh` 不再传 `--save_run_checkpoint_dir`；每种 `agg_type` 对应 **不同 `<stem>`**（方法 + 模型 + benchmark 尾 + r/e/seed），与手敲命令默认一致。可选 `**export TRAINED_MODELS_ROOT=/绝对路径**` 改父目录。
 
 另会通过 `_fed_train_speed.inc.sh` 传入 `domain_sft.env` 中的加速项（如 `DATALOADER_NUM_WORKERS`、`DATALOADER_PERSISTENT_WORKERS`、`ATTN_IMPLEMENTATION=sdpa`）；**不设** `TRAIN_MAX_STEPS_PER_CLIENT` / `MAX_TRAIN_SAMPLES_PER_CLIENT` 即为全量训练步数。
 
 
-| 脚本                                                                                                                    | 串行 `agg_type`                 |
-| --------------------------------------------------------------------------------------------------------------------- | ----------------------------- |
-| [run_domain_sft_batch_group1_oneshot_fedalt.sh](scripts/RunScripts/run_domain_sft_batch_group1_oneshot_fedalt.sh)     | `fedplora-oneshot` → `fedalt` |
-| [run_domain_sft_batch_group2_yoco_fedsa.sh](scripts/RunScripts/run_domain_sft_batch_group2_yoco_fedsa.sh)             | `yoco` → `fedsa_lora`         |
-| [run_domain_sft_batch_group3_normal.sh](scripts/RunScripts/run_domain_sft_batch_group3_normal.sh)                     | `normal`                      |
-| [run_domain_sft_batch_group4_flora_ffa.sh](scripts/RunScripts/run_domain_sft_batch_group4_flora_ffa.sh)               | `flora` → `ffa`               |
+| 脚本                                                                                                                | 串行 `agg_type`                 |
+| ----------------------------------------------------------------------------------------------------------------- | ----------------------------- |
+| [run_domain_sft_batch_group1_oneshot_fedalt.sh](scripts/RunScripts/run_domain_sft_batch_group1_oneshot_fedalt.sh) | `fedplora-oneshot` → `fedalt` |
+| [run_domain_sft_batch_group2_yoco_fedsa.sh](scripts/RunScripts/run_domain_sft_batch_group2_yoco_fedsa.sh)         | `yoco` → `fedsa_lora`         |
+| [run_domain_sft_batch_group3_normal.sh](scripts/RunScripts/run_domain_sft_batch_group3_normal.sh)                 | `normal`                      |
+| [run_domain_sft_batch_group4_flora_ffa.sh](scripts/RunScripts/run_domain_sft_batch_group4_flora_ffa.sh)           | `flora` → `ffa`               |
 
 
 **运行示例**（在仓库根目录，或任意路径用 bash 调用下列绝对/相对路径均可；脚本内部会 `cd` 到仓库根）：
@@ -997,16 +983,16 @@ CUDA_DEVICES=1 ROUNDS=10 bash /path/to/FedPLoRA/scripts/RunScripts/run_domain_sf
 set -a && source configs/domain_sft.env && set +a
 
 # 35 客户端，自动选 GPU
-bash scripts/RunScripts/run_domain_sft_batch_group1_oneshot_fedalt.sh 35
-bash scripts/RunScripts/run_domain_sft_batch_group2_yoco_fedsa.sh 35
-bash scripts/RunScripts/run_domain_sft_batch_group3_normal.sh 35
-bash scripts/RunScripts/run_domain_sft_batch_group4_flora_ffa.sh 35
+bash scripts/RunScripts/run_domain_sft_batch_group1_oneshot_fedalt.sh 35 0
+bash scripts/RunScripts/run_domain_sft_batch_group2_yoco_fedsa.sh 35 1
+bash scripts/RunScripts/run_domain_sft_batch_group3_normal.sh 35 0 
+bash scripts/RunScripts/run_domain_sft_batch_group4_flora_ffa.sh 35 1
 
 # 7 客户端 + 指定物理 GPU 0
 bash scripts/RunScripts/run_domain_sft_batch_group1_oneshot_fedalt.sh 7 0
 
-# 覆盖 checkpoint 根目录或轮数（与其它批量脚本相同，前缀 export）
-SAVE_RUN_CHECKPOINT_ROOT=/data/checkpoints/fedplora_runs ROUNDS=10 \
+# 覆盖 trained_models 父目录或轮数（批量脚本会传给 Python：`TRAINED_MODELS_ROOT` → `--trained_models_root`）
+TRAINED_MODELS_ROOT=/data/trained_models ROUNDS=10 \
   bash scripts/RunScripts/run_domain_sft_batch_group2_yoco_fedsa.sh 35
 ```
 
@@ -1363,7 +1349,8 @@ pip install -r requirements.txt
 python -m py_compile \
   tasks/fed_train_glue.py tasks/fed_train_e2e.py tasks/fed_train_sft.py \
   utilities/train_eval.py utilities/state_dict_ops.py utilities/models.py \
-  utilities/data_utils.py utilities/utils.py scripts/RunScripts/run_script.py \
+  utilities/data_utils.py utilities/utils.py utilities/sft_checkpoint_paths.py \
+  scripts/RunScripts/run_script.py \
   scripts/DataProcessScripts/prepare_domain_jsonl_template.py scripts/DataProcessScripts/build_domain_benchmark.py \
   scripts/DataProcessScripts/merge_domain_jsonl.py scripts/RunScripts/print_sft_comm_profile.py
 ```
