@@ -248,6 +248,12 @@ parser.add_argument(
     help="If > 0, cap batches per eval forward pass (per client×domain). 0 = full eval. Does not affect training.",
 )
 parser.add_argument(
+    "--eval_batch_size",
+    type=int,
+    default=0,
+    help="Eval DataLoader batch size; 0 uses --batch_size. Use a larger value when GPU memory allows to speed eval.",
+)
+parser.add_argument(
     "--train_max_steps_per_client",
     type=int,
     default=0,
@@ -268,11 +274,10 @@ parser.add_argument(
 parser.add_argument(
     "--eval_dataloader_num_workers",
     type=int,
-    default=2,
+    default=0,
     help="DataLoader workers for eval only (training still uses --dataloader_num_workers). "
-    "Default 2 balances CPU prefetch vs FD usage; eval uses explicit worker shutdown after each "
-    "partial pass (eval_max_batches) to avoid OSError [Errno 24]. Set 0 for maximum safety on "
-    "tight ulimits.",
+    "Default 0 avoids extra FDs (OSError [Errno 24]) on shared clusters; try 2–4 when ulimit -n "
+    "is high. Workers are always shut down after each eval pass when num_workers>0.",
 )
 parser.add_argument(
     "--dataloader_pin_memory",
@@ -356,13 +361,11 @@ def compute_lm_eval_stats(model, dataloader, device, max_batches=0):
     steps = 0
     total_correct = 0
     total_valid = 0
-    stopped_early = False
     try:
         it = iter(dataloader)
-        with torch.no_grad():
+        with torch.inference_mode():
             while True:
                 if max_batches and steps >= max_batches:
-                    stopped_early = True
                     break
                 try:
                     batch = next(it)
@@ -382,8 +385,8 @@ def compute_lm_eval_stats(model, dataloader, device, max_batches=0):
                     total_valid += int(mask.sum().cpu())
                 steps += 1
     finally:
-        # num_workers>0 + early stop leaks pipes/sockets without this (Errno 24 on large eval grids).
-        if stopped_early:
+        # num_workers>0: tear down workers after each eval pass (full or early) to avoid FD leaks.
+        if int(getattr(dataloader, "num_workers", 0) or 0) > 0:
             shutdown_dataloader_workers(dataloader)
     mean_loss = total_loss / max(steps, 1)
     tok_acc = total_correct / max(total_valid, 1)
@@ -1702,6 +1705,8 @@ def federated_sft(args):
             else:
                 load_partial_state_dict(global_model, round_global_state)
             train_client(global_model, client_dataloaders[i], args, client_idx=i)
+            if nw > 0:
+                shutdown_dataloader_workers(client_dataloaders[i])
             if is_lora_a_disk_agg(args.agg_type):
                 fedplora_uploads.append(
                     build_fedplora_upload_package(global_model, client_sizes[i])

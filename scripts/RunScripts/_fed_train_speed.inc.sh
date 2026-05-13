@@ -6,7 +6,8 @@
 #
 # Optional env (export or put in domain_sft.env):
 #   DATALOADER_NUM_WORKERS=6
-#   EVAL_DATALOADER_NUM_WORKERS=2     # eval only; 0 safest on tight ulimit; 2–4 often OK with worker shutdown fix
+#   EVAL_DATALOADER_NUM_WORKERS=2     # eval only; 0 safest on tight ulimit
+#   EVAL_BATCH_SIZE=4                 # 0/unset = use BATCH_SIZE; larger can speed eval if VRAM allows
 #   DATALOADER_PERSISTENT_WORKERS=1   # set to 1 when num_workers>0
 #   DATALOADER_PIN_MEMORY=0           # set to 0 to pass --no-dataloader-pin-memory
 #   TRAIN_MAX_STEPS_PER_CLIENT=200    # pilot cap; 0 or unset = full local epochs
@@ -24,6 +25,10 @@ fed_train_append_speed_flags() {
   local enw="${EVAL_DATALOADER_NUM_WORKERS:-}"
   if [[ -n "${enw}" ]]; then
     __ft_cmd+=(--eval_dataloader_num_workers "${enw}")
+  fi
+  local ebs="${EVAL_BATCH_SIZE:-}"
+  if [[ -n "${ebs}" && "${ebs}" != "0" ]]; then
+    __ft_cmd+=(--eval_batch_size "${ebs}")
   fi
   if [[ "${DATALOADER_PERSISTENT_WORKERS:-0}" == "1" ]]; then
     __ft_cmd+=(--dataloader_persistent_workers)
