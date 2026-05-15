@@ -30,9 +30,12 @@ def is_lora_a_disk_agg(agg_type):
         "fedplora_oneshot",
         "fedsa_lora",
         "fedsa",
-        "yoco",
-        "fedalt",
     }
+
+
+def is_fedalt_sequential_agg(agg_type):
+    """FedALT: per-client Individual LoRA (A+B) on disk; server sends personalized RoTW (A+B)."""
+    return _norm_agg_type(agg_type) == "fedalt"
 
 
 def is_fedplora_multiround_agg(agg_type):
@@ -192,6 +195,10 @@ def estimate_round_communication_bytes(
     elif is_lora_a_disk_agg(agg_type):
         down = lora_a + task_head
         up = lora_a + task_head
+    elif is_fedalt_sequential_agg(agg_type):
+        # FedALT: uplink Individual LoRA A+B; downlink personalized RoTW LoRA A+B.
+        down = lora_all + task_head
+        up = lora_all + task_head
     elif agg_type == "ffa":
         down = full_model
         up = lora_b + task_head
@@ -199,6 +206,8 @@ def estimate_round_communication_bytes(
         down = full_model
         up = lora_all + task_head
     else:
+        # Includes yoco (NeurIPS 2025 / FedMLLM): full trainable LoRA uplink (A+B) + heads,
+        # same as FedAvg-style LoRA baselines (normal, hetlora, …).
         down = full_model
         up = lora_all + task_head
 

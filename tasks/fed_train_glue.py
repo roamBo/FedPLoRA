@@ -24,6 +24,7 @@ from methods.fedavg_normal import aggregate_models_normal
 from methods.fedex import aggregate_models_fedex
 from methods.ffa_lora import aggregate_models_ffa
 from methods.fedp_lora import aggregate_models_fedplora, build_fedplora_upload_package
+from methods.fedplora_oneshot import aggregate_models_fedplora_oneshot
 from methods.yoco import aggregate_models_yoco
 from utilities.models import *
 from utilities.state_dict_ops import broadcast_fedplora_shared_state
@@ -221,6 +222,10 @@ def federated_learning(task):
         print("[setup] fedplora-oneshot: forcing --rounds 1")
         args.rounds = 1
 
+    if is_yoco_agg(args.agg_type) and args.rounds != 1:
+        print("[setup] yoco: forcing --rounds 1")
+        args.rounds = 1
+
     for round_idx in range(args.rounds):
         print(f"Round {round_idx + 1}/{args.rounds}")
 
@@ -263,7 +268,9 @@ def federated_learning(task):
                 for i in range(args.num_clients)
             ]
             if is_fedplora_oneshot_agg(args.agg_type):
-                global_model = aggregate_models_yoco(global_model, client_uploads, args)
+                global_model = aggregate_models_fedplora_oneshot(
+                    global_model, client_uploads, args
+                )
             else:
                 global_model = aggregate_models_fedplora(
                     global_model, client_uploads, args
@@ -275,6 +282,9 @@ def federated_learning(task):
             }
             for client_model in client_models:
                 broadcast_fedplora_shared_state(client_model, global_state)
+        elif is_yoco_agg(args.agg_type):
+            args._aggregate_client_sizes = client_sizes
+            global_model = aggregate_models_yoco(global_model, client_models, args)
         elif args.agg_type == "ffa":
             global_model = aggregate_models_ffa(global_model, client_models)
 

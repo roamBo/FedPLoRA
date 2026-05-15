@@ -75,7 +75,7 @@ domain_sft_run_batch() {
     fi
 
     case "${AGG_TYPE}" in
-      fedplora|fedplora-oneshot|fedalt|fedsa_lora|fedsa|yoco)
+      fedplora|fedplora-oneshot|fedalt|fedsa_lora|fedsa)
         CMD+=(--save_client_state_to_disk)
         ;;
     esac
