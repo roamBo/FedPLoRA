@@ -5,6 +5,7 @@ import torch
 from utilities.utils import (
     get_fedplora_shared_param_names,
     get_trainable_param_names,
+    is_lora_a_param_name,
     is_lora_b_param_name,
 )
 
@@ -46,3 +47,22 @@ def broadcast_fedplora_shared_state(model, shared_state_dict):
         if key in current and key in shared_names:
             current[key] = value.to(device=current[key].device, dtype=current[key].dtype)
     model.load_state_dict(current)
+
+
+def extract_fedalt_local_state(model):
+    """FedALT Individual LoRA: both A and B stay on the client."""
+    sd = model.state_dict()
+    return {
+        key: value.detach().cpu().clone()
+        for key, value in sd.items()
+        if is_lora_a_param_name(key) or is_lora_b_param_name(key)
+    }
+
+
+def load_fedalt_local_state(model, local_state):
+    load_partial_state_dict(model, local_state)
+
+
+def load_fedalt_rotw_state(model, rotw_state):
+    """Load personalized RoTW LoRA (frozen at train time in full FedALT forward)."""
+    load_partial_state_dict(model, rotw_state)

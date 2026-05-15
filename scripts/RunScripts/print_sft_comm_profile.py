@@ -107,8 +107,10 @@ def main():
             f"{r['agg_type']:<20} {d:>14} {u:>14} {d/1048576:>10.2f} {u/1048576:>10.2f}"
         )
     print(
-        "[note] FedPLoRA / YOCO / fedplora-oneshot / fedsa_lora / fedalt: A(+heads) upload; "
-        "normal / fedex: full trainable LoRA upload; ffa: special (see utilities/utils.py)."
+        "[note] FedPLoRA / fedplora-oneshot / fedsa_lora: A(+heads) uplink (+ row stats for FedPLoRA); "
+        "fedalt: Individual LoRA A+B up, personalized RoTW A+B down; "
+        "yoco / normal: full trainable LoRA A+B (+ heads); "
+        "ffa: special (see utilities/utils.py)."
     )
 
 

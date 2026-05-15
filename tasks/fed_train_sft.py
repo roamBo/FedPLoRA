@@ -41,6 +41,7 @@ from methods.hetlora import aggregate_models_hetlora
 from methods.lora_a2 import aggregate_models_lora_a2
 from methods.fedp_lora import aggregate_models_fedplora, build_fedplora_upload_package
 from methods.fedplora_oneshot import aggregate_models_fedplora_oneshot
+from methods.fedalt import aggregate_models_fedalt, build_fedalt_upload_package
 from methods.yoco import aggregate_models_yoco
 from utilities.models import (
     create_peft_causal_lm_model,
@@ -49,7 +50,9 @@ from utilities.models import (
 )
 from utilities.state_dict_ops import (
     broadcast_fedplora_shared_state,
+    extract_fedalt_local_state,
     extract_fedplora_local_state,
+    load_fedalt_local_state,
     load_fedplora_local_state,
     load_partial_state_dict,
 )
@@ -62,6 +65,7 @@ from utilities.utils import (
     is_fdlora_agg,
     is_flora_agg,
     is_fedalt_agg,
+    is_fedalt_sequential_agg,
     is_fedsa_lora_agg,
     is_fedplora_oneshot_agg,
     is_fedplora_shared_param_name,
@@ -460,6 +464,10 @@ def _client_state_path(base_dir, client_id):
     return os.path.join(base_dir, f"client_{int(client_id):03d}.pt")
 
 
+def _client_rotw_state_path(base_dir, client_id):
+    return os.path.join(base_dir, f"client_{int(client_id):03d}_rotw.pt")
+
+
 def _save_client_local_state(local_state, base_dir, client_id):
     os.makedirs(base_dir, exist_ok=True)
     path = _client_state_path(base_dir, client_id)
@@ -508,6 +516,55 @@ def _ensure_sequential_fedplora_local_states(model, client_ids, args):
     return {"mode": "memory", "local_states": local_states, "state_dir": state_dir}
 
 
+def _ensure_sequential_fedalt_states(model, client_ids, args):
+    """FedALT: per-client Individual LoRA (A+B) plus optional RoTW snapshots on disk."""
+    state_dir = os.path.join(_fedplora_disk_state_dir(args), "fedalt")
+    if getattr(args, "save_client_state_to_disk", False):
+        os.makedirs(state_dir, exist_ok=True)
+        seed_sd = extract_fedalt_local_state(model)
+        for client_id in client_ids:
+            path = _client_state_path(state_dir, client_id)
+            if not os.path.isfile(path):
+                _save_client_local_state(seed_sd, state_dir, client_id)
+        return {"mode": "disk", "state_dir": state_dir, "rotw_states": {}}
+
+    initial = extract_fedalt_local_state(model)
+    local_states = {
+        int(client_id): {k: v.clone() for k, v in initial.items()}
+        for client_id in client_ids
+    }
+    return {
+        "mode": "memory",
+        "state_dir": state_dir,
+        "local_states": local_states,
+        "rotw_states": {int(cid): {} for cid in client_ids},
+    }
+
+
+def _get_client_rotw_state(client_store, client_id):
+    if client_store.get("rotw_states") is not None:
+        if client_store["mode"] == "disk":
+            path = _client_rotw_state_path(client_store["state_dir"], client_id)
+            if not os.path.isfile(path):
+                return {}
+            return torch.load(path, map_location="cpu")
+        return client_store["rotw_states"].get(int(client_id), {})
+    return {}
+
+
+def _set_client_rotw_state(client_store, client_id, rotw_state):
+    if not rotw_state:
+        return
+    if client_store["mode"] == "disk":
+        os.makedirs(client_store["state_dir"], exist_ok=True)
+        path = _client_rotw_state_path(client_store["state_dir"], client_id)
+        tmp_path = path + ".tmp"
+        torch.save(rotw_state, tmp_path)
+        os.replace(tmp_path, path)
+    else:
+        client_store.setdefault("rotw_states", {})[int(client_id)] = rotw_state
+
+
 def _get_client_local_state(client_store, client_id):
     if client_store["mode"] == "disk":
         state = _load_client_local_state(client_store["state_dir"], client_id)
@@ -553,9 +610,12 @@ def _evaluate_domain_macro_sequential(global_model, client_ids, client_store, do
             leave=False,
             dynamic_ncols=True,
         ):
-            broadcast_fedplora_shared_state(global_model, shared_state)
             local_state = _get_client_local_state(client_store, client_id)
-            load_fedplora_local_state(global_model, local_state)
+            if is_fedalt_sequential_agg(args.agg_type):
+                load_fedalt_local_state(global_model, local_state)
+            else:
+                broadcast_fedplora_shared_state(global_model, shared_state)
+                load_fedplora_local_state(global_model, local_state)
             stats_per_client.append(
                 compute_lm_eval_stats(global_model, dl, device, max_batches=eval_cap)
             )
@@ -597,6 +657,15 @@ def _mean_eval_stats(stats_list):
     }
 
 
+def _load_client_eval_state(global_model, client_store, client_id, shared_state, args):
+    local_state = _get_client_local_state(client_store, client_id)
+    if is_fedalt_sequential_agg(args.agg_type):
+        load_fedalt_local_state(global_model, local_state)
+    else:
+        broadcast_fedplora_shared_state(global_model, shared_state)
+        load_fedplora_local_state(global_model, local_state)
+
+
 def _evaluate_personalization_metrics(
     global_model,
     client_ids,
@@ -627,9 +696,7 @@ def _evaluate_personalization_metrics(
         if not rows:
             continue
         dl = create_domain_eval_dataloader(rows, tokenizer, args)
-        broadcast_fedplora_shared_state(global_model, shared_state)
-        local_state = _get_client_local_state(client_store, client_id)
-        load_fedplora_local_state(global_model, local_state)
+        _load_client_eval_state(global_model, client_store, client_id, shared_state, args)
         local_stats.append(
             compute_lm_eval_stats(global_model, dl, device, max_batches=eval_cap)
         )
@@ -644,9 +711,7 @@ def _evaluate_personalization_metrics(
             if domain == home or not rows:
                 continue
             dl = create_domain_eval_dataloader(rows, tokenizer, args)
-            broadcast_fedplora_shared_state(global_model, shared_state)
-            local_state = _get_client_local_state(client_store, client_id)
-            load_fedplora_local_state(global_model, local_state)
+            _load_client_eval_state(global_model, client_store, client_id, shared_state, args)
             off_stats.append(
                 compute_lm_eval_stats(global_model, dl, device, max_batches=eval_cap)
             )
@@ -661,9 +726,7 @@ def _evaluate_personalization_metrics(
         if not rows:
             continue
         dl = create_domain_eval_dataloader(rows, tokenizer, args)
-        broadcast_fedplora_shared_state(global_model, shared_state)
-        local_state = _get_client_local_state(client_store, client_id)
-        load_fedplora_local_state(global_model, local_state)
+        _load_client_eval_state(global_model, client_store, client_id, shared_state, args)
         in_dom_dt_stats.append(
             compute_lm_eval_stats(global_model, dl, device, max_batches=eval_cap)
         )
@@ -838,7 +901,9 @@ def _resume_meta_matches(meta: dict, args, split_dir: str, client_ids) -> bool:
         return _bad("torch_dtype")
     if bool(meta.get("use_ffa_peft", False)) != (args.agg_type == "ffa"):
         return _bad("use_ffa_peft")
-    if bool(meta.get("disk_sequential_protocol", False)) != bool(is_lora_a_disk_agg(args.agg_type)):
+    if bool(meta.get("disk_sequential_protocol", False)) != bool(
+        is_lora_a_disk_agg(args.agg_type) or is_fedalt_sequential_agg(args.agg_type)
+    ):
         return _bad("disk_sequential_protocol")
     return True
 
@@ -1012,7 +1077,7 @@ def _sft_eval_phase(
     Returns round_payload for metrics_history['rounds'].
     """
     pfl_block = {}
-    if is_lora_a_disk_agg(args.agg_type):
+    if is_lora_a_disk_agg(args.agg_type) or is_fedalt_sequential_agg(args.agg_type):
         (
             domain_metrics,
             domain_macro,
@@ -1305,7 +1370,9 @@ def _save_run_checkpoint(
             "seed": int(args.seed),
             "num_clients": int(args.num_clients),
             "client_ids": [int(x) for x in client_ids],
-            "disk_sequential_protocol": bool(is_lora_a_disk_agg(args.agg_type)),
+            "disk_sequential_protocol": bool(
+                is_lora_a_disk_agg(args.agg_type) or is_fedalt_sequential_agg(args.agg_type)
+            ),
             "use_ffa_peft": args.agg_type == "ffa",
             "train_rounds": int(args.rounds),
             "train_local_epochs": int(args.local_epochs),
@@ -1325,7 +1392,7 @@ def _save_run_checkpoint(
             summ = getattr(args, "_fedplora_oneshot_conflict_stats", {}).get("_summary", {})
             if summ:
                 meta["fedplora_oneshot_conflict_summary"] = summ
-        if is_lora_a_disk_agg(args.agg_type):
+        if is_lora_a_disk_agg(args.agg_type) or is_fedalt_sequential_agg(args.agg_type):
             shared_names = get_fedplora_shared_param_names(global_model)
             sd = {
                 k: v.detach().cpu().clone()
@@ -1443,7 +1510,7 @@ def eval_only_from_checkpoint(args):
     else:
         global_model = create_peft_causal_lm_model(args)
 
-    if is_lora_a_disk_agg(args.agg_type):
+    if is_lora_a_disk_agg(args.agg_type) or is_fedalt_sequential_agg(args.agg_type):
         init_fedplora_adapters(global_model)
         shared_path = os.path.join(ckpt, "global_shared.pt")
         if not os.path.isfile(shared_path):
@@ -1615,6 +1682,12 @@ def federated_sft(args):
             for k, v in global_model.state_dict().items()
             if is_lora_a_param_name(k)
         }
+    elif is_fedalt_sequential_agg(args.agg_type):
+        init_fedplora_adapters(global_model)
+        client_store = _ensure_sequential_fedalt_states(
+            global_model, client_ids, args
+        )
+        initial_A_for_oneshot = {}
     else:
         client_store = None
         initial_A_for_oneshot = {}
@@ -1665,7 +1738,7 @@ def federated_sft(args):
         print(f"Round {round_idx + 1}/{args.rounds}")
 
         if (
-            is_lora_a_disk_agg(args.agg_type)
+            (is_lora_a_disk_agg(args.agg_type) or is_fedalt_sequential_agg(args.agg_type))
             and getattr(args, "save_client_state_to_disk", False)
             and round_idx > 0
         ):
@@ -1675,6 +1748,7 @@ def federated_sft(args):
                 context=f"start of round {round_idx + 1}",
             )
 
+        gp_global_state = None
         if is_lora_a_disk_agg(args.agg_type):
             args._fedplora_client_sizes = client_sizes
             shared_names = get_fedplora_shared_param_names(global_model)
@@ -1695,6 +1769,7 @@ def federated_sft(args):
 
         client_states_for_agg = []
         fedplora_uploads = []
+        fedalt_uploads = []
         args._lora_a2_train_round = round_idx
         for i, client_id in enumerate(client_ids):
             args._tqdm_desc = f"R{round_idx + 1}/{args.rounds} client{i + 1}/{args.num_clients}"
@@ -1702,6 +1777,9 @@ def federated_sft(args):
                 broadcast_fedplora_shared_state(global_model, gp_global_state)
                 local_state = _get_client_local_state(client_store, client_id)
                 load_fedplora_local_state(global_model, local_state)
+            elif is_fedalt_sequential_agg(args.agg_type):
+                local_state = _get_client_local_state(client_store, client_id)
+                load_fedalt_local_state(global_model, local_state)
             else:
                 load_partial_state_dict(global_model, round_global_state)
             train_client(global_model, client_dataloaders[i], args, client_idx=i)
@@ -1710,6 +1788,10 @@ def federated_sft(args):
             if is_lora_a_disk_agg(args.agg_type):
                 fedplora_uploads.append(
                     build_fedplora_upload_package(global_model, client_sizes[i])
+                )
+            elif is_fedalt_sequential_agg(args.agg_type):
+                fedalt_uploads.append(
+                    build_fedalt_upload_package(global_model, client_sizes[i])
                 )
             else:
                 client_states_for_agg.append(
@@ -1721,10 +1803,16 @@ def federated_sft(args):
             if is_lora_a_disk_agg(args.agg_type):
                 updated_local_state = extract_fedplora_local_state(global_model)
                 _set_client_local_state(client_store, client_id, updated_local_state)
+            elif is_fedalt_sequential_agg(args.agg_type):
+                updated_local_state = extract_fedalt_local_state(global_model)
+                _set_client_local_state(client_store, client_id, updated_local_state)
 
         args._tqdm_desc = None
 
-        if is_lora_a_disk_agg(args.agg_type) and getattr(args, "save_client_state_to_disk", False):
+        if (
+            (is_lora_a_disk_agg(args.agg_type) or is_fedalt_sequential_agg(args.agg_type))
+            and getattr(args, "save_client_state_to_disk", False)
+        ):
             _disk_assert_all_client_states(
                 client_store,
                 client_ids,
@@ -1757,8 +1845,15 @@ def federated_sft(args):
                     flush=True,
                 )
         elif is_yoco_agg(args.agg_type):
-            global_model = aggregate_models_yoco(global_model, fedplora_uploads, args)
-        elif is_fedsa_lora_agg(args.agg_type) or is_fedalt_agg(args.agg_type):
+            args._aggregate_client_sizes = client_sizes
+            global_model = aggregate_models_yoco(global_model, client_states_for_agg, args)
+        elif is_fedalt_agg(args.agg_type):
+            global_model = aggregate_models_fedalt(global_model, fedalt_uploads, args)
+            rotw_list = getattr(args, "_fedalt_rotw_by_client", [])
+            for i, client_id in enumerate(client_ids):
+                if i < len(rotw_list):
+                    _set_client_rotw_state(client_store, client_id, rotw_list[i])
+        elif is_fedsa_lora_agg(args.agg_type):
             global_model = aggregate_models_fedsa_lora(global_model, fedplora_uploads, args)
         elif is_hetlora_agg(args.agg_type):
             global_model = aggregate_models_hetlora(global_model, client_states_for_agg, args)
