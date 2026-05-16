@@ -15,7 +15,7 @@ from utilities.utils import (
 )
 
 
-def build_fedplora_upload_package(model, client_size=None):
+def build_fedplora_upload_package(model, client_size=None, client_id=None, domain=None):
     """
     Client -> server payload: LoRA A, trainable task heads, row-importance from private B.
     """
@@ -45,6 +45,8 @@ def build_fedplora_upload_package(model, client_size=None):
         "state_dict": upload_sd,
         "row_importance": row_importance,
         "client_size": client_size,
+        "client_id": client_id,
+        "domain": domain,
     }
 
 
