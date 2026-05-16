@@ -52,6 +52,7 @@ from utilities.state_dict_ops import (
     broadcast_fedplora_shared_state,
     extract_fedalt_local_state,
     extract_fedplora_local_state,
+    extract_trainable_state_dict,
     load_fedalt_local_state,
     load_fedplora_local_state,
     load_partial_state_dict,
@@ -760,7 +761,10 @@ def _evaluate_personalization_metrics_full_state(
     tokenizer,
     args,
 ):
-    """Personalization metrics for full-state clients (normal / ffa / fedex / flora, etc.)."""
+    """Personalization metrics for memory-agg clients (normal / ffa / fedex / flora, etc.).
+
+    Client payloads are trainable-only partial dicts; load_partial_state_dict merges with current base.
+    """
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     eval_cap = int(getattr(args, "eval_max_batches", 0) or 0)
     id2home = _client_id_to_home_domain(benchmark["clients"])
@@ -1117,8 +1121,8 @@ def _sft_eval_phase(
         eval_cap = int(getattr(args, "eval_max_batches", 0) or 0)
         domains_sorted = sorted(by_domain.items())
         print(
-            f"[eval] full-state clients: {len(domains_sorted)} domains × {len(eval_client_ids)} clients; "
-            f"eval_max_batches={eval_cap or 'all'}",
+            f"[eval] memory-agg clients (trainable snapshots): {len(domains_sorted)} domains × "
+            f"{len(eval_client_ids)} clients; eval_max_batches={eval_cap or 'all'}",
             flush=True,
         )
         metrics = {}
@@ -1388,6 +1392,10 @@ def _save_run_checkpoint(
         }
         if round_saved_1based is not None:
             meta["round_saved_1based"] = int(round_saved_1based)
+        if not (
+            is_lora_a_disk_agg(args.agg_type) or is_fedalt_sequential_agg(args.agg_type)
+        ):
+            meta["memory_agg_client_payload"] = "trainable_only"
         if is_fedplora_oneshot_agg(args.agg_type):
             summ = getattr(args, "_fedplora_oneshot_conflict_stats", {}).get("_summary", {})
             if summ:
@@ -1418,7 +1426,7 @@ def _save_run_checkpoint(
         else:
             if not client_states_for_agg:
                 raise RuntimeError(
-                    "[checkpoint] full-state agg requires non-empty client_states_for_agg at end of training."
+                    "[checkpoint] memory-agg requires non-empty client_states_for_agg at end of training."
                 )
             torch.save(client_states_for_agg, os.path.join(root, "full_clients.pt"))
         meta_path = os.path.join(root, "run_checkpoint_meta.json")
@@ -1794,12 +1802,9 @@ def federated_sft(args):
                     build_fedalt_upload_package(global_model, client_sizes[i])
                 )
             else:
-                client_states_for_agg.append(
-                    {
-                        k: v.detach().cpu().clone()
-                        for k, v in global_model.state_dict().items()
-                    }
-                )
+                # Trainable-only (LoRA + heads): aggregators and eval only touch these keys;
+                # cloning full state_dict() per client duplicates frozen base N× and commonly OOMs Linux RAM.
+                client_states_for_agg.append(extract_trainable_state_dict(global_model))
             if is_lora_a_disk_agg(args.agg_type):
                 updated_local_state = extract_fedplora_local_state(global_model)
                 _set_client_local_state(client_store, client_id, updated_local_state)

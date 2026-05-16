@@ -523,6 +523,10 @@ set +a
 
 `configs/domain_sft.env` 与批量脚本 `run_domain_sft_baselines*.sh`、`run_exp_*.sh` 自动加载的是**同一份**默认（含 `BENCHMARK_DIR`、`EVAL_MAX_BATCHES` 等）。单机一键跑单次实验仍可用 `configs/domain_sft_pilot.env`（`run_domain_sft.sh` 会自行 source）。若仍需 `trust_remote_code`，在 `domain_sft.env` 中设 `TRUST_REMOTE_CODE=1` 或命令行加 `--trust_remote_code`。
 
+**手敲 `python tasks/fed_train_sft.py ...` 与 `run_domain_sft_batch_*.sh` 是否等价？** 等价于「同一入口 + 同一组 CLI 参数」。批量脚本只是把 `domain_sft.env` 里的 `MODEL_PATH`、`ROUNDS`、`BENCHMARK_DIR`、`--eval_max_batches` 等展开成数组；**未**传 `--save_run_checkpoint_dir` 时，Python 仍会默认写到 `../trained_models/<stem>/`，每轮后写 `snapshots/`，训完写 `checkpoint_ok.json` + `artifacts_{N}c/sft_metrics/*.json`。你只要在跑手敲命令前 `source configs/domain_sft.env`（或把 env 里的值抄进命令行），能力就与脚本一致。
+
+**若 shell 只打印 `Killed`（无 Python traceback）**：多为 **Linux OOM killer**（系统内存或交换空间耗尽）。此前 `normal` / `yoco` / `fedex` / `ffa` 等在每轮会把每个客户端的 **整份** `state_dict()`（含冻结基座）克隆进 RAM 列表，客户端一多极易 OOM。当前实现与 `fedplora` 侧一致：这些「内存聚合」路径只缓存 **`requires_grad` 的可训练快照**（LoRA + 任务头），聚合与评测仍通过 `load_partial_state_dict` 与当轮全局基座合并，**训练仍只在 GPU 上保留一份基座**。若仍内存紧张，可再调低 `DATALOADER_NUM_WORKERS` / `batch_size` / `max_seq_length`，或改用带 `--save_client_state_to_disk` 的磁盘顺序协议（`fedplora` / `fedplora-oneshot` / `fedsa_lora` / `fedalt`）。
+
 **加快每轮「评估 / 测评」阶段（只影响 eval，不影响训练步）**
 
 - 下面每条命令都带有 `**--eval_max_batches 50`**：每个 eval 子循环最多跑 50 个 batch（按「域 × 客户端 × dataloader」截断）。调参或排队时可保留；写论文主表前可改为更大、`0`（或不写该参数）表示**全量 eval**。
@@ -533,8 +537,8 @@ set +a
 - 默认 bundle 根：**`<仓库>/../trained_models/<stem>/`**。可用 `**TRAINED_MODELS_ROOT**` / `**--trained_models_root**` 改父目录；完全不要自动落盘：`**--no_auto_save_run_checkpoint**`。
 - **eval 前 vs eval 后（内容是否一样？）**：**权重张量与 eval 前一刻一致**。eval 前快照里已是聚合后的 `global_shared`（或 `full_clients`）及各客户端磁盘状态拷贝，**就是**紧接着 `_sft_eval_phase` 会加载做前向的那套；eval 本身不反传、不改权重。eval 后在根目录再写一遍最终 bundle，**权重与当轮聚合结果相同**（最后一轮），额外多的是已写入磁盘的 **metrics JSON 路径**记在 meta 里。因此用 eval 前快照做 `--eval_only_from_checkpoint`，与「当时若 eval 没挂跑出来的前向」一致，**不会白训聚合阶段**。
 - **自动恢复顺序**（`--force_retrain` 时均不启用）：若根目录 `checkpoint_ok.json` 为 **`final`** → 本方法本次配置 **训练 + eval 均跳过**；否则若存在最新的 `snapshots/round_XXX_post_agg/` 且其中 `checkpoint_ok` + meta 与当前 CLI 一致 → **只跳过训练、跑 eval-only**；否则正常训练。
-- 每条目录内有 `**run_checkpoint_meta.json**` + `**full_clients.pt**` 或 `**global_shared.pt` + `clients/**`**。每轮 eval 前另有 `**snapshots/round_XXX_post_agg/**`（除非 `--skip_post_agg_snapshots`）。失败为 `**…_failed/**` + `checkpoint_failed.json`。
-- 需要磁盘协议的方法（`**fedplora**`、`**fedplora-oneshot**`、`**fedsa_lora**` / `**fedsa**`、`**fedalt**`）：**必须保留** `**--save_client_state_to_disk**`，否则写 checkpoint 时可能缺 `client_*.pt`。**`yoco`** 走全量 LoRA 内存协议（同 `normal`），**不需要**该 flag；结果仍由 `save_run_checkpoint_dir` 写入 `full_clients.pt`。
+- 每条目录内有 `**run_checkpoint_meta.json**` + `**full_clients.pt**`（内存聚合方法下为各客户端 **可训练快照** 列表，`meta.memory_agg_client_payload` 为 `trainable_only`）或 `**global_shared.pt` + `clients/**`**（磁盘协议）。每轮 eval 前另有 `**snapshots/round_XXX_post_agg/**`（除非 `--skip_post_agg_snapshots`）。失败为 `**…_failed/**` + `checkpoint_failed.json`。
+- 需要磁盘协议的方法（`**fedplora**`、`**fedplora-oneshot**`、`**fedsa_lora**` / `**fedsa**`、`**fedalt**`）：**必须保留** `**--save_client_state_to_disk**`，否则写 checkpoint 时可能缺 `client_*.pt`。**`yoco`** / **`normal`** 等为内存聚合、**不需要**该 flag；`full_clients.pt` 存的是可训练张量而非整模的 N 份重复。
 
 `**../trained_models/<stem>/` 在哪些实验里能重复用？**
 
