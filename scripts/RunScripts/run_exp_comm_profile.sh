@@ -27,7 +27,7 @@ cuda_resolve_devices "${GPU_CLI}"
 
 MODEL_PATH="${MODEL_PATH:-/data/yaominghao/gb/models/Meta-Llama-3.1-8B}"
 # 默认不含多轮 fedplora；主线 FedP 变体用 fedplora-oneshot（与 §十四 其它脚本一致）
-AGG_LIST="${AGG_LIST:-normal,fedex,ffa,fedplora-oneshot,yoco,fedsa_lora,fedalt,flora}"
+AGG_LIST="${AGG_LIST:-normal,ffa,flora,flexlora,feddat,fedplora-oneshot,fedplora_v3_lite,fedplora_v3_cluster,fedplora_v3_rpca,yoco,fedsa_lora,fedalt}"
 
 CMD=(
   python scripts/RunScripts/print_sft_comm_profile.py

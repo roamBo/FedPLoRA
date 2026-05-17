@@ -25,14 +25,17 @@ from utilities.utils import estimate_round_communication_bytes, get_trainable_pa
 
 DEFAULT_AGGS = [
     "normal",
-    "fedex",
     "ffa",
-    "fedplora",
+    "flora",
+    "flexlora",
+    "feddat",
     "fedplora-oneshot",
+    "fedplora_v3_lite",
+    "fedplora_v3_cluster",
+    "fedplora_v3_rpca",
     "yoco",
     "fedsa_lora",
     "fedalt",
-    "flora",
 ]
 
 

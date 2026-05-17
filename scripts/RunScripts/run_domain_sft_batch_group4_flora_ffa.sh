@@ -39,4 +39,4 @@ source "${_SCRIPT_DIR}/_fed_train_speed.inc.sh"
 # shellcheck disable=SC1091
 source "${_SCRIPT_DIR}/_run_domain_sft_batch.inc.sh"
 
-domain_sft_run_batch "batch-group4-flora-ffa" flora ffa
+domain_sft_run_batch "batch-group4-flora-ffa" flora flexlora ffa feddat

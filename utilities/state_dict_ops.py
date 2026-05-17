@@ -19,6 +19,12 @@ def extract_trainable_state_dict(model):
     return out
 
 
+def extract_round_broadcast_state(model, agg_type=None):
+    """CPU snapshot for in-memory FedAvg-style rounds (trainable LoRA + heads only)."""
+    del agg_type  # reserved for method-specific broadcast extensions
+    return extract_trainable_state_dict(model)
+
+
 def load_partial_state_dict(model, partial_state_dict):
     current = model.state_dict()
     for key, value in partial_state_dict.items():

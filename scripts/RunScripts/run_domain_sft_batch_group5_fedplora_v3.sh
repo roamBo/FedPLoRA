@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Baseline batch 1: normal, flora, flexlora, feddat, fedplora-oneshot (v2), fedalt — 1 round each.
+# Group 5 — FedPLoRA-Oneshot v3 variants (lite / cluster / rpca), 1 round each.
 #
-# Usage (from repo root):
-#   bash scripts/RunScripts/run_domain_sft_baselines1.sh [7|14|21|35] [gpu]
+# Usage:
+#   bash scripts/RunScripts/run_domain_sft_batch_group5_fedplora_v3.sh [7|14|21|35] [gpu]
 
 set -euo pipefail
 
@@ -38,4 +38,4 @@ source "${_SCRIPT_DIR}/_fed_train_speed.inc.sh"
 # shellcheck disable=SC1091
 source "${_SCRIPT_DIR}/_run_domain_sft_batch.inc.sh"
 
-domain_sft_run_batch "baselines1" normal flora flexlora feddat fedplora-oneshot fedalt
+domain_sft_run_batch "batch-group5-v3" fedplora_v3_lite fedplora_v3_cluster fedplora_v3_rpca

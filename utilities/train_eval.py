@@ -48,9 +48,10 @@ import os
 from copy import deepcopy
 import json
 from utilities.utils import (
+    is_feddat_agg,
     is_fedplora_multiround_agg,
     is_fedplora_oneshot_agg,
-    is_lora_a2_agg,
+    is_fedplora_oneshot_family_agg,
     is_yoco_agg,
 )
 
@@ -134,20 +135,9 @@ def _add_fedplora_regularization(loss, model, args):
     return loss
 
 
-def _apply_lora_a2_freeze(model, args):
-    """Even rounds train B (A frozen); odd rounds train A (B frozen)."""
-    rid = int(getattr(args, "_lora_a2_train_round", 0))
-    train_b = rid % 2 == 0
-    for _n, p in model.named_parameters():
-        if "lora_A" in _n and _n.endswith("default.weight"):
-            p.requires_grad = not train_b
-        elif "lora_B" in _n and _n.endswith("default.weight"):
-            p.requires_grad = train_b
-
-
 def _add_yoco_sparse(loss, model, args):
     agg = getattr(args, "agg_type", None)
-    if not (is_yoco_agg(agg) or is_fedplora_oneshot_agg(agg)):
+    if not (is_yoco_agg(agg) or is_fedplora_oneshot_family_agg(agg)):
         return loss
     lam = float(getattr(args, "yoco_sparse_lambda", 1e-4))
     terms = [
@@ -160,8 +150,33 @@ def _add_yoco_sparse(loss, model, args):
     return loss
 
 
+def _add_feddat_teacher_regularizer(loss, model, args):
+    """Proximal term to round-start teacher LoRA (FedDAT-inspired)."""
+    if not is_feddat_agg(getattr(args, "agg_type", None)):
+        return loss
+    teacher = getattr(args, "_feddat_teacher_state", None)
+    if not isinstance(teacher, dict) or not teacher:
+        return loss
+    lam = float(getattr(args, "feddat_teacher_lambda", 0.01))
+    if lam <= 0:
+        return loss
+    terms = []
+    for key, p in model.named_parameters():
+        if not p.requires_grad or key not in teacher:
+            continue
+        t = teacher[key]
+        if t.device != p.device or t.dtype != p.dtype:
+            t = t.to(device=p.device, dtype=p.dtype)
+        if tuple(t.shape) != tuple(p.shape):
+            continue
+        terms.append(torch.mean((p.float() - t.float()) ** 2))
+    if terms:
+        loss = loss + lam * torch.stack(terms).mean()
+    return loss
+
+
 def _add_fedplora_oneshot_anchor(loss, model, args):
-    if not is_fedplora_oneshot_agg(getattr(args, "agg_type", None)):
+    if not is_fedplora_oneshot_family_agg(getattr(args, "agg_type", None)):
         return loss
     initial_gpu = getattr(args, "_fedplora_initial_A_gpu", None)
     initial_A = (
@@ -220,7 +235,7 @@ def _fedplora_refresh_reg_tensor_gpu_cache(model, args):
     args._fedplora_initial_A_gpu = None
     args._fedplora_global_A_gpu = None
 
-    if is_fedplora_oneshot_agg(getattr(args, "agg_type", None)):
+    if is_fedplora_oneshot_family_agg(getattr(args, "agg_type", None)):
         init = getattr(args, "_fedplora_initial_A", None)
         if isinstance(init, dict) and init:
             gpu_map = {}
@@ -250,9 +265,6 @@ def _fedplora_refresh_reg_tensor_gpu_cache(model, args):
 def train_client(model, dataloader, args, client_idx=0):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device)
-
-    if is_lora_a2_agg(getattr(args, "agg_type", None)):
-        _apply_lora_a2_freeze(model, args)
 
     _fedplora_refresh_reg_tensor_gpu_cache(model, args)
 
@@ -295,6 +307,7 @@ def train_client(model, dataloader, args, client_idx=0):
                     loss = _add_fedplora_regularization(loss, model, args)
                     loss = _add_yoco_sparse(loss, model, args)
                     loss = _add_fedplora_oneshot_anchor(loss, model, args)
+                    loss = _add_feddat_teacher_regularizer(loss, model, args)
 
                 scaler.scale(loss).backward()
                 scaler.step(optimizer)

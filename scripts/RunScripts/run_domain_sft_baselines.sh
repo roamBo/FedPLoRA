@@ -26,7 +26,7 @@ source "${_SCRIPT_DIR}/_fed_train_speed.inc.sh"
 MODEL_PATH="${MODEL_PATH:-/data/yaominghao/gb/models/Meta-Llama-3.1-8B}"
 BENCHMARK_DIR="${BENCHMARK_DIR:-data/domain_benchmark_35c/seed_42}"
 EVAL_MAX_BATCHES="${EVAL_MAX_BATCHES:-50}"
-ROUNDS="${ROUNDS:-10}"
+ROUNDS="${ROUNDS:-1}"
 LOCAL_EPOCHS="${LOCAL_EPOCHS:-1}"
 LR="${LR:-2e-4}"
 LORA_R="${LORA_R:-8}"
@@ -52,7 +52,7 @@ ONESHOT_NO_KEEP_INIT_ON_CONFLICT="${ONESHOT_NO_KEEP_INIT_ON_CONFLICT:-0}"
 ONESHOT_ORTHOGONALIZE="${ONESHOT_ORTHOGONALIZE:-0}"
 
 # 前两条：fedplora-oneshot（单轮）、fedplora（多轮）；其余顺序可任意
-METHODS=("fedplora-oneshot" "fedplora" "normal" "ffa" "fedex")
+METHODS=("fedplora-oneshot" "normal" "ffa" "flora" "flexlora" "feddat" "yoco")
 
 for AGG_TYPE in "${METHODS[@]}"; do
   echo "[run] agg_type=${AGG_TYPE}"

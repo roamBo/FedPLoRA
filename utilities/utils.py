@@ -23,6 +23,23 @@ def is_fedplora_oneshot_agg(agg_type):
     return _norm_agg_type(agg_type) == "fedplora_oneshot"
 
 
+def is_fedplora_v3_agg(agg_type):
+    """FedPLoRA-Oneshot v3 variants (residual conflict; A-only upload)."""
+    return _norm_agg_type(agg_type) in {
+        "fedplora_v3_lite",
+        "v3_lite",
+        "fedplora_v3_cluster",
+        "v3_cluster",
+        "fedplora_v3_rpca",
+        "v3_rpca",
+    }
+
+
+def is_fedplora_oneshot_family_agg(agg_type):
+    """v2 oneshot + v3 variants: one-round A-only disk protocol and anchor/sparse local terms."""
+    return is_fedplora_oneshot_agg(agg_type) or is_fedplora_v3_agg(agg_type)
+
+
 def is_lora_a_disk_agg(agg_type):
     """Domain SFT: server holds A (+ heads), clients keep B on disk/memory."""
     return _norm_agg_type(agg_type) in {
@@ -30,7 +47,7 @@ def is_lora_a_disk_agg(agg_type):
         "fedplora_oneshot",
         "fedsa_lora",
         "fedsa",
-    }
+    } or is_fedplora_v3_agg(agg_type)
 
 
 def is_fedalt_sequential_agg(agg_type):
@@ -51,20 +68,16 @@ def is_yoco_agg(agg_type):
     return _norm_agg_type(agg_type) == "yoco"
 
 
-def is_lora_a2_agg(agg_type):
-    return _norm_agg_type(agg_type) in {"lora_a2", "loraa2"}
-
-
-def is_hetlora_agg(agg_type):
-    return _norm_agg_type(agg_type) in {"hetlora", "het_lora"}
-
-
 def is_flora_agg(agg_type):
     return _norm_agg_type(agg_type) == "flora"
 
 
-def is_fdlora_agg(agg_type):
-    return _norm_agg_type(agg_type) in {"fdlora", "fd_lora"}
+def is_flexlora_agg(agg_type):
+    return _norm_agg_type(agg_type) == "flexlora"
+
+
+def is_feddat_agg(agg_type):
+    return _norm_agg_type(agg_type) == "feddat"
 
 
 def is_fedalt_agg(agg_type):
@@ -90,6 +103,11 @@ def is_task_head_param_name(key):
         or key.endswith(".score.weight")
         or key.endswith(".score.bias")
     )
+
+
+def is_peft_base_layer_weight_key(key):
+    """Frozen PEFT base weights (legacy FedEx path removed from domain SFT)."""
+    return ".base_layer.weight" in key
 
 
 def is_fedplora_shared_param_name(key, trainable_param_names=None):
@@ -189,7 +207,7 @@ def estimate_round_communication_bytes(
 
     agg_type = _norm_agg_type(agg_type) or "normal"
 
-    if is_fedplora_multiround_agg(agg_type) or is_fedplora_oneshot_agg(agg_type):
+    if is_fedplora_multiround_agg(agg_type) or is_fedplora_oneshot_family_agg(agg_type):
         down = lora_a + task_head
         up = lora_a + task_head + gp_stats
     elif is_lora_a_disk_agg(agg_type):
@@ -202,12 +220,15 @@ def estimate_round_communication_bytes(
     elif agg_type == "ffa":
         down = full_model
         up = lora_b + task_head
-    elif agg_type == "fedex":
+    elif agg_type in {"flexlora", "flora"}:
+        down = full_model
+        up = lora_all + task_head
+    elif agg_type == "feddat":
         down = full_model
         up = lora_all + task_head
     else:
         # Includes yoco (NeurIPS 2025 / FedMLLM): full trainable LoRA uplink (A+B) + heads,
-        # same as FedAvg-style LoRA baselines (normal, hetlora, …).
+        # same as FedAvg-style LoRA baselines (normal, …).
         down = full_model
         up = lora_all + task_head
 
