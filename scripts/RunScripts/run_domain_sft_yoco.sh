@@ -37,7 +37,7 @@ cuda_resolve_devices "${GPU_CLI}"
 source "${_SCRIPT_DIR}/_fed_train_speed.inc.sh"
 
 MODEL_PATH="${MODEL_PATH:-/data/yaominghao/gb/models/Meta-Llama-3.1-8B}"
-ROUNDS="${ROUNDS:-10}"
+ROUNDS="${ROUNDS:-1}"
 LOCAL_EPOCHS="${LOCAL_EPOCHS:-1}"
 LR="${LR:-2e-4}"
 LORA_R="${LORA_R:-8}"

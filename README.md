@@ -507,7 +507,7 @@ cat data/domain_benchmark_35c/seed_42/clients.json | head
 
 ### 11.1 直接用准备好的 benchmark 训练（推荐：逐方法手敲命令）
 
-以下命令均在**仓库根目录**执行。主表默认使用 **35 客户端** benchmark：`--benchmark_dir data/domain_benchmark_35c/seed_42`（与 `build_domain_benchmark.py` 里 `num_clients_per_domain=5` × 7 域一致）。不写 `--save_run_checkpoint_dir` 时，权重默认落到 **`../trained_models/<stem>/`**，并按上节规则 **自动跳过已完成的训练 / 或仅补 eval**；需要固定到其它目录时再显式传 `--save_run_checkpoint_dir`。
+以下命令均在**仓库根目录**执行。主表默认使用 **35 客户端** benchmark：`--benchmark_dir data/domain_benchmark_35c/seed_42`（与 `build_domain_benchmark.py` 里 `num_clients_per_domain=5` × 7 域一致）。**当前一轮对比实验统一 `--rounds 1`**（`configs/domain_sft.env` 与 `fed_train_sft.py` 入口均会强制为 1）。不写 `--save_run_checkpoint_dir` 时，权重默认落到 **`../trained_models/<stem>/`**，并按上节规则 **自动跳过已完成的训练 / 或仅补 eval**（防白训）；需要固定到其它目录时再显式传 `--save_run_checkpoint_dir`。
 
 **复制下面任一条 `python` 命令之前，先加载环境（与本地数据 / 本地模型一致）**
 
@@ -563,7 +563,8 @@ set +a
 - `fedplora-oneshot` 与 `yoco` 均为单轮（入口强制 `--rounds 1`），但上传形态与服务端聚合**已分叉**（上表）。
 - `yoco`：`--yoco_sparse_lambda` 仍作用于本地 **A** 稀疏；`--yoco_pcwa_components` **当前未接入**服务端（官方默认是 FedAvg 而非 `conflict`/PCWA）。
 - `fedalt`：RoTW 已计算并落盘（`client_*_rotw.pt`）；双分支 forward + mixer（论文 `lora_route`）**尚未**接入，评测仍用各客户端 local A+B。
-- 别名：`fedsa`≡`fedsa_lora`，`fd_lora`≡`fdlora`，`het_lora`≡`hetlora`，`loraa2`≡`lora_a2`。
+- 别名：`fedsa`≡`fedsa_lora`；v3 亦可用 `v3_lite` / `v3_cluster` / `v3_rpca`。
+- 已移除域 SFT 主线的 `fedex`、`hetlora`、`fdlora`、`lora_a2`（见 §11.1 更新列表）。
 
 公共说明：
 
@@ -571,14 +572,16 @@ set +a
 - 若 Transformers 加载 Llama 报错，可在命令末尾追加 `**--trust_remote_code`**。
 - 需要 **个性化指标** 时：训练阶段可加 `--eval_personalization_metrics`，或训完用 `**--eval_only_from_checkpoint`** 再开（见上表）。
 
+**公共参数（下列每条命令均包含）**：`--rounds 1`、`--benchmark_dir data/domain_benchmark_35c/seed_42`、`--eval_max_batches 50`、`--gradient_checkpointing`；未写 `--save_run_checkpoint_dir` 时自动落盘到 `../trained_models/<stem>/` 并启用防白训。将 `CUDA_VISIBLE_DEVICES=0` 换成你的 GPU。
+
 #### 1) `normal`
 
 ```bash
-CUDA_VISIBLE_DEVICES=0,1 python tasks/fed_train_sft.py \
+CUDA_VISIBLE_DEVICES=0 python tasks/fed_train_sft.py \
   --model /data/yaominghao/gb/models/Meta-Llama-3.1-8B \
   --benchmark_dir data/domain_benchmark_35c/seed_42 \
   --agg_type normal \
-  --rounds 10 \
+  --rounds 1 \
   --local_epochs 1 \
   --lr 2e-4 \
   --lora_r 8 \
@@ -590,37 +593,17 @@ CUDA_VISIBLE_DEVICES=0,1 python tasks/fed_train_sft.py \
   --gradient_checkpointing \
   --torch_dtype bfloat16 \
   --target_modules q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj \
+  --seed 42
 ```
 
-#### 2) `fedex`
+#### 2) `ffa`
 
 ```bash
-CUDA_VISIBLE_DEVICES=0,1 python tasks/fed_train_sft.py \
-  --model /data/yaominghao/gb/models/Meta-Llama-3.1-8B \
-  --benchmark_dir data/domain_benchmark_35c/seed_42 \
-  --agg_type fedex \
-  --rounds 10 \
-  --local_epochs 1 \
-  --lr 2e-4 \
-  --lora_r 8 \
-  --lora_alpha 16 \
-  --lora_dropout 0.05 \
-  --batch_size 2 \
-  --max_seq_length 2048 \
-  --eval_max_batches 50 \
-  --gradient_checkpointing \
-  --torch_dtype bfloat16 \
-  --target_modules q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj \
-```
-
-#### 3) `ffa`
-
-```bash
-CUDA_VISIBLE_DEVICES=0,1 python tasks/fed_train_sft.py \
+CUDA_VISIBLE_DEVICES=0 python tasks/fed_train_sft.py \
   --model /data/yaominghao/gb/models/Meta-Llama-3.1-8B \
   --benchmark_dir data/domain_benchmark_35c/seed_42 \
   --agg_type ffa \
-  --rounds 10 \
+  --rounds 1 \
   --local_epochs 1 \
   --lr 2e-4 \
   --lora_r 8 \
@@ -632,161 +615,17 @@ CUDA_VISIBLE_DEVICES=0,1 python tasks/fed_train_sft.py \
   --gradient_checkpointing \
   --torch_dtype bfloat16 \
   --target_modules q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj \
+  --seed 42
 ```
 
-#### 4) `fedplora`（多轮 FedP-LoRA）
+#### 3) `flora`（NeurIPS 2024；均值 ΔW + SVD）
 
 ```bash
-CUDA_VISIBLE_DEVICES=0,1 python tasks/fed_train_sft.py \
-  --model /data/yaominghao/gb/models/Meta-Llama-3.1-8B \
-  --benchmark_dir data/domain_benchmark_35c/seed_42 \
-  --agg_type fedplora \
-  --rounds 10 \
-  --local_epochs 1 \
-  --lr 2e-4 \
-  --lora_r 8 \
-  --lora_alpha 16 \
-  --lora_dropout 0.05 \
-  --batch_size 2 \
-  --max_seq_length 2048 \
-  --eval_max_batches 50 \
-  --gradient_checkpointing \
-  --torch_dtype bfloat16 \
-  --target_modules q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj \
-  --save_client_state_to_disk \
-```
-
-#### 5) `fedplora-oneshot`（冲突门控；入口会强制 `--rounds 1`）
-
-```bash
-CUDA_VISIBLE_DEVICES= python tasks/fed_train_sft.py \
-  --model /data/yaominghao/gb/models/Meta-Llama-3.1-8B \
-  --benchmark_dir data/domain_benchmark_35c/seed_42 \
-  --agg_type fedplora-oneshot \
-  --rounds 10 \
-  --local_epochs 1 \
-  --lr 2e-4 \
-  --lora_r 8 \
-  --lora_alpha 16 \
-  --lora_dropout 0.05 \
-  --batch_size 2 \
-  --max_seq_length 2048 \
-  --eval_max_batches 50 \
-  --gradient_checkpointing \
-  --torch_dtype bfloat16 \
-  --target_modules q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj \
-  --yoco_sparse_lambda 1e-4 \
-  --oneshot_anchor_lambda 1e-4 \
-  --oneshot_consensus_power 2.0 \
-  --oneshot_importance_power 1.0 \
-  --oneshot_importance_clip 5.0 \
-  --oneshot_conflict_threshold 0.35 \
-  --oneshot_conflict_blend 1.0 \
-  --save_client_state_to_disk \
-```
-
-#### 6) `yoco`（单轮 FedAvg on full LoRA；入口会强制 `--rounds 1`）
-
-对齐 FedMLLM `yoco` 分支：上传 **A+B+头**，服务端 **样本量加权 FedAvg**（`methods/yoco.py`）。**无需** `--save_client_state_to_disk`；权重由默认 `../trained_models/<stem>/` 保存。
-
-```bash
-CUDA_VISIBLE_DEVICES=0,1 python tasks/fed_train_sft.py \
-  --model /data/yaominghao/gb/models/Meta-Llama-3.1-8B \
-  --benchmark_dir data/domain_benchmark_35c/seed_42 \
-  --agg_type yoco \
-  --rounds 10 \
-  --local_epochs 1 \
-  --lr 2e-4 \
-  --lora_r 8 \
-  --lora_alpha 16 \
-  --lora_dropout 0.05 \
-  --batch_size 2 \
-  --max_seq_length 2048 \
-  --eval_max_batches 50 \
-  --gradient_checkpointing \
-  --torch_dtype bfloat16 \
-  --target_modules q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj \
-  --yoco_sparse_lambda 1e-4 \
-  --yoco_pcwa_components 3
-```
-
-（`--yoco_pcwa_components` 为历史 CLI，**当前服务端未使用**；保留仅为与旧 batch 脚本兼容。）
-
-#### 7) `fedsa_lora`（可用 `--agg_type fedsa` 等价）
-
-```bash
-CUDA_VISIBLE_DEVICES=0,1 python tasks/fed_train_sft.py \
-  --model /data/yaominghao/gb/models/Meta-Llama-3.1-8B \
-  --benchmark_dir data/domain_benchmark_35c/seed_42 \
-  --agg_type fedsa_lora \
-  --rounds 10 \
-  --local_epochs 1 \
-  --lr 2e-4 \
-  --lora_r 8 \
-  --lora_alpha 16 \
-  --lora_dropout 0.05 \
-  --batch_size 2 \
-  --max_seq_length 2048 \
-  --eval_max_batches 50 \
-  --gradient_checkpointing \
-  --torch_dtype bfloat16 \
-  --target_modules q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj \
-  --save_client_state_to_disk \
-```
-
-#### 8) `fedalt`（Individual LoRA A+B 上行；个性化 RoTW A+B 下行）
-
-对齐 [FedALT](https://github.com/jmbian/FedALT)：`build_fedalt_upload_package` + leave-one-out `aggregate_models_fedalt`。通信约为 FedPLoRA（仅 A）的 **约 2×**（全 LoRA 上下行）。
-
-```bash
-CUDA_VISIBLE_DEVICES=0,1 python tasks/fed_train_sft.py \
-  --model /data/yaominghao/gb/models/Meta-Llama-3.1-8B \
-  --benchmark_dir data/domain_benchmark_35c/seed_42 \
-  --agg_type fedalt \
-  --rounds 10 \
-  --local_epochs 1 \
-  --lr 2e-4 \
-  --lora_r 8 \
-  --lora_alpha 16 \
-  --lora_dropout 0.05 \
-  --batch_size 2 \
-  --max_seq_length 2048 \
-  --eval_max_batches 50 \
-  --gradient_checkpointing \
-  --torch_dtype bfloat16 \
-  --target_modules q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj \
-  --save_client_state_to_disk \
-```
-
-#### 9) `hetlora`（可用 `--agg_type het_lora` 等价）
-
-```bash
-CUDA_VISIBLE_DEVICES=0,1 python tasks/fed_train_sft.py \
-  --model /data/yaominghao/gb/models/Meta-Llama-3.1-8B \
-  --benchmark_dir data/domain_benchmark_35c/seed_42 \
-  --agg_type hetlora \
-  --rounds 10 \
-  --local_epochs 1 \
-  --lr 2e-4 \
-  --lora_r 8 \
-  --lora_alpha 16 \
-  --lora_dropout 0.05 \
-  --batch_size 2 \
-  --max_seq_length 2048 \
-  --eval_max_batches 50 \
-  --gradient_checkpointing \
-  --torch_dtype bfloat16 \
-  --target_modules q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj \
-```
-
-#### 10) `flora`
-
-```bash
-CUDA_VISIBLE_DEVICES=0,1 python tasks/fed_train_sft.py \
+CUDA_VISIBLE_DEVICES=0 python tasks/fed_train_sft.py \
   --model /data/yaominghao/gb/models/Meta-Llama-3.1-8B \
   --benchmark_dir data/domain_benchmark_35c/seed_42 \
   --agg_type flora \
-  --rounds 10 \
+  --rounds 1 \
   --local_epochs 1 \
   --lr 2e-4 \
   --lora_r 8 \
@@ -798,16 +637,17 @@ CUDA_VISIBLE_DEVICES=0,1 python tasks/fed_train_sft.py \
   --gradient_checkpointing \
   --torch_dtype bfloat16 \
   --target_modules q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj \
+  --seed 42
 ```
 
-#### 11) `lora_a2`（可用 `--agg_type loraa2` 等价）
+#### 4) `flexlora`（[FlexLoRA](https://proceedings.neurips.cc/paper_files/paper/2024/hash/1a134b50202088aa8c595cc99b310e5a-Abstract-Conference.html)；样本加权 ΔW + SVD）
 
 ```bash
-CUDA_VISIBLE_DEVICES=0,1 python tasks/fed_train_sft.py \
+CUDA_VISIBLE_DEVICES=0 python tasks/fed_train_sft.py \
   --model /data/yaominghao/gb/models/Meta-Llama-3.1-8B \
   --benchmark_dir data/domain_benchmark_35c/seed_42 \
-  --agg_type lora_a2 \
-  --rounds 10 \
+  --agg_type flexlora \
+  --rounds 1 \
   --local_epochs 1 \
   --lr 2e-4 \
   --lora_r 8 \
@@ -819,16 +659,17 @@ CUDA_VISIBLE_DEVICES=0,1 python tasks/fed_train_sft.py \
   --gradient_checkpointing \
   --torch_dtype bfloat16 \
   --target_modules q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj \
+  --seed 42
 ```
 
-#### 12) `fdlora`（可用 `--agg_type fd_lora` 等价）
+#### 5) `feddat`（[FedDAT](https://ojs.aaai.org/index.php/AAAI/article/view/29007)；样本加权 FedAvg + 教师近端正则）
 
 ```bash
-CUDA_VISIBLE_DEVICES=0,1 python tasks/fed_train_sft.py \
+CUDA_VISIBLE_DEVICES=0 python tasks/fed_train_sft.py \
   --model /data/yaominghao/gb/models/Meta-Llama-3.1-8B \
   --benchmark_dir data/domain_benchmark_35c/seed_42 \
-  --agg_type fdlora \
-  --rounds 10 \
+  --agg_type feddat \
+  --rounds 1 \
   --local_epochs 1 \
   --lr 2e-4 \
   --lora_r 8 \
@@ -840,7 +681,195 @@ CUDA_VISIBLE_DEVICES=0,1 python tasks/fed_train_sft.py \
   --gradient_checkpointing \
   --torch_dtype bfloat16 \
   --target_modules q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj \
+  --feddat_teacher_lambda 0.01 \
+  --seed 42
 ```
+
+#### 6) `yoco`（单轮；全量 LoRA A+B 上行 + 样本量加权 FedAvg）
+
+```bash
+CUDA_VISIBLE_DEVICES=0 python tasks/fed_train_sft.py \
+  --model /data/yaominghao/gb/models/Meta-Llama-3.1-8B \
+  --benchmark_dir data/domain_benchmark_35c/seed_42 \
+  --agg_type yoco \
+  --rounds 1 \
+  --local_epochs 1 \
+  --lr 2e-4 \
+  --lora_r 8 \
+  --lora_alpha 16 \
+  --lora_dropout 0.05 \
+  --batch_size 2 \
+  --max_seq_length 2048 \
+  --eval_max_batches 50 \
+  --gradient_checkpointing \
+  --torch_dtype bfloat16 \
+  --target_modules q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj \
+  --yoco_sparse_lambda 1e-4 \
+  --seed 42
+```
+
+#### 7) `fedsa_lora`（可用 `--agg_type fedsa`）
+
+```bash
+CUDA_VISIBLE_DEVICES=0 python tasks/fed_train_sft.py \
+  --model /data/yaominghao/gb/models/Meta-Llama-3.1-8B \
+  --benchmark_dir data/domain_benchmark_35c/seed_42 \
+  --agg_type fedsa_lora \
+  --rounds 1 \
+  --local_epochs 1 \
+  --lr 2e-4 \
+  --lora_r 8 \
+  --lora_alpha 16 \
+  --lora_dropout 0.05 \
+  --batch_size 2 \
+  --max_seq_length 2048 \
+  --eval_max_batches 50 \
+  --gradient_checkpointing \
+  --torch_dtype bfloat16 \
+  --target_modules q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj \
+  --save_client_state_to_disk \
+  --seed 42
+```
+
+#### 8) `fedalt`
+
+```bash
+CUDA_VISIBLE_DEVICES=0 python tasks/fed_train_sft.py \
+  --model /data/yaominghao/gb/models/Meta-Llama-3.1-8B \
+  --benchmark_dir data/domain_benchmark_35c/seed_42 \
+  --agg_type fedalt \
+  --rounds 1 \
+  --local_epochs 1 \
+  --lr 2e-4 \
+  --lora_r 8 \
+  --lora_alpha 16 \
+  --lora_dropout 0.05 \
+  --batch_size 2 \
+  --max_seq_length 2048 \
+  --eval_max_batches 50 \
+  --gradient_checkpointing \
+  --torch_dtype bfloat16 \
+  --target_modules q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj \
+  --save_client_state_to_disk \
+  --seed 42
+```
+
+#### 9) `fedplora-oneshot`（v2 冲突门控；需 `--save_client_state_to_disk`）
+
+```bash
+CUDA_VISIBLE_DEVICES=0 python tasks/fed_train_sft.py \
+  --model /data/yaominghao/gb/models/Meta-Llama-3.1-8B \
+  --benchmark_dir data/domain_benchmark_35c/seed_42 \
+  --agg_type fedplora-oneshot \
+  --rounds 1 \
+  --local_epochs 1 \
+  --lr 2e-4 \
+  --lora_r 8 \
+  --lora_alpha 16 \
+  --lora_dropout 0.05 \
+  --batch_size 2 \
+  --max_seq_length 2048 \
+  --eval_max_batches 50 \
+  --gradient_checkpointing \
+  --torch_dtype bfloat16 \
+  --target_modules q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj \
+  --save_client_state_to_disk \
+  --yoco_sparse_lambda 1e-4 \
+  --oneshot_anchor_lambda 1e-4 \
+  --oneshot_conflict_threshold 0.35 \
+  --oneshot_conflict_blend 1.0 \
+  --seed 42
+```
+
+#### 10) `fedplora_v3_lite`（v3 残差冲突；单全局 A，见 [FedPLoRAOSv3_README.md](FedPLoRAOSv3_README.md)）
+
+```bash
+CUDA_VISIBLE_DEVICES=0 python tasks/fed_train_sft.py \
+  --model /data/yaominghao/gb/models/Meta-Llama-3.1-8B \
+  --benchmark_dir data/domain_benchmark_35c/seed_42 \
+  --agg_type fedplora_v3_lite \
+  --rounds 1 \
+  --local_epochs 1 \
+  --lr 2e-4 \
+  --lora_r 8 \
+  --lora_alpha 16 \
+  --lora_dropout 0.05 \
+  --batch_size 2 \
+  --max_seq_length 2048 \
+  --eval_max_batches 50 \
+  --gradient_checkpointing \
+  --torch_dtype bfloat16 \
+  --target_modules q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj \
+  --save_client_state_to_disk \
+  --yoco_sparse_lambda 1e-4 \
+  --oneshot_anchor_lambda 1e-4 \
+  --v3_conflict_quantile 0.8 \
+  --v3_gate_temperature 0.05 \
+  --v3_conflict_blend 1.0 \
+  --seed 42
+```
+
+#### 11) `fedplora_v3_cluster`（v3 域簇个性化 A 下发）
+
+```bash
+CUDA_VISIBLE_DEVICES=0 python tasks/fed_train_sft.py \
+  --model /data/yaominghao/gb/models/Meta-Llama-3.1-8B \
+  --benchmark_dir data/domain_benchmark_35c/seed_42 \
+  --agg_type fedplora_v3_cluster \
+  --rounds 1 \
+  --local_epochs 1 \
+  --lr 2e-4 \
+  --lora_r 8 \
+  --lora_alpha 16 \
+  --lora_dropout 0.05 \
+  --batch_size 2 \
+  --max_seq_length 2048 \
+  --eval_max_batches 50 \
+  --gradient_checkpointing \
+  --torch_dtype bfloat16 \
+  --target_modules q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj \
+  --save_client_state_to_disk \
+  --yoco_sparse_lambda 1e-4 \
+  --oneshot_anchor_lambda 1e-4 \
+  --v3_conflict_quantile 0.8 \
+  --v3_gate_temperature 0.05 \
+  --v3_cluster_mode domain_prior \
+  --v3_cluster_lambda_min 0.2 \
+  --v3_cluster_lambda_max 1.0 \
+  --seed 42
+```
+
+#### 12) `fedplora_v3_rpca`（v3 低秩公共 + 稀疏簇残差）
+
+```bash
+CUDA_VISIBLE_DEVICES=0 python tasks/fed_train_sft.py \
+  --model /data/yaominghao/gb/models/Meta-Llama-3.1-8B \
+  --benchmark_dir data/domain_benchmark_35c/seed_42 \
+  --agg_type fedplora_v3_rpca \
+  --rounds 1 \
+  --local_epochs 1 \
+  --lr 2e-4 \
+  --lora_r 8 \
+  --lora_alpha 16 \
+  --lora_dropout 0.05 \
+  --batch_size 2 \
+  --max_seq_length 2048 \
+  --eval_max_batches 50 \
+  --gradient_checkpointing \
+  --torch_dtype bfloat16 \
+  --target_modules q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj \
+  --save_client_state_to_disk \
+  --yoco_sparse_lambda 1e-4 \
+  --oneshot_anchor_lambda 1e-4 \
+  --v3_conflict_quantile 0.8 \
+  --v3_gate_temperature 0.05 \
+  --v3_cluster_mode domain_prior \
+  --v3_rpca_rank 1 \
+  --v3_sparse_quantile 0.8 \
+  --seed 42
+```
+
+**v3 三版对比建议**：三条命令除 `--agg_type` 与 cluster/rpca 专有参数外保持一致；跑完后对比各方法 metrics JSON 中的 `domain_macro_token_accuracy`、`worst_domain_token_accuracy` 与 `fedplora_v3_stats`。也可一键：`bash scripts/RunScripts/run_domain_sft_batch_group5_fedplora_v3.sh 35 0`。
 
 ### 11.1.1 换一套 benchmark（7c / 14c / 21c）
 
@@ -991,7 +1020,8 @@ CUDA_DEVICES=1 ROUNDS=10 bash /path/to/FedPLoRA/scripts/RunScripts/run_domain_sf
 | [run_domain_sft_batch_group1_oneshot_fedalt.sh](scripts/RunScripts/run_domain_sft_batch_group1_oneshot_fedalt.sh) | `fedplora-oneshot` → `fedalt` |
 | [run_domain_sft_batch_group2_yoco_fedsa.sh](scripts/RunScripts/run_domain_sft_batch_group2_yoco_fedsa.sh)         | `yoco` → `fedsa_lora`         |
 | [run_domain_sft_batch_group3_normal.sh](scripts/RunScripts/run_domain_sft_batch_group3_normal.sh)                 | `normal`                      |
-| [run_domain_sft_batch_group4_flora_ffa.sh](scripts/RunScripts/run_domain_sft_batch_group4_flora_ffa.sh)           | `flora` → `ffa`               |
+| [run_domain_sft_batch_group4_flora_ffa.sh](scripts/RunScripts/run_domain_sft_batch_group4_flora_ffa.sh)           | `flora` → `flexlora` → `ffa` → `feddat` |
+| [run_domain_sft_batch_group5_fedplora_v3.sh](scripts/RunScripts/run_domain_sft_batch_group5_fedplora_v3.sh)       | `fedplora_v3_lite` → `fedplora_v3_cluster` → `fedplora_v3_rpca` |
 
 
 **运行示例**（在仓库根目录，或任意路径用 bash 调用下列绝对/相对路径均可；脚本内部会 `cd` 到仓库根）：
@@ -1004,6 +1034,7 @@ bash scripts/RunScripts/run_domain_sft_batch_group1_oneshot_fedalt.sh 35 0
 bash scripts/RunScripts/run_domain_sft_batch_group2_yoco_fedsa.sh 35 1
 bash scripts/RunScripts/run_domain_sft_batch_group3_normal.sh 35 0 
 bash scripts/RunScripts/run_domain_sft_batch_group4_flora_ffa.sh 35 1
+bash scripts/RunScripts/run_domain_sft_batch_group5_fedplora_v3.sh 35 0
 
 # 7 客户端 + 指定物理 GPU 0
 bash scripts/RunScripts/run_domain_sft_batch_group1_oneshot_fedalt.sh 7 0

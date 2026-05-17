@@ -23,13 +23,16 @@ from transformers import (
 
 from utilities.data_utils import *
 from methods.fedavg_normal import aggregate_models_normal
-from methods.fedex import aggregate_models_fedex
 from methods.ffa_lora import aggregate_models_ffa
 from methods.fedp_lora import aggregate_models_fedplora, build_fedplora_upload_package
 from methods.fedplora_oneshot import aggregate_models_fedplora_oneshot
 from methods.yoco import aggregate_models_yoco
 from utilities.models import *
-from utilities.state_dict_ops import broadcast_fedplora_shared_state
+from utilities.state_dict_ops import (
+    broadcast_fedplora_shared_state,
+    extract_round_broadcast_state,
+    load_partial_state_dict,
+)
 from utilities.train_eval import *
 from utilities.utils import (
     is_fedplora_agg,
@@ -44,7 +47,7 @@ from utilities.utils import (
 parser = argparse.ArgumentParser(description="Federated Learning with LoRA")
 
 parser.add_argument(
-    "--agg_type", type=str, default="fedex", help="Type of aggregation"
+    "--agg_type", type=str, default="normal", help="Type of aggregation"
 )
 parser.add_argument("--rounds", type=int, default=6, help="Number of rounds")
 parser.add_argument("--num_clients", type=int, default=3, help="Number of clients")
@@ -179,7 +182,10 @@ def federated_learning(task):
             if is_fedplora_agg(args.agg_type) or is_fedplora_oneshot_agg(args.agg_type):
                 broadcast_fedplora_shared_state(client_model, gp_global_state)
             else:
-                client_model.load_state_dict(global_model.state_dict())
+                load_partial_state_dict(
+                    client_model,
+                    extract_round_broadcast_state(global_model, args.agg_type),
+                )
 
             client_models[client] = train_client_e2e(
                 client_model, client_data[client], val_data, tokenizer, args
@@ -187,10 +193,6 @@ def federated_learning(task):
 
         if args.agg_type == "normal":
             global_model = aggregate_models_normal(global_model, client_models)
-        elif args.agg_type == "fedex":
-            global_model = aggregate_models_fedex(
-                global_model, client_models, args
-            )
         elif is_fedplora_agg(args.agg_type) or is_fedplora_oneshot_agg(args.agg_type):
             client_uploads = [
                 build_fedplora_upload_package(client_models[i], client_sizes[i])

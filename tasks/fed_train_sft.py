@@ -32,15 +32,18 @@ from utilities.data_utils import (
     shutdown_dataloader_workers,
 )
 from methods.fedavg_normal import aggregate_models_normal
-from methods.fedex import aggregate_models_fedex
-from methods.fdlora import aggregate_models_fdlora
 from methods.ffa_lora import aggregate_models_ffa
 from methods.fedsa_lora import aggregate_models_fedsa_lora
 from methods.flora import aggregate_models_flora
-from methods.hetlora import aggregate_models_hetlora
-from methods.lora_a2 import aggregate_models_lora_a2
+from methods.flexlora import aggregate_models_flexlora
+from methods.feddat import aggregate_models_feddat
 from methods.fedp_lora import aggregate_models_fedplora, build_fedplora_upload_package
-from methods.fedplora_oneshot import aggregate_models_fedplora_oneshot
+from methods.fedplora_oneshot import (
+    aggregate_models_fedplora_oneshot,
+    aggregate_models_fedplora_v3_cluster,
+    aggregate_models_fedplora_v3_lite,
+    aggregate_models_fedplora_v3_rpca,
+)
 from methods.fedalt import aggregate_models_fedalt, build_fedalt_upload_package
 from methods.yoco import aggregate_models_yoco
 from utilities.models import (
@@ -52,6 +55,7 @@ from utilities.state_dict_ops import (
     broadcast_fedplora_shared_state,
     extract_fedalt_local_state,
     extract_fedplora_local_state,
+    extract_round_broadcast_state,
     extract_trainable_state_dict,
     load_fedalt_local_state,
     load_fedplora_local_state,
@@ -63,16 +67,17 @@ from utilities.utils import (
     estimate_round_communication_bytes,
     get_fedplora_shared_param_names,
     get_trainable_param_names,
-    is_fdlora_agg,
+    is_flexlora_agg,
+    is_feddat_agg,
     is_flora_agg,
     is_fedalt_agg,
     is_fedalt_sequential_agg,
     is_fedsa_lora_agg,
     is_fedplora_oneshot_agg,
+    is_fedplora_oneshot_family_agg,
+    is_fedplora_v3_agg,
     is_fedplora_shared_param_name,
     is_fedplora_multiround_agg,
-    is_hetlora_agg,
-    is_lora_a2_agg,
     is_lora_a_disk_agg,
     is_lora_a_param_name,
     is_yoco_agg,
@@ -90,7 +95,7 @@ parser.add_argument("--benchmark_output_dir", type=str, default="data/domain_ben
 parser.add_argument("--num_clients_per_domain", type=int, default=5, help="Clients per domain when building benchmark")
 parser.add_argument("--min_samples_per_client", type=int, default=50, help="Minimum samples per client when building benchmark")
 parser.add_argument("--agg_type", type=str, default="fedplora", help="Aggregation type")
-parser.add_argument("--rounds", type=int, default=10)
+parser.add_argument("--rounds", type=int, default=1)
 parser.add_argument("--num_clients", type=int, default=0, help="If 0, infer from benchmark")
 parser.add_argument("--local_epochs", type=int, default=1)
 parser.add_argument("--lr", type=float, default=2e-4)
@@ -245,6 +250,33 @@ parser.add_argument(
     "--oneshot_orthogonalize",
     action="store_true",
     help="FedPLoRA-Oneshot ablation: QR-orthogonalize A rows after aggregation (off by default).",
+)
+parser.add_argument("--v3_conflict_quantile", type=float, default=0.80)
+parser.add_argument("--v3_gate_temperature", type=float, default=0.05)
+parser.add_argument("--v3_conflict_blend", type=float, default=1.0)
+parser.add_argument("--v3_residual_norm_power", type=float, default=1.0)
+parser.add_argument("--v3_residual_eps", type=float, default=1e-7)
+parser.add_argument(
+    "--v3_cluster_mode",
+    type=str,
+    default="domain_prior",
+    help="v3-cluster/rpca: domain_prior | custom (use --v3_domain_cluster_map).",
+)
+parser.add_argument("--v3_cluster_lambda_min", type=float, default=0.2)
+parser.add_argument("--v3_cluster_lambda_max", type=float, default=1.0)
+parser.add_argument("--v3_rpca_rank", type=int, default=1)
+parser.add_argument("--v3_sparse_quantile", type=float, default=0.80)
+parser.add_argument(
+    "--v3_domain_cluster_map",
+    type=str,
+    default="",
+    help="Optional domain:cluster pairs, e.g. math:capability,code:capability",
+)
+parser.add_argument(
+    "--feddat_teacher_lambda",
+    type=float,
+    default=0.01,
+    help="FedDAT: MSE proximal to round-start global LoRA (teacher).",
 )
 parser.add_argument(
     "--eval_max_batches",
@@ -1264,6 +1296,13 @@ def _sft_eval_phase(
         round_payload["fedplora_oneshot_conflict"] = getattr(
             args, "_fedplora_oneshot_conflict_stats", {}
         ).get("_summary", {})
+    if is_fedplora_v3_agg(args.agg_type):
+        round_payload["fedplora_v3_stats"] = getattr(
+            args, "_fedplora_v3_stats", {}
+        ).get("_summary", {})
+        round_payload["fedplora_v3_client_clusters"] = getattr(
+            args, "_fedplora_v3_client_clusters", {}
+        )
     round_payload.update(pfl_block)
     return round_payload
 
@@ -1615,9 +1654,11 @@ def eval_only_from_checkpoint(args):
 
 
 def federated_sft(args):
-    if (is_yoco_agg(args.agg_type) or is_fedplora_oneshot_agg(args.agg_type)) and args.rounds != 1:
-        tag = "YOCO" if is_yoco_agg(args.agg_type) else "FedPLoRA-Oneshot"
-        print(f"[setup] {tag} is one-shot: forcing --rounds 1")
+    if int(args.rounds) != 1:
+        print(
+            f"[setup] one-round comparison: forcing --rounds 1 (CLI had {args.rounds})",
+            flush=True,
+        )
         args.rounds = 1
 
     benchmark, split_dir = build_or_load_benchmark(args)
@@ -1640,6 +1681,8 @@ def federated_sft(args):
     client_sizes = [len(dl.dataset) for dl in client_dataloaders]
     args.num_clients = len(client_ids)
     args._runtime_client_sizes = client_sizes
+    args._fedplora_client_domains = _client_id_to_home_domain(benchmark["clients"])
+    args._fedplora_round_client_ids = list(client_ids)
     _relocate_legacy_artifact_dirs(args, args.num_clients)
     _maybe_apply_default_save_run_checkpoint_dir(args, split_dir)
     if _try_skip_if_run_fully_complete(args, split_dir, client_ids):
@@ -1738,7 +1781,7 @@ def federated_sft(args):
             "personalization_gap_perplexity",
         ]
 
-    if is_fedplora_oneshot_agg(args.agg_type):
+    if is_fedplora_oneshot_family_agg(args.agg_type):
         args._fedplora_initial_A = initial_A_for_oneshot
 
     client_states_for_agg = []
@@ -1771,14 +1814,12 @@ def federated_sft(args):
                 if is_lora_a_param_name(k)
             }
         else:
-            round_global_state = {
-                k: v.detach().cpu().clone() for k, v in global_model.state_dict().items()
-            }
+            # Trainable LoRA + heads only (not full backbone clone).
+            round_global_state = extract_round_broadcast_state(global_model, args.agg_type)
 
         client_states_for_agg = []
         fedplora_uploads = []
         fedalt_uploads = []
-        args._lora_a2_train_round = round_idx
         for i, client_id in enumerate(client_ids):
             args._tqdm_desc = f"R{round_idx + 1}/{args.rounds} client{i + 1}/{args.num_clients}"
             if is_lora_a_disk_agg(args.agg_type):
@@ -1790,12 +1831,21 @@ def federated_sft(args):
                 load_fedalt_local_state(global_model, local_state)
             else:
                 load_partial_state_dict(global_model, round_global_state)
+                if is_feddat_agg(args.agg_type):
+                    args._feddat_teacher_state = round_global_state
             train_client(global_model, client_dataloaders[i], args, client_idx=i)
             if nw > 0:
                 shutdown_dataloader_workers(client_dataloaders[i])
             if is_lora_a_disk_agg(args.agg_type):
+                cid = int(client_ids[i])
+                dom = (getattr(args, "_fedplora_client_domains", {}) or {}).get(cid, "unknown")
                 fedplora_uploads.append(
-                    build_fedplora_upload_package(global_model, client_sizes[i])
+                    build_fedplora_upload_package(
+                        global_model,
+                        client_sizes[i],
+                        client_id=cid,
+                        domain=dom,
+                    )
                 )
             elif is_fedalt_sequential_agg(args.agg_type):
                 fedalt_uploads.append(
@@ -1830,10 +1880,6 @@ def federated_sft(args):
         )
         if args.agg_type == "normal":
             global_model = aggregate_models_normal(global_model, client_states_for_agg)
-        elif args.agg_type == "fedex":
-            global_model = aggregate_models_fedex(
-                global_model, client_states_for_agg, args
-            )
         elif args.agg_type == "ffa":
             global_model = aggregate_models_ffa(global_model, client_states_for_agg)
         elif is_fedplora_multiround_agg(args.agg_type):
@@ -1849,6 +1895,31 @@ def federated_sft(args):
                     f"init_gate={stats.get('mean_init_gate', float('nan')):.4f}",
                     flush=True,
                 )
+        elif is_fedplora_v3_agg(args.agg_type):
+            norm = (args.agg_type or "").strip().lower().replace("-", "_")
+            if norm in {"fedplora_v3_lite", "v3_lite"}:
+                global_model = aggregate_models_fedplora_v3_lite(
+                    global_model, fedplora_uploads, args
+                )
+            elif norm in {"fedplora_v3_cluster", "v3_cluster"}:
+                global_model = aggregate_models_fedplora_v3_cluster(
+                    global_model, fedplora_uploads, args
+                )
+            elif norm in {"fedplora_v3_rpca", "v3_rpca"}:
+                global_model = aggregate_models_fedplora_v3_rpca(
+                    global_model, fedplora_uploads, args
+                )
+            else:
+                raise ValueError(f"Unknown v3 agg_type: {args.agg_type}")
+            v3_summ = getattr(args, "_fedplora_v3_stats", {}).get("_summary", {})
+            if v3_summ:
+                print(
+                    f"[fedplora-v3] variant={v3_summ.get('variant', norm)} "
+                    f"mean_conflict={v3_summ.get('mean_conflict', float('nan')):.4f} "
+                    f"high_row_frac={v3_summ.get('high_conflict_row_frac', float('nan')):.4f} "
+                    f"num_clusters={v3_summ.get('num_clusters', 0)}",
+                    flush=True,
+                )
         elif is_yoco_agg(args.agg_type):
             args._aggregate_client_sizes = client_sizes
             global_model = aggregate_models_yoco(global_model, client_states_for_agg, args)
@@ -1860,15 +1931,18 @@ def federated_sft(args):
                     _set_client_rotw_state(client_store, client_id, rotw_list[i])
         elif is_fedsa_lora_agg(args.agg_type):
             global_model = aggregate_models_fedsa_lora(global_model, fedplora_uploads, args)
-        elif is_hetlora_agg(args.agg_type):
-            global_model = aggregate_models_hetlora(global_model, client_states_for_agg, args)
         elif is_flora_agg(args.agg_type):
             global_model = aggregate_models_flora(global_model, client_states_for_agg, args)
-        elif is_lora_a2_agg(args.agg_type):
-            args._lora_a2_agg_round = round_idx
-            global_model = aggregate_models_lora_a2(global_model, client_states_for_agg, args)
-        elif is_fdlora_agg(args.agg_type):
-            global_model = aggregate_models_fdlora(global_model, client_states_for_agg, args)
+        elif is_flexlora_agg(args.agg_type):
+            args._aggregate_client_sizes = client_sizes
+            global_model = aggregate_models_flexlora(
+                global_model, client_states_for_agg, args
+            )
+        elif is_feddat_agg(args.agg_type):
+            args._aggregate_client_sizes = client_sizes
+            global_model = aggregate_models_feddat(
+                global_model, client_states_for_agg, args
+            )
         else:
             raise ValueError(f"Unknown agg_type: {args.agg_type}")
 
