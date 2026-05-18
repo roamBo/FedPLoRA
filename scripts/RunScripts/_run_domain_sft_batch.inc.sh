@@ -129,7 +129,9 @@ domain_sft_run_batch() {
     if [[ "${AGG_TYPE}" == "yoco" ]]; then
       CMD+=(
         --yoco_sparse_lambda "${YOCO_SPARSE_LAMBDA}"
-        --yoco_pcwa_components "${YOCO_PCWA_COMPONENTS}"
+        --yoco_aggregate_mode "${YOCO_AGGREGATE_MODE:-conflict}"
+        --yoco_conflict_method "${YOCO_CONFLICT_METHOD:-avgm}"
+        --yoco_sign_lambda "${YOCO_SIGN_LAMBDA:-0.01}"
       )
     fi
 

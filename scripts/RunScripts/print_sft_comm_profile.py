@@ -110,10 +110,9 @@ def main():
             f"{r['agg_type']:<20} {d:>14} {u:>14} {d/1048576:>10.2f} {u/1048576:>10.2f}"
         )
     print(
-        "[note] FedPLoRA / fedplora-oneshot / fedsa_lora: A(+heads) uplink (+ row stats for FedPLoRA); "
-        "fedalt: Individual LoRA A+B up, personalized RoTW A+B down; "
-        "yoco / normal: full trainable LoRA A+B (+ heads); "
-        "ffa: special (see utilities/utils.py)."
+        "[note] All methods count LoRA (+ heads) only; frozen backbone is never in link budget. "
+        "FedPLoRA / oneshot / fedsa: A+heads (+ row stats uplink); fedalt: personalized A+B; "
+        "ffa: B+heads only; normal/flora/flexlora/feddat/yoco: A+B+heads."
     )
 
 

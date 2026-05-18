@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Single method: yoco (YOCO / PCWA one-shot). Speed flags via _fed_train_speed.inc.sh / env.
+# Single method: yoco (FedMLLM conflict one-shot). Speed flags via _fed_train_speed.inc.sh / env.
 #
 # Usage (from repo root):
 #   bash scripts/RunScripts/run_domain_sft_yoco.sh [7|14|21|35] [gpu]
@@ -50,7 +50,9 @@ TARGET_MODULES="${TARGET_MODULES:-q_proj,k_proj,v_proj,o_proj,up_proj,down_proj,
 CLIENT_STATE_DIR="${CLIENT_STATE_DIR:-artifacts/domain_client_states}"
 TRUST_REMOTE_CODE="${TRUST_REMOTE_CODE:-0}"
 YOCO_SPARSE_LAMBDA="${YOCO_SPARSE_LAMBDA:-1e-4}"
-YOCO_PCWA_COMPONENTS="${YOCO_PCWA_COMPONENTS:-3}"
+YOCO_AGGREGATE_MODE="${YOCO_AGGREGATE_MODE:-conflict}"
+YOCO_CONFLICT_METHOD="${YOCO_CONFLICT_METHOD:-avgm}"
+YOCO_SIGN_LAMBDA="${YOCO_SIGN_LAMBDA:-0.01}"
 EVAL_MAX_BATCHES="${EVAL_MAX_BATCHES:-50}"
 
 AGG_TYPE="yoco"
@@ -73,9 +75,10 @@ CMD=(
   --target_modules "${TARGET_MODULES}"
   --client_state_dir "${CLIENT_STATE_DIR}"
   --gradient_checkpointing
-  --save_client_state_to_disk
   --yoco_sparse_lambda "${YOCO_SPARSE_LAMBDA}"
-  --yoco_pcwa_components "${YOCO_PCWA_COMPONENTS}"
+  --yoco_aggregate_mode "${YOCO_AGGREGATE_MODE}"
+  --yoco_conflict_method "${YOCO_CONFLICT_METHOD}"
+  --yoco_sign_lambda "${YOCO_SIGN_LAMBDA}"
 )
 if [[ -n "${EVAL_MAX_BATCHES}" && "${EVAL_MAX_BATCHES}" != "0" ]]; then
   CMD+=(--eval_max_batches "${EVAL_MAX_BATCHES}")
