@@ -135,6 +135,34 @@ def _add_fedplora_regularization(loss, model, args):
     return loss
 
 
+def _add_yoco_sign_regularizer(loss, model, args):
+    """B sign consistency vs round-start global LoRA (FedMLLM / YOCO-style)."""
+    if not is_yoco_agg(getattr(args, "agg_type", None)):
+        return loss
+    ref = getattr(args, "_yoco_round_start_trainable", None)
+    if not isinstance(ref, dict) or not ref:
+        return loss
+    lam = float(getattr(args, "yoco_sign_lambda", 0.0))
+    if lam <= 0:
+        return loss
+    terms = []
+    for key, p in model.named_parameters():
+        if "lora_B" not in key or not key.endswith("default.weight") or not p.requires_grad:
+            continue
+        if key not in ref:
+            continue
+        b0 = ref[key]
+        if b0.device != p.device or b0.dtype != p.dtype:
+            b0 = b0.to(device=p.device, dtype=p.dtype)
+        if tuple(b0.shape) != tuple(p.shape):
+            continue
+        # Penalize element-wise sign disagreement with broadcast global B at round start.
+        terms.append(torch.relu(-torch.sign(p.float()) * torch.sign(b0.float())).mean())
+    if terms:
+        loss = loss + lam * torch.stack(terms).mean()
+    return loss
+
+
 def _add_yoco_sparse(loss, model, args):
     agg = getattr(args, "agg_type", None)
     if not (is_yoco_agg(agg) or is_fedplora_oneshot_family_agg(agg)):
@@ -307,6 +335,7 @@ def train_client(model, dataloader, args, client_idx=0):
                     loss = _add_fedplora_regularization(loss, model, args)
                     loss = _add_yoco_sparse(loss, model, args)
                     loss = _add_fedplora_oneshot_anchor(loss, model, args)
+                    loss = _add_yoco_sign_regularizer(loss, model, args)
                     loss = _add_feddat_teacher_regularizer(loss, model, args)
 
                 scaler.scale(loss).backward()

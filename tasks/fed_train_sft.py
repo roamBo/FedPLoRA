@@ -80,6 +80,7 @@ from utilities.utils import (
     is_fedplora_multiround_agg,
     is_lora_a_disk_agg,
     is_lora_a_param_name,
+    is_memory_global_agg_agg,
     is_yoco_agg,
     restore_logging,
     setup_run_logging,
@@ -191,7 +192,39 @@ parser.add_argument(
     "--yoco_pcwa_components",
     type=int,
     default=3,
-    help="YOCO: number of principal directions for PCWA weights (<= n_clients-1).",
+    help="Legacy CLI (unused by server); kept for batch script compatibility.",
+)
+parser.add_argument(
+    "--yoco_aggregate_mode",
+    type=str,
+    default="conflict",
+    choices=["conflict", "fedavg"],
+    help="YOCO server: 'conflict' = FedMLLM aggregate_lora_weights (B-similarity); "
+    "'fedavg' = legacy sample-size FedAvg (old checkpoints).",
+)
+parser.add_argument(
+    "--yoco_conflict_method",
+    type=str,
+    default="avgm",
+    choices=["avgm", "mean"],
+    help="FedMLLM conflict branch inner method (default avgm).",
+)
+parser.add_argument(
+    "--yoco_sign_lambda",
+    type=float,
+    default=0.01,
+    help="YOCO local training: sign consistency penalty on LoRA B vs round-start global B.",
+)
+parser.add_argument(
+    "--yoco_eval_use_local_clients",
+    action="store_true",
+    help="YOCO eval legacy alias for --memory_agg_eval_use_local_clients.",
+)
+parser.add_argument(
+    "--memory_agg_eval_use_local_clients",
+    action="store_true",
+    help="Memory-agg global methods (normal/ffa/flora/flexlora/feddat/yoco): eval each "
+    "client's local LoRA instead of server-aggregated global LoRA.",
 )
 parser.add_argument(
     "--oneshot_consensus_power",
@@ -1097,6 +1130,34 @@ def _metrics_recommended_kpis(include_personalization: bool) -> dict:
 RUN_CHECKPOINT_VERSION = 1
 
 
+def _memory_agg_eval_use_local_clients(args):
+    return bool(
+        getattr(args, "memory_agg_eval_use_local_clients", False)
+        or (
+            is_yoco_agg(getattr(args, "agg_type", None))
+            and getattr(args, "yoco_eval_use_local_clients", False)
+        )
+    )
+
+
+def _reaggregate_memory_global_model(global_model, client_states_for_agg, args):
+    """Rebuild server global trainable state from client uploads (eval-only / sanity)."""
+    agg = args.agg_type
+    if agg == "normal":
+        return aggregate_models_normal(global_model, client_states_for_agg)
+    if agg == "ffa":
+        return aggregate_models_ffa(global_model, client_states_for_agg)
+    if is_yoco_agg(agg):
+        return aggregate_models_yoco(global_model, client_states_for_agg, args)
+    if is_flora_agg(agg):
+        return aggregate_models_flora(global_model, client_states_for_agg, args)
+    if is_flexlora_agg(agg):
+        return aggregate_models_flexlora(global_model, client_states_for_agg, args)
+    if is_feddat_agg(agg):
+        return aggregate_models_feddat(global_model, client_states_for_agg, args)
+    raise ValueError(f"No memory-global re-aggregate handler for agg_type={agg!r}")
+
+
 def _sft_eval_phase(
     global_model,
     client_ids,
@@ -1140,20 +1201,38 @@ def _sft_eval_phase(
                 args,
             )
     else:
-        # In-memory client states: avoid writing 35× full state_dicts to disk before eval (major wall-clock win).
         eval_client_ids = list(range(len(client_states_for_agg)))
-        eval_store = {
-            "mode": "memory",
-            "local_states": {
-                idx: client_states_for_agg[idx] for idx in eval_client_ids
-            },
-        }
+        if is_memory_global_agg_agg(args.agg_type) and not _memory_agg_eval_use_local_clients(
+            args
+        ):
+            global_eval = extract_trainable_state_dict(global_model)
+            eval_store = {
+                "mode": "memory",
+                "local_states": {idx: global_eval for idx in eval_client_ids},
+            }
+            print(
+                f"[eval] {args.agg_type}: server-aggregated global LoRA for all clients",
+                flush=True,
+            )
+        else:
+            eval_store = {
+                "mode": "memory",
+                "local_states": {
+                    idx: client_states_for_agg[idx] for idx in eval_client_ids
+                },
+            }
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         by_domain = group_rows_by_domain(benchmark["test_domain"])
         eval_cap = int(getattr(args, "eval_max_batches", 0) or 0)
         domains_sorted = sorted(by_domain.items())
+        eval_mode = (
+            "aggregated global LoRA"
+            if is_memory_global_agg_agg(args.agg_type)
+            and not _memory_agg_eval_use_local_clients(args)
+            else "per-client local trainable snapshots"
+        )
         print(
-            f"[eval] memory-agg clients (trainable snapshots): {len(domains_sorted)} domains × "
+            f"[eval] memory-agg ({eval_mode}): {len(domains_sorted)} domains × "
             f"{len(eval_client_ids)} clients; eval_max_batches={eval_cap or 'all'}",
             flush=True,
         )
@@ -1584,6 +1663,24 @@ def eval_only_from_checkpoint(args):
         for idx, st in enumerate(client_states_for_agg):
             torch.save(st, _client_state_path(scratch, idx))
         client_store = {"mode": "disk", "state_dir": scratch}
+        if is_memory_global_agg_agg(args.agg_type):
+            args._aggregate_client_sizes = [
+                len(by_c.get(int(cid), [])) for cid in client_ids
+            ]
+            extra = ""
+            if is_yoco_agg(args.agg_type):
+                extra = (
+                    f" yoco_aggregate_mode="
+                    f"{getattr(args, 'yoco_aggregate_mode', 'conflict')}"
+                )
+            print(
+                f"[eval-only] {args.agg_type}: re-aggregating "
+                f"{len(client_states_for_agg)} client uploads{extra}",
+                flush=True,
+            )
+            global_model = _reaggregate_memory_global_model(
+                global_model, client_states_for_agg, args
+            )
 
     comm_info = estimate_round_communication_bytes(
         global_model.state_dict(),
@@ -1816,6 +1913,10 @@ def federated_sft(args):
         else:
             # Trainable LoRA + heads only (not full backbone clone).
             round_global_state = extract_round_broadcast_state(global_model, args.agg_type)
+            if is_yoco_agg(args.agg_type):
+                args._yoco_round_start_trainable = {
+                    k: v.detach().cpu().clone() for k, v in round_global_state.items()
+                }
 
         client_states_for_agg = []
         fedplora_uploads = []

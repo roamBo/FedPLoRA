@@ -84,6 +84,25 @@ def is_fedalt_agg(agg_type):
     return _norm_agg_type(agg_type) == "fedalt"
 
 
+def is_ffa_agg(agg_type):
+    return _norm_agg_type(agg_type) == "ffa"
+
+
+def is_memory_global_agg_agg(agg_type):
+    """
+    In-memory FL: server fuses client LoRA into one global trainable state each round.
+    Domain-macro eval should use that aggregated LoRA (not per-client local snapshots).
+    """
+    return _norm_agg_type(agg_type) in {
+        "normal",
+        "ffa",
+        "flora",
+        "flexlora",
+        "feddat",
+        "yoco",
+    }
+
+
 def is_lora_param_name(key):
     return "lora" in key
 
@@ -197,8 +216,6 @@ def estimate_round_communication_bytes(
                 total += int(v.shape[0] * 4)
         return total
 
-    full_model = sum(_tensor_bytes_comm(v) for v in sd.values())
-
     lora_all = _sum_bytes_state_dict(sd, is_lora_param_name)
     lora_a = _sum_bytes_state_dict(sd, is_lora_a_param_name)
     lora_b = _sum_bytes_state_dict(sd, is_lora_b_param_name)
@@ -217,19 +234,17 @@ def estimate_round_communication_bytes(
         # FedALT: uplink Individual LoRA A+B; downlink personalized RoTW LoRA A+B.
         down = lora_all + task_head
         up = lora_all + task_head
-    elif agg_type == "ffa":
-        down = full_model
+    elif is_ffa_agg(agg_type):
+        # FFA: frozen shared A; broadcast / aggregate B (+ heads) only.
+        down = lora_b + task_head
         up = lora_b + task_head
-    elif agg_type in {"flexlora", "flora"}:
-        down = full_model
-        up = lora_all + task_head
-    elif agg_type == "feddat":
-        down = full_model
+    elif is_memory_global_agg_agg(agg_type):
+        # normal / flora / flexlora / feddat / yoco: trainable LoRA A+B + heads (no frozen backbone).
+        down = lora_all + task_head
         up = lora_all + task_head
     else:
-        # Includes yoco (NeurIPS 2025 / FedMLLM): full trainable LoRA uplink (A+B) + heads,
-        # same as FedAvg-style LoRA baselines (normal, …).
-        down = full_model
+        # Fallback: never count frozen backbone in link budget.
+        down = lora_all + task_head
         up = lora_all + task_head
 
     return {"down_bytes_per_client": down, "up_bytes_per_client": up}
