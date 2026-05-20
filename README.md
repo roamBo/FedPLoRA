@@ -502,8 +502,8 @@ cat data/domain_benchmark_35c/seed_42/clients.json | head
 - **消融**：`**run_exp_ablation_fedplora.sh`** 按你的要求**不改实验设计**；已默认带 `**EVAL_MAX_BATCHES`** 以加快 eval。
 - **GPU**：上述脚本均 `**source configs/cuda_resolve.inc.sh`**：优先环境变量 `**CUDA_DEVICES`**，否则可选 **命令行第二参数（或 comm 脚本的第一参数）** 传 `0`、`1`、`0,1`；再否则 **nvidia-smi 选空闲显存最大的单卡**。
 - **加快 eval**：全局环境变量 `**EVAL_MAX_BATCHES=50`**（已在 `domain_sft_*.env` 与各 RunScripts 默认）；主表全量测评前设为 `**0`** 或 **unset** 并去掉命令行中的 `--eval_max_batches`。
-- **一次训练，多次实验**：未手填 `--save_run_checkpoint_dir` 时，Python 默认把 bundle 写到 **仓库同级** `**../trained_models/<stem>/`**（无时间戳）。两类落盘与自动恢复：① eval 前（每轮聚合后、`snapshots/round_XXX_post_agg/`）：与紧接着要跑的 `_sft_eval_phase` 同一份 `global_shared.pt` / `full_clients.pt` + `clients/`** + meta，仅缺当轮 eval 指标；若再次启动且 meta 与当前 CLI 一致，则 跳过训练、只做 eval-only（防 eval 阶段崩溃白训）。② eval 后（全部 rounds 跑完且已写 metrics JSON 之后、根目录最终保存）：根下 `**checkpoint_ok.json**` 的 `**checkpoint_phase: final**`；若检测到，则 **训练与评估均跳过**（本方法本次配置已完整跑完）。失败落盘为同级 `**…_failed/`**。**防白训**靠 `save_run_checkpoint_dir`（默认自动启用）与 `artifacts_{N}c/sft_metrics/`；`**--save_client_state_to_disk`** 仅用于 **FedP / FedSA / FedALT 磁盘顺序协议**（见下），与 YOCO 无关。手动复评：`**python tasks/fed_train_sft.py --eval_only_from_checkpoint <子目录或根> ...`**。强制重训：`**--force_retrain**`。  
-**哪些实验能复用该目录见下表**（个性化补评、改 eval 截断等 能；换方法、通信 profiling 不能 / 不必）。Oneshot 的 conflict 摘要会写入 `**run_checkpoint_meta.json`**，eval-only 时会写回 `**rounds[].fedplora_oneshot_conflict**`。
+- **一次训练，多次实验**：未手填 `--save_run_checkpoint_dir` 时，Python 默认把 bundle 写到 **仓库同级** `**../trained_models/<stem>/`**（无时间戳）。两类落盘与自动恢复：① eval 前（每轮聚合后、`snapshots/round_XXX_post_agg/`）：与紧接着要跑的 `_sft_eval_phase` 同一份 `global_shared.pt` / `full_clients.pt` + `clients/`** + meta，仅缺当轮 eval 指标；若再次启动且 meta 与当前 CLI 一致，则 跳过训练、只做 eval-only（防 eval 阶段崩溃白训）。② eval 后（全部 rounds 跑完且已写 metrics JSON 之后、根目录最终保存）：根下 `**checkpoint_ok.json**` 的 `**checkpoint_phase: final**`；若检测到，则 **训练与评估均跳过**（本方法本次配置已完整跑完）。失败落盘为同级 `**…_failed/`**。防白训靠 `save_run_checkpoint_dir`（默认自动启用）与 `artifacts_{N}c/sft_metrics/`；`**--save_client_state_to_disk`** 仅用于 **FedP / FedSA / FedALT 磁盘顺序协议**（见下），与 YOCO 无关。手动复评：`**python tasks/fed_train_sft.py --eval_only_from_checkpoint <子目录或根> ...`**。强制重训：`**--force_retrain`**。**  
+**哪些实验能复用该目录见下表（个性化补评、改 eval 截断等 能；换方法、通信 profiling 不能 / 不必）。Oneshot 的 conflict 摘要会写入 `**run_checkpoint_meta.json`**，eval-only 时会写回 `**rounds[].fedplora_oneshot_conflict**`。
 
 ### 11.1 直接用准备好的 benchmark 训练（推荐：逐方法手敲命令）
 
@@ -534,11 +534,11 @@ set +a
 
 **保存训练结果（run checkpoint，默认启用）**
 
-- 默认 bundle 根：`**<仓库>/../trained_models/<stem>/`**。可用 `**TRAINED_MODELS_ROOT**` / `**--trained_models_root**` 改父目录；完全不要自动落盘：`**--no_auto_save_run_checkpoint**`。
+- 默认 bundle 根：`**<仓库>/../trained_models/<stem>/`**。可用 `**TRAINED_MODELS_ROOT`** / `**--trained_models_root**` 改父目录；完全不要自动落盘：`**--no_auto_save_run_checkpoint**`。
 - **eval 前 vs eval 后（内容是否一样？）**：**权重张量与 eval 前一刻一致**。eval 前快照里已是聚合后的 `global_shared`（或 `full_clients`）及各客户端磁盘状态拷贝，**就是**紧接着 `_sft_eval_phase` 会加载做前向的那套；eval 本身不反传、不改权重。eval 后在根目录再写一遍最终 bundle，**权重与当轮聚合结果相同**（最后一轮），额外多的是已写入磁盘的 **metrics JSON 路径**记在 meta 里。因此用 eval 前快照做 `--eval_only_from_checkpoint`，与「当时若 eval 没挂跑出来的前向」一致，**不会白训聚合阶段**。
 - **自动恢复顺序**（`--force_retrain` 时均不启用）：若根目录 `checkpoint_ok.json` 为 `**final`** → 本方法本次配置 **训练 + eval 均跳过**；否则若存在最新的 `snapshots/round_XXX_post_agg/` 且其中 `checkpoint_ok` + meta 与当前 CLI 一致 → **只跳过训练、跑 eval-only**；否则正常训练。
-- 每条目录内有 `**run_checkpoint_meta.json`** + `**full_clients.pt**`（内存聚合方法下为各客户端 **可训练快照** 列表，`meta.memory_agg_client_payload` 为 `trainable_only`）或 `**global_shared.pt` + `clients/`****（磁盘协议）。每轮 eval 前另有 `**snapshots/round_XXX_post_agg/`**（除非 `--skip_post_agg_snapshots`）。失败为 `**…_failed/**` + `checkpoint_failed.json`。
-- 需要磁盘协议的方法（`**fedplora**`、`**fedplora-oneshot**`、`**fedsa_lora**` / `**fedsa**`、`**fedalt**`）：**必须保留** `**--save_client_state_to_disk`**，否则写 checkpoint 时可能缺 `client_*.pt`。`**yoco**` / `**normal**` 等为内存聚合、**不需要**该 flag；`full_clients.pt` 存的是可训练张量而非整模的 N 份重复。
+- 每条目录内有 `**run_checkpoint_meta.json`** + `**full_clients.pt`**（内存聚合方法下为各客户端 **可训练快照** 列表，`meta.memory_agg_client_payload` 为 `trainable_only`）或 `**global_shared.pt` + `clients/`****（磁盘协议）。每轮 eval 前另有 `**snapshots/round_XXX_post_agg/`**（除非 `--skip_post_agg_snapshots`）。失败为 `**…_failed/`** + `checkpoint_failed.json`。
+- 需要磁盘协议的方法（`**fedplora**`、`**fedplora-oneshot**`、`**fedsa_lora**` / `**fedsa**`、`**fedalt**`）：**必须保留** `**--save_client_state_to_disk`**，否则写 checkpoint 时可能缺 `client_*.pt`。`**yoco`** / `**normal**` 等为内存聚合、**不需要**该 flag；`full_clients.pt` 存的是可训练张量而非整模的 N 份重复。
 
 `**../trained_models/<stem>/` 在哪些实验里能重复用？**
 
@@ -555,11 +555,11 @@ set +a
 `**fedplora-oneshot`、`yoco`、`fedalt`（与官方实现对齐后的协议）**
 
 
-| 方法                 | 上行（客户端→服务端）                 | 下行（服务端→客户端）                        | 服务端聚合                                                                           | 磁盘协议                                              |
-| ------------------ | --------------------------- | ---------------------------------- | ------------------------------------------------------------------------------- | ------------------------------------------------- |
-| `fedplora-oneshot` | LoRA **A** + 头 + 行统计        | 全局 **A** + 头                       | 冲突门控（`aggregate_models_fedplora_oneshot`）                                       | 需要 `--save_client_state_to_disk`（B 本地）            |
-| `yoco`             | 全量可训练 LoRA **A+B** + 头（通信统计不含冻结基座） | 聚合后全局 LoRA（单轮） | **FedMLLM `conflict` → `aggregate_lora_weights`**（默认）；`--yoco_aggregate_mode fedavg` 为旧版 | **不需要**；checkpoint 用 `full_clients.pt` |
-| `fedalt`           | Individual LoRA **A+B** + 头 | 个性化 RoTW **A+B**（leave-one-out 均值） | `aggregate_models_fedalt`（[FedALT/server.py](https://github.com/jmbian/FedALT)） | 需要 `--save_client_state_to_disk`（local + RoTW 快照） |
+| 方法                 | 上行（客户端→服务端）                        | 下行（服务端→客户端）                        | 服务端聚合                                                                                    | 磁盘协议                                              |
+| ------------------ | ---------------------------------- | ---------------------------------- | ---------------------------------------------------------------------------------------- | ------------------------------------------------- |
+| `fedplora-oneshot` | LoRA **A** + 头 + 行统计               | 全局 **A** + 头                       | 冲突门控（`aggregate_models_fedplora_oneshot`）                                                | 需要 `--save_client_state_to_disk`（B 本地）            |
+| `yoco`             | 全量可训练 LoRA **A+B** + 头（通信统计不含冻结基座） | 聚合后全局 LoRA（单轮）                     | **FedMLLM `conflict` → `aggregate_lora_weights`**（默认）；`--yoco_aggregate_mode fedavg` 为旧版 | **不需要**；checkpoint 用 `full_clients.pt`            |
+| `fedalt`           | Individual LoRA **A+B** + 头        | 个性化 RoTW **A+B**（leave-one-out 均值） | `aggregate_models_fedalt`（[FedALT/server.py](https://github.com/jmbian/FedALT)）          | 需要 `--save_client_state_to_disk`（local + RoTW 快照） |
 
 
 - `fedplora-oneshot` 与 `yoco` 均为单轮（入口强制 `--rounds 1`），但上传形态与服务端聚合**已分叉**（上表）。
@@ -953,7 +953,7 @@ CUDA_VISIBLE_DEVICES=0,1 python tasks/fed_train_sft.py \
 
 `/data/yaominghao/gb/models/Meta-Llama-3.1-8B`
 
-**聚合类型说明**：多轮 `**fedplora`** 为 **FedP-LoRA**（上传 `A`+头+行统计；`aggregate_models_fedplora`；本地对齐/近端/正交正则）。`**fedplora-oneshot`**：仍只上传 `**A`+头**（`B` 本地），单轮 **冲突门控**（`aggregate_models_fedplora_oneshot`）。`**yoco`**：上传全量 LoRA A+B+头，单轮 **FedMLLM `conflict` 聚合**（`aggregate_models_yoco`，默认 `aggregate_lora_weights`）；与 oneshot 不是同一路径。`**fedalt`**：上传 Individual **A+B**，下行个性化 RoTW **A+B**（`aggregate_models_fedalt`）。批量脚本 `_run_domain_sft_batch.inc.sh` 仅对 FedP/FedSA/FedALT 自动加 `--save_client_state_to_disk`，**不含** `yoco`。
+**聚合类型说明**：多轮 `**fedplora`** 为 **FedP-LoRA**（上传 `A`+头+行统计；`aggregate_models_fedplora`；本地对齐/近端/正交正则）。`**fedplora-oneshot`**：仍只上传 `**A`+头**（`B` 本地），单轮 **冲突门控**（`aggregate_models_fedplora_oneshot`）。`**yoco`**：上传全量 LoRA A+B+头，单轮 FedMLLM `conflict` 聚合（`aggregate_models_yoco`，默认 `aggregate_lora_weights`）；与 oneshot 不是同一路径。`**fedalt`**：上传 Individual **A+B**，下行个性化 RoTW **A+B**（`aggregate_models_fedalt`）。批量脚本 `_run_domain_sft_batch.inc.sh` 仅对 FedP/FedSA/FedALT 自动加 `--save_client_state_to_disk`，**不含** `yoco`。
 
 #### 11.3.1 单次实验（pilot）
 
@@ -1295,13 +1295,13 @@ bash scripts/RunScripts/run_exp_personalization.sh 35 1
 **代码含义（与 `utilities/utils.py` → `estimate_round_communication_bytes` 对照）**
 
 
-| 通信档位                           | `agg_type`                                                   | 上行（约）             | 下行（约）                      |
-| ------------------------------ | ------------------------------------------------------------ | ----------------- | -------------------------- |
-| **低：仅 A + 头**（+ FedPLoRA 行统计）  | `fedplora`、`fedplora-oneshot`                                | A + head（+ stats） | A + head                   |
-| **低：仅 A + 头**                  | `fedsa_lora` / `fedsa`                                       | A + head          | A + head                   |
-| **中：全 LoRA A+B + 头**           | `normal`、`yoco`、`flora`、`flexlora`、`feddat`                  | A + B + head      | A + B + head（无冻结基座）     |
-| **高：Individual / RoTW 双套 A+B** | `fedalt`                                                     | A + B + head      | **个性化** A + B + head（RoTW） |
-| **低：仅 B + 头（A 冻结）**          | `ffa`                                                        | B + head          | B + head                   |
+| 通信档位                           | `agg_type`                                  | 上行（约）             | 下行（约）                      |
+| ------------------------------ | ------------------------------------------- | ----------------- | -------------------------- |
+| **低：仅 A + 头**（+ FedPLoRA 行统计）  | `fedplora`、`fedplora-oneshot`               | A + head（+ stats） | A + head                   |
+| **低：仅 A + 头**                  | `fedsa_lora` / `fedsa`                      | A + head          | A + head                   |
+| **中：全 LoRA A+B + 头**           | `normal`、`yoco`、`flora`、`flexlora`、`feddat` | A + B + head      | A + B + head（无冻结基座）        |
+| **高：Individual / RoTW 双套 A+B** | `fedalt`                                    | A + B + head      | **个性化** A + B + head（RoTW） |
+| **低：仅 B + 头（A 冻结）**            | `ffa`                                       | B + head          | B + head                   |
 
 
 - **FedPLoRA 族**（`fedplora` / `fedplora-oneshot` / `fedsa_lora`）通信约为 **YOCO / FedALT 全 LoRA 路径的一半量级**（只传 A，不传 B）。
@@ -1365,14 +1365,14 @@ bash scripts/RunScripts/run_exp_comm_profile.sh 1
 **C. 论文可写、但需你自编实验（本仓库未写死成消融行）**
 
 
-| 方向                       | 说明                                                                                                                                                               |
-| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 方向                       | 说明                                                                                                                       |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------ |
 | **YOCO 服务端变体**           | 默认 `--yoco_aggregate_mode conflict`（FedMLLM `aggregate_lora_weights`）；`fedavg` 为旧版；`--yoco_pcwa_components` 仍保留 CLI 但未接线 |
-| **稀疏强度扫描**               | 扫 `yoco_sparse_lambda`（如 `0,1e-5,1e-4,1e-3`），对 `fedplora-oneshot` 与 `yoco` 均影响本地                                                                                 |
-| **冲突门控扫描**               | 对 `**fedplora-oneshot`** 扫 `--oneshot_conflict_threshold`、`--oneshot_conflict_blend` 等                                                                           |
-| **与 `agg_type=yoco` 对比** | 同单轮、不同服务端聚合，属方法级对比                                                                                                                                               |
-| **训练配方**                 | `local_epochs`、`lr`、`lora_r`：训练敏感性，一般单独小表                                                                                                                        |
-| **FedP 行统计**             | 上传包含行统计；若要「关行统计」需改 `methods/` 或扩展 flag                                                                                                                           |
+| **稀疏强度扫描**               | 扫 `yoco_sparse_lambda`（如 `0,1e-5,1e-4,1e-3`），对 `fedplora-oneshot` 与 `yoco` 均影响本地                                         |
+| **冲突门控扫描**               | 对 `**fedplora-oneshot`** 扫 `--oneshot_conflict_threshold`、`--oneshot_conflict_blend` 等                                   |
+| **与 `agg_type=yoco` 对比** | 同单轮、不同服务端聚合，属方法级对比                                                                                                       |
+| **训练配方**                 | `local_epochs`、`lr`、`lora_r`：训练敏感性，一般单独小表                                                                                |
+| **FedP 行统计**             | 上传包含行统计；若要「关行统计」需改 `methods/` 或扩展 flag                                                                                   |
 
 
 **一键脚本（仅覆盖 A 类）**

@@ -58,6 +58,11 @@ def _normalize_weights(weights):
     return (w / w.sum().clamp_min(1e-12)).tolist()
 
 
+def _cpu_float(t):
+    """Client uploads are CPU; global_model.state_dict() may be on GPU — fuse on CPU."""
+    return t.detach().float().cpu()
+
+
 def _aggregate_lora_weights_conflict(global_dict, client_states, args, *, method="avgm"):
     """FedMLLM ``aggregate_lora_weights`` (B-similarity weights, fuse A and B)."""
     n = len(client_states)
@@ -73,8 +78,10 @@ def _aggregate_lora_weights_conflict(global_dict, client_states, args, *, method
             if not all(key in st and key_b in st for st in client_states):
                 continue
 
-            lora_a_list = [client_states[i][key].float() for i in clients_this_round]
-            lora_b_list = [client_states[i][key_b].float() for i in clients_this_round]
+            lora_a_list = [_cpu_float(client_states[i][key]) for i in clients_this_round]
+            lora_b_list = [_cpu_float(client_states[i][key_b]) for i in clients_this_round]
+            g_a = _cpu_float(global_dict[key])
+            g_b = _cpu_float(global_dict[key_b])
 
             similarities = []
             for i, b_i in enumerate(lora_b_list):
@@ -89,26 +96,19 @@ def _aggregate_lora_weights_conflict(global_dict, client_states, args, *, method
             if method == "mean":
                 fused_a = sum(w * a for w, a in zip(norm_w, lora_a_list))
                 fused_b = sum(w * b for w, b in zip(norm_w, lora_b_list))
-                global_dict[key] = fused_a.to(
-                    device=global_dict[key].device, dtype=global_dict[key].dtype
-                )
-                global_dict[key_b] = fused_b.to(
-                    device=global_dict[key_b].device, dtype=global_dict[key_b].dtype
-                )
             else:
-                delta_a = sum(
-                    (a - global_dict[key].float()) * w for w, a in zip(norm_w, lora_a_list)
+                fused_a = g_a + sum(
+                    (a - g_a) * w for w, a in zip(norm_w, lora_a_list)
                 )
-                delta_b = sum(
-                    (b - global_dict[key_b].float()) * w
-                    for w, b in zip(norm_w, lora_b_list)
+                fused_b = g_b + sum(
+                    (b - g_b) * w for w, b in zip(norm_w, lora_b_list)
                 )
-                global_dict[key] = (global_dict[key].float() + delta_a).to(
-                    device=global_dict[key].device, dtype=global_dict[key].dtype
-                )
-                global_dict[key_b] = (global_dict[key_b].float() + delta_b).to(
-                    device=global_dict[key_b].device, dtype=global_dict[key_b].dtype
-                )
+            global_dict[key] = fused_a.to(
+                device=global_dict[key].device, dtype=global_dict[key].dtype
+            )
+            global_dict[key_b] = fused_b.to(
+                device=global_dict[key_b].device, dtype=global_dict[key_b].dtype
+            )
 
         elif is_lora_b_param_name(key):
             continue
@@ -117,11 +117,15 @@ def _aggregate_lora_weights_conflict(global_dict, client_states, args, *, method
             if not all(key in st for st in client_states):
                 continue
             if method == "mean":
-                agg = sum(client_states[i][key].float() for i in clients_this_round) / float(n)
+                agg = (
+                    sum(_cpu_float(client_states[i][key]) for i in clients_this_round)
+                    / float(n)
+                )
             else:
-                agg = global_dict[key].float()
+                agg = _cpu_float(global_dict[key])
                 for i in clients_this_round:
-                    agg = agg + (client_states[i][key].float() - agg) * float(sw[i])
+                    c = _cpu_float(client_states[i][key])
+                    agg = agg + (c - agg) * float(sw[i])
             global_dict[key] = agg.to(
                 device=global_dict[key].device, dtype=global_dict[key].dtype
             )
