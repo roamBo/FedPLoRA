@@ -227,6 +227,13 @@ parser.add_argument(
     "client's local LoRA instead of server-aggregated global LoRA.",
 )
 parser.add_argument(
+    "--flora_svd_device",
+    type=str,
+    default="auto",
+    choices=["auto", "cuda", "cpu"],
+    help="Flora/FlexLoRA server SVD device. Default auto=GPU if available (much faster than CPU full SVD).",
+)
+parser.add_argument(
     "--oneshot_consensus_power",
     type=float,
     default=2.0,
@@ -1979,6 +1986,24 @@ def federated_sft(args):
             f"[round {round_idx + 1}] local training done; aggregating agg_type={args.agg_type} ...",
             flush=True,
         )
+        if client_states_for_agg and is_memory_global_agg_agg(args.agg_type):
+            pre_agg = str(getattr(args, "save_run_checkpoint_dir", "") or "").strip()
+            if pre_agg:
+                pre_path = os.path.join(
+                    os.path.abspath(os.path.expanduser(pre_agg)),
+                    "pre_aggregation_uploads.pt",
+                )
+                try:
+                    torch.save(client_states_for_agg, pre_path)
+                    print(
+                        f"[checkpoint] saved client uploads before aggregation -> {pre_path}",
+                        flush=True,
+                    )
+                except Exception as e:
+                    print(
+                        f"[checkpoint][warn] pre-aggregation upload save failed: {e!r}",
+                        flush=True,
+                    )
         if args.agg_type == "normal":
             global_model = aggregate_models_normal(global_model, client_states_for_agg)
         elif args.agg_type == "ffa":

@@ -537,8 +537,8 @@ set +a
 - 默认 bundle 根：`**<仓库>/../trained_models/<stem>/`**。可用 `**TRAINED_MODELS_ROOT`** / `**--trained_models_root**` 改父目录；完全不要自动落盘：`**--no_auto_save_run_checkpoint**`。
 - **eval 前 vs eval 后（内容是否一样？）**：**权重张量与 eval 前一刻一致**。eval 前快照里已是聚合后的 `global_shared`（或 `full_clients`）及各客户端磁盘状态拷贝，**就是**紧接着 `_sft_eval_phase` 会加载做前向的那套；eval 本身不反传、不改权重。eval 后在根目录再写一遍最终 bundle，**权重与当轮聚合结果相同**（最后一轮），额外多的是已写入磁盘的 **metrics JSON 路径**记在 meta 里。因此用 eval 前快照做 `--eval_only_from_checkpoint`，与「当时若 eval 没挂跑出来的前向」一致，**不会白训聚合阶段**。
 - **自动恢复顺序**（`--force_retrain` 时均不启用）：若根目录 `checkpoint_ok.json` 为 `**final`** → 本方法本次配置 **训练 + eval 均跳过**；否则若存在最新的 `snapshots/round_XXX_post_agg/` 且其中 `checkpoint_ok` + meta 与当前 CLI 一致 → **只跳过训练、跑 eval-only**；否则正常训练。
-- 每条目录内有 `**run_checkpoint_meta.json`** + `**full_clients.pt`**（内存聚合方法下为各客户端 **可训练快照** 列表，`meta.memory_agg_client_payload` 为 `trainable_only`）或 `**global_shared.pt` + `clients/`****（磁盘协议）。每轮 eval 前另有 `**snapshots/round_XXX_post_agg/`**（除非 `--skip_post_agg_snapshots`）。失败为 `**…_failed/`** + `checkpoint_failed.json`。
-- 需要磁盘协议的方法（`**fedplora**`、`**fedplora-oneshot**`、`**fedsa_lora**` / `**fedsa**`、`**fedalt**`）：**必须保留** `**--save_client_state_to_disk`**，否则写 checkpoint 时可能缺 `client_*.pt`。`**yoco`** / `**normal**` 等为内存聚合、**不需要**该 flag；`full_clients.pt` 存的是可训练张量而非整模的 N 份重复。
+- 每条目录内有 `**run_checkpoint_meta.json`** + `**full_clients.pt`**（内存聚合方法下为各客户端 可训练快照 列表，`meta.memory_agg_client_payload` 为 `trainable_only`）或 `**global_shared.pt` + `clients/`****（磁盘协议）。每轮 eval 前另有 `**snapshots/round_XXX_post_agg/`**（除非 `--skip_post_agg_snapshots`）。失败为 `**…_failed/`** + `checkpoint_failed.json`。
+- 需要磁盘协议的方法（`**fedplora`**、`**fedplora-oneshot**`、`**fedsa_lora**` / `**fedsa**`、`**fedalt**`）：**必须保留** `**--save_client_state_to_disk`**，否则写 checkpoint 时可能缺 `client_*.pt`。`**yoco`** / `**normal**` 等为内存聚合、**不需要**该 flag；`full_clients.pt` 存的是可训练张量而非整模的 N 份重复。
 
 `**../trained_models/<stem>/` 在哪些实验里能重复用？**
 
