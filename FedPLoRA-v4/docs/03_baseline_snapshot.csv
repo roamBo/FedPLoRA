@@ -1,0 +1,7 @@
+source,agg_type,n_clients,seeds,macro_acc,macro_acc_std,worst_acc,worst_acc_std,hard_avg_loss,hard_avg_loss_std,comm_down_MB,comm_up_MB
+fedalt_Meta-Llama-3.1-8B_seed_42_r1_e1_seed42.json,fedalt,35,42,0.69331,0.00000,0.51739,0.00000,1.7972,0.00000,80.00,80.00
+fedplora-oneshot_Meta-Llama-3.1-8B_seed_42_r1_e1_seed42.json,fedplora-oneshot,35,42,0.69595,0.00000,0.51982,0.00000,1.7774,0.00000,38.00,38.01
+fedplora_v3_cluster_Meta-Llama-3.1-8B_seed_42_r1_e1_seed42.json,fedplora_v3_cluster,35,42,0.69272,0.00000,0.51462,0.00000,1.8337,0.00000,38.00,38.01
+fedplora_v3_lite_Meta-Llama-3.1-8B_seed_42_r1_e1_seed42.json,fedplora_v3_lite,35,42,0.69278,0.00000,0.51460,0.00000,1.8331,0.00000,38.00,38.01
+fedplora_v3_rpca_Meta-Llama-3.1-8B_seed_42_r1_e1_seed42.json,fedplora_v3_rpca,35,42,0.69068,0.00000,0.51240,0.00000,1.8765,0.00000,38.00,38.01
+yoco_Meta-Llama-3.1-8B_seed_42_r1_e1_seed42.json,yoco,35,42,0.69490,0.00000,0.51946,0.00000,1.7802,0.00000,15396.51,80.00
