@@ -538,7 +538,7 @@ set +a
 - **eval 前 vs eval 后（内容是否一样？）**：**权重张量与 eval 前一刻一致**。eval 前快照里已是聚合后的 `global_shared`（或 `full_clients`）及各客户端磁盘状态拷贝，**就是**紧接着 `_sft_eval_phase` 会加载做前向的那套；eval 本身不反传、不改权重。eval 后在根目录再写一遍最终 bundle，**权重与当轮聚合结果相同**（最后一轮），额外多的是已写入磁盘的 **metrics JSON 路径**记在 meta 里。因此用 eval 前快照做 `--eval_only_from_checkpoint`，与「当时若 eval 没挂跑出来的前向」一致，**不会白训聚合阶段**。
 - **自动恢复顺序**（`--force_retrain` 时均不启用）：若根目录 `checkpoint_ok.json` 为 `**final`** → 本方法本次配置 **训练 + eval 均跳过**；否则若存在最新的 `snapshots/round_XXX_post_agg/` 且其中 `checkpoint_ok` + meta 与当前 CLI 一致 → **只跳过训练、跑 eval-only**；否则正常训练。
 - 每条目录内有 `**run_checkpoint_meta.json`** + `**full_clients.pt`**（内存聚合方法下为各客户端 可训练快照 列表，`meta.memory_agg_client_payload` 为 `trainable_only`）或 `**global_shared.pt` + `clients/`****（磁盘协议）。每轮 eval 前另有 `**snapshots/round_XXX_post_agg/`**（除非 `--skip_post_agg_snapshots`）。失败为 `**…_failed/`** + `checkpoint_failed.json`。
-- 需要磁盘协议的方法（`**fedplora`**、`**fedplora-oneshot**`、`**fedsa_lora**` / `**fedsa**`、`**fedalt**`）：**必须保留** `**--save_client_state_to_disk`**，否则写 checkpoint 时可能缺 `client_*.pt`。`**yoco`** / `**normal**` 等为内存聚合、**不需要**该 flag；`full_clients.pt` 存的是可训练张量而非整模的 N 份重复。
+- 需要磁盘协议的方法（`**fedplora`**、`**fedplora-oneshot`**、`**fedsa_lora**` / `**fedsa**`、`**fedalt**`）：必须保留 `**--save_client_state_to_disk**`，否则写 checkpoint 时可能缺 `client_*.pt`。`**yoco`** / `**normal`** 等为内存聚合、**不需要**该 flag；`full_clients.pt` 存的是可训练张量而非整模的 N 份重复。
 
 `**../trained_models/<stem>/` 在哪些实验里能重复用？**
 
@@ -945,7 +945,7 @@ CUDA_VISIBLE_DEVICES=0,1 python tasks/fed_train_sft.py \
   - 共享逻辑：`[_run_domain_sft_batch.inc.sh](scripts/RunScripts/_run_domain_sft_batch.inc.sh)`、`[_fed_train_speed.inc.sh](scripts/RunScripts/_fed_train_speed.inc.sh)`
 - [scripts/RunScripts/run_domain_sft_baselines1.sh](scripts/RunScripts/run_domain_sft_baselines1.sh)（旧版四合一分组：oneshot、fedalt、flora、normal；无统一 checkpoint 命名时可改用 §11.3.3 四脚本）
 - [scripts/RunScripts/run_domain_sft_baselines2.sh](scripts/RunScripts/run_domain_sft_baselines2.sh)（旧版：yoco、fedsa_lora、ffa）
-- 扩展实验脚本（详见 **§十四**）：`[run_exp_personalization.sh](scripts/RunScripts/run_exp_personalization.sh)`、`[run_exp_comm_profile.sh](scripts/RunScripts/run_exp_comm_profile.sh)`、`[run_exp_ablation_fedplora.sh](scripts/RunScripts/run_exp_ablation_fedplora.sh)`
+- 扩展实验脚本（详见 **§十四**）：`[run_exp_post_main_35c.sh](scripts/RunScripts/run_exp_post_main_35c.sh)`（通信+个性化一键）、`[run_exp_personalization.sh](scripts/RunScripts/run_exp_personalization.sh)`、`[run_exp_comm_profile.sh](scripts/RunScripts/run_exp_comm_profile.sh)`
 - [configs/domain_sft_pilot.env](configs/domain_sft_pilot.env)（单机 pilot 默认环境）
 - [configs/domain_sft.env](configs/domain_sft.env)（批量 baseline 默认环境）
 
@@ -1219,12 +1219,12 @@ python scripts/DataProcessScripts/merge_domain_jsonl.py \
 下面四条主线回答的问题不同；**跑完脚本后应优先打开的路径**与 **JSON 里要对的字段**一并列出，便于一次把代码/设定固定后直接出终稿结果。
 
 
-| 主线            | 要回答的问题                                                                                 | 是否训练            | 典型脚本入口                                                                                         | 产物位置（默认）                                                      | **优先阅读的指标 / 字段**                                                                                                                                                                                                                                                                                                                                                                              |
-| ------------- | -------------------------------------------------------------------------------------- | --------------- | ---------------------------------------------------------------------------------------------- | ------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **【7域主实验】**   | 各 `agg_type` 在 7 域上的整体 LM 表现谁更好                                                        | 是               | **§11.1** 手敲命令为主；可选 §11.3 `run_domain_sft_batch_group*.sh`（推荐）或 `run_domain_sft_baselines*.sh` | `artifacts_{N}c/sft_metrics/<agg>_<model>_*_r*_e*_seed*.json` | **主指标（推荐写进主表）**：每轮 `**domain_macro_token_accuracy`、`domain_macro_perplexity`** 及 `**worst_domain_token_accuracy`、`worst_domain_perplexity`**（均有 `best_*` 追踪最优轮）。辅助：`domain_macro_loss` / `worst_domain_loss`（与 NLL 一致，仍保留）。JSON 顶层含 `**recommended_primary_metrics`** 字段名列表。分域见 `rounds[].domain_metrics[<domain>]`。**通信**：顶层 `communication.*`。日志 `[eval]` 以 `primary_*` 打头、`aux_*loss` 为辅助。 |
-| **【个性化收益分析】** | 仅看 domain-macro 不够：客户端是否在本域更优、离开本域是否变差                                                 | 是               | `run_exp_personalization.sh`                                                                   | 同上 `sft_metrics`                                              | **主读**与主实验同口径的 `**token_accuracy` + `perplexity`**（`client_local_*`、`in_domain_domain_test_*`、`off_domain_*`）；`**personalization_gap_token_accuracy`（local−off）**、`**personalization_gap_perplexity`（off−local，越大表示跨域更难）**。`**loss` 仅辅助**。JSON 含 `**recommended_primary_personalization_metrics`**。                                                                                           |
-| **【通信-性能实验】** | 在**同一套 PEFT 形状**下，各方法的**单客户端单轮**上下行字节（便于画 Pareto / 方法表）                                | **否**（只加载模型算字节） | `run_exp_comm_profile.sh` → `print_sft_comm_profile.py`                                        | 终端表格；可加 `--json` 管道保存                                         | 每个 `agg_type` 的 `**down_bytes_per_client`、`up_bytes_per_client`**（及脚本打印的 MB 列）。**不写入** `sft_metrics`；与训练是否跑完无关。                                                                                                                                                                                                                                                                               |
-| **【机制消融】**    | `fedplora-oneshot`：本地 `**yoco_sparse_lambda`** 等是否敏感；服务端 `**oneshot_*`** 建议手写扫参（见 §十四） | 是               | `run_exp_ablation_fedplora.sh`（部分 tag 与当前服务端已不完全对齐）                                            | `artifacts_{N}c/sft_metrics_oneshot_ablation/<tag>/`          | 与主实验相同的 **domain-macro / worst / domain_metrics**；按 tag **分目录**对比。                                                                                                                                                                                                                                                                                                                            |
+| 主线            | 要回答的问题                                                   | 是否训练             | 典型脚本入口                                                                                         | 产物位置（默认）                                                      | **优先阅读的指标 / 字段**                                                                                                                                                                                                                                                                                                                                                                              |
+| ------------- | -------------------------------------------------------- | ---------------- | ---------------------------------------------------------------------------------------------- | ------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **【7域主实验】**   | 各 `agg_type` 在 7 域上的整体 LM 表现谁更好                          | 是                | **§11.1** 手敲命令为主；可选 §11.3 `run_domain_sft_batch_group*.sh`（推荐）或 `run_domain_sft_baselines*.sh` | `artifacts_{N}c/sft_metrics/<agg>_<model>_*_r*_e*_seed*.json` | **主指标（推荐写进主表）**：每轮 `**domain_macro_token_accuracy`、`domain_macro_perplexity`** 及 `**worst_domain_token_accuracy`、`worst_domain_perplexity`**（均有 `best_*` 追踪最优轮）。辅助：`domain_macro_loss` / `worst_domain_loss`（与 NLL 一致，仍保留）。JSON 顶层含 `**recommended_primary_metrics`** 字段名列表。分域见 `rounds[].domain_metrics[<domain>]`。**通信**：顶层 `communication.*`。日志 `[eval]` 以 `primary_*` 打头、`aux_*loss` 为辅助。 |
+| **【个性化收益分析】** | 本域 vs 跨域 gap（时间紧：§十四 **仅 fedplora-oneshot + yoco** 手敲命令） | **否**（eval-only） | §十四最小集命令，或 `PERSONALIZATION_AGG_LIST=... run_exp_personalization.sh`                           | `artifacts_35c/sft_metrics/*_eval_ckpt_*.json`                | `personalization_gap_*`；**不需重训**。                                                                                                                                                                                                                                                                                                                                                             |
+| **【通信-性能实验】** | 各方法**单客户端单轮**上下行字节表（**不必** 12 个都跑；见 §十四）                 | **否**            | `run_exp_comm_profile.sh`                                                                      | `artifacts_35c/comm_profile/sft_comm_35c.json`                | 画 Pareto / 方法表；**不读 checkpoint**、**不训练**。                                                                                                                                                                                                                                                                                                                                                     |
+| **【机制消融】**    | （**当前阶段可不做**）oneshot 超参敏感                                | 是                | `run_exp_ablation_fedplora.sh`                                                                 | `artifacts_{N}c/sft_metrics_oneshot_ablation/<tag>/`          | 主表已定稿时可跳过；见 §十四末。                                                                                                                                                                                                                                                                                                                                                                             |
 
 
 **总通信量（直觉）**：`utilities/utils.py` 中 `estimate_round_communication_bytes` 给出的是 **每名客户端、每一轮** 的下行/上行字节；单轮全集群流量量级约为 `**num_clients × (down_bytes_per_client + up_bytes_per_client)`**（与函数注释一致）。论文里若写「总上传」，请自行用 `**up_bytes_per_client × num_clients × rounds`**（若各轮相同）或按实现说明截取。
@@ -1248,7 +1248,7 @@ python scripts/DataProcessScripts/merge_domain_jsonl.py \
 
 - **数据**：`data/domain_benchmark_35c/seed_42`（或 `7c` / `14c` / `21c` 做客户端规模扫描）。
 - **命令**：**§11.1** 逐条 `fed_train_sft.py`；可选 **§11.3** 批量脚本（`run_domain_sft*.sh` 等，首参/次参与 GPU 见该节与 `configs/cuda_resolve.inc.sh`）。
-- **指标（汇总）**：见上表「7域主实验」行。**论文主表建议以 `domain_macro_token_accuracy`（越高越好）与 `domain_macro_perplexity`（越低越好）为主**；`worst_domain_*` 对应「最难点域」的稳健性。`**domain_macro_loss` 仅作辅助**（与交叉熵一致）。`rounds[]` 内字段顺序已把 token 准确率与 PPL 放在 loss 之前；metrics JSON 顶层 `**recommended_primary_metrics`** 列出推荐主字段名。`**domain_metrics`** 仍为按域对象：`loss`、`token_accuracy`、`perplexity`。顶层 `**communication`** 为单客户端单轮上下行字节估计。
+- **指标（汇总）**：见上表「7域主实验」行。**论文主表建议以 `domain_macro_token_accuracy`（越高越好）与 `domain_macro_perplexity`（越低越好）为主**；`worst_domain_`* 对应「最难点域」的稳健性。`**domain_macro_loss` 仅作辅助**（与交叉熵一致）。`rounds[]` 内字段顺序已把 token 准确率与 PPL 放在 loss 之前；metrics JSON 顶层 `**recommended_primary_metrics`** 列出推荐主字段名。`**domain_metrics`** 仍为按域对象：`loss`、`token_accuracy`、`perplexity`。顶层 `**communication`** 为单客户端单轮上下行字节估计。
 
 **前置 sanity（非主线必排进主表，但建议先做）**
 
@@ -1257,42 +1257,167 @@ python scripts/DataProcessScripts/merge_domain_jsonl.py \
 
 ---
 
-### 【个性化收益分析】
+### 【通信-性能实验】是做什么的？要跑满 12 个方法吗？
 
-对应原 **E5**：比较 **客户端本地 held-out（本域）** 与 **非本域 held-out（跨域）** 上的 LM loss，避免只看 domain-macro 平均而忽略 specialization。  
-在 `**fed_train_sft.py`** 上加 `**--eval_personalization_metrics`**（可与 §11.1 各方法组合；eval 更久时可配合 `**--eval_max_batches`**）。
+**做什么**
 
-- **指标（汇总）**：见 §十四总览表「个性化收益分析」行。**建议主表/主图用 `token_accuracy` 与 `perplexity`（及 gap）**，与 7 域主实验口径一致；**loss 仅作辅助**。
+- **不训练**、**不加载**你训好的 checkpoint；只按与 §11.1 相同的 **Llama-8B + LoRA 形状**（`lora_r=8`、相同 `target_modules`）统计：每个 `agg_type` 在**一轮联邦**里，**每个客户端**大概要传多少字节。
+- 统计的是 **可训练 LoRA + 头** 的上下行，**不含**冻结的 8B 基座（已与「全模型交互」修正对齐）。
+- 用途：论文里画 **通信–性能 Pareto**（横轴 `down+up` 或总流量，纵轴用主实验的 `domain_macro_token_accuracy` / PPL）；或写「FedPLoRA-oneshot 上行约为 YOCO 的一半」这类对比。
 
-**代码**
+**和主实验 JSON 里 `communication` 的关系**
 
-- 训练入口增加 `--eval_personalization_metrics`：在原有 domain-macro eval 之外，写入并打印（均进入 `rounds[]`）；metrics 顶层含 `**recommended_primary_personalization_metrics`**。  
-  - **本地 held-out**：`client_local_macro_{token_accuracy,perplexity,loss}`（`test_local` 按客户端 eval 再 macro）；  
-  - **本域 `test_domain`**：`in_domain_domain_test_macro_{token_accuracy,perplexity,loss}`；  
-  - **非本域 `test_domain`**：`off_domain_macro_{token_accuracy,perplexity,loss}`（每个 (客户端 × 非本域) eval 后再 macro）；  
-  - **派生**：`personalization_gap_token_accuracy = local − off`（越大越好）；`personalization_gap_perplexity = off − local`（越大表示跨域相对本地越「更困惑」）；`personalization_gap_loss = off − local`（辅助）。  
-  另保留主线 `**domain_macro_`*** 等与全文对照。
+- **公式相同**（都是 `estimate_round_communication_bytes`）。
+- 主实验 JSON 里已有每个方法的 `communication` 块 → **若你只关心已跑完的几种方法，可以直接从主实验 metrics 抄数字，不必再跑本实验**。
+- 本脚本的价值：**一次打印多张方法的对比表**，并落盘 `artifacts_35c/comm_profile/sft_comm_35c.json`，方便排版。
 
-**一键脚本**
+**要不要 12 个都测？**
+
+- **不必。** 通信只取决于 **协议设计**（传 A 还是 A+B、FedALT 是否个性化下行等），与某次训练是否完成无关。
+- **不必跑满**也可只设子集；与 §11.3.3 主线一致的 **12 个方法** 如下（脚本默认同此列表）。
+- 一次脚本（**约 5–15 分钟**，只加载模型一次）：
 
 ```bash
-source configs/domain_sft.env
-bash scripts/RunScripts/run_exp_personalization.sh 35
-# 第二个参数可指定 GPU，与 §11.3.3 一致，例如 35 客户端、1 号卡：
-bash scripts/RunScripts/run_exp_personalization.sh 35 1
+cd /path/to/FedPLoRA
+set -a && source configs/domain_sft.env && set +a
+
+export AGG_LIST=fedplora-oneshot,fedalt,yoco,fedsa_lora,normal,flora,flexlora,ffa,feddat
+bash scripts/RunScripts/run_exp_comm_profile.sh 0
 ```
 
-（第一个参数 `7|14|21|35` 与 §11.3.3 分组脚本相同；第二个可选参数为 GPU。未指定时见 `configs/cuda_resolve.inc.sh`：有 `nvidia-smi` 则自动选空闲显存最大的卡。）
+产物：`artifacts_35c/comm_profile/sft_comm_35c.json`。集群单轮总流量粗算：`35 × (down_bytes_per_client + up_bytes_per_client)`（见 JSON 内 `note`）。
 
 ---
 
-### 【通信-性能实验】
+### 【个性化收益分析】是做什么的？和什么相关？为何仍费时？
 
-对应原 **E6**：在同一套 PEFT 结构下对比各 `agg_type` 的 **每轮下行/上行字节**（与训练时 `estimate_round_communication_bytes` 一致），再与最终 `domain_macro_loss` 等联合作 Pareto 图。
+**回答什么问题（论文叙事）**
 
-- **指标（汇总）**：见 §十四总览表「通信-性能实验」行；输出为各 `**agg_type` 的 `down_bytes_per_client` / `up_bytes_per_client`**。需要落盘时：`python scripts/RunScripts/print_sft_comm_profile.py ... --json > comm.json`。
+主实验 **domain-macro** 只在各域的 `test_domain` 上、按「域 × 客户端」平均，得到 **全局/域级** 好坏，**看不出**联邦个性化是否成立，例如：
 
-**代码含义（与 `utilities/utils.py` → `estimate_round_communication_bytes` 对照）**
+- 客户端在自己 **本域** 的 held-out（`test_local`）是否更好？
+- 换到 **其它域** 的 `test_domain`（off-domain）是否明显变差？
+- **gap** 有多大？（`personalization_gap_token_accuracy = local − off` 等）
+
+因此本实验与 **§四「跨域个性化联邦 SFT」**、**FedPLoRA「B 本地 / A 共享」**、以及 **FedALT / YOCO 等方法的「是否真有个性化」** 直接相关；主表仍用 domain-macro，本实验作 **E5 补充图/表**（ specialization 证据）。
+
+**和主实验的关系**
+
+
+| 项目  | 主实验（§11.1）                        | 个性化收益                                                      |
+| --- | --------------------------------- | ---------------------------------------------------------- |
+| 训练  | 已做完                               | **不做**（读同一 checkpoint）                                     |
+| 权重  | `../trained_models/<stem>/`       | 同上                                                         |
+| 指标  | `domain_macro_`*、`worst_domain_*` | 额外 `client_local_*`、`off_domain_*`、`personalization_gap_*` |
+| 协议  | 各方法自己的聚合/评测                       | 相同 checkpoint + `--eval_personalization_metrics`           |
+
+
+**为何 35 客户端仍要很久（即使不重训）**
+
+实现上在 **原有 domain-macro 评测之后** 再跑三块前向（`fed_train_sft.py` → `_evaluate_personalization_metrics`）：
+
+1. **本域 local**：35 次（每客户端 `test_local`）
+2. **跨域 off-domain**：约 **35 × 6 ≈ 210** 次（每客户端在其 **非本域** 的每个域上 eval）
+3. **本域 domain_test**：35 次（ sanity，与 macro 对照）
+
+再加上 **domain-macro 本身** 已是 **7 域 × 35 客户端 ≈ 245** 次前向（与主实验 eval 相同，eval-only 会 **再跑一遍**）。  
+合计前向量级约为「只跑 domain-macro」的 **约 2–2.5 倍**，且 **客户端数从 7 增到 35 时近似线性变慢** → 单方法 **数小时**、12 方法 **数天** 是正常的。
+
+**时间紧时：不必跑满 12 个方法**；下面给出 **FedPLoRA-Oneshot（v2，`fedplora-oneshot`）** 与 **YOCO** 的 **35 客户端、eval-only、个性化指标** 手敲命令（复用 §11.1 主实验 checkpoint，**不重训**）。
+
+前置（仓库根、与训练时相同 env）：
+
+```bash
+cd /path/to/FedPLoRA
+set -a && source configs/domain_sft.env && set +a
+```
+
+解析 checkpoint 目录（默认 `../trained_models/<stem>/`，需含 `checkpoint_ok.json` 且 `phase=final`）：
+
+```bash
+# fedplora-oneshot（v2）
+CKPT_ONESHOT=$(python utilities/sft_checkpoint_paths.py \
+  --repo_root "$(pwd)" \
+  --agg_type fedplora-oneshot \
+  --model "${MODEL_PATH}" \
+  --benchmark_dir "${BENCHMARK_DIR:-data/domain_benchmark_35c/seed_42}" \
+  --rounds 1 --local_epochs 1 --seed 42)
+echo "oneshot ckpt: ${CKPT_ONESHOT}"
+
+# yoco
+CKPT_YOCO=$(python utilities/sft_checkpoint_paths.py \
+  --repo_root "$(pwd)" \
+  --agg_type yoco \
+  --model "${MODEL_PATH}" \
+  --benchmark_dir "${BENCHMARK_DIR:-data/domain_benchmark_35c/seed_42}" \
+  --rounds 1 --local_epochs 1 --seed 42)
+echo "yoco ckpt: ${CKPT_YOCO}"
+```
+
+#### 个性化 eval-only：`fedplora-oneshot`（v2）
+
+```bash
+CUDA_VISIBLE_DEVICES=0 python tasks/fed_train_sft.py \
+  --model "${MODEL_PATH:-/data/yaominghao/gb/models/Meta-Llama-3.1-8B}" \
+  --benchmark_dir data/domain_benchmark_35c/seed_42 \
+  --agg_type fedplora-oneshot \
+  --rounds 1 \
+  --local_epochs 1 \
+  --torch_dtype bfloat16 \
+  --target_modules q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj \
+  --client_state_dir "${CLIENT_STATE_DIR:-artifacts/domain_client_states}" \
+  --eval_max_batches 50 \
+  --gradient_checkpointing \
+  --eval_only_from_checkpoint "${CKPT_ONESHOT}" \
+  --eval_personalization_metrics \
+  --yoco_sparse_lambda 1e-4 \
+  --oneshot_anchor_lambda 1e-4 \
+  --oneshot_conflict_threshold 0.35 \
+  --oneshot_conflict_blend 1.0 \
+  --seed 42
+```
+
+#### 个性化 eval-only：`yoco`
+
+```bash
+CUDA_VISIBLE_DEVICES=0 python tasks/fed_train_sft.py \
+  --model "${MODEL_PATH:-/data/yaominghao/gb/models/Meta-Llama-3.1-8B}" \
+  --benchmark_dir data/domain_benchmark_35c/seed_42 \
+  --agg_type yoco \
+  --rounds 1 \
+  --local_epochs 1 \
+  --torch_dtype bfloat16 \
+  --target_modules q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj \
+  --client_state_dir "${CLIENT_STATE_DIR:-artifacts/domain_client_states}" \
+  --eval_max_batches 50 \
+  --gradient_checkpointing \
+  --eval_only_from_checkpoint "${CKPT_YOCO}" \
+  --eval_personalization_metrics \
+  --yoco_sparse_lambda 1e-4 \
+  --yoco_aggregate_mode conflict \
+  --yoco_conflict_method avgm \
+  --yoco_sign_lambda 0.01 \
+  --seed 42
+```
+
+**产物**：`artifacts_35c/sft_metrics/` 下新增  
+`*_eval_ckpt_<stem>_r1_e1_seed42.json`（文件名含 `eval_ckpt`）。  
+**优先读** `rounds[0].personalization_gap_token_accuracy`、`personalization_gap_perplexity`，以及 `client_local_macro_`* / `off_domain_macro_*`（见 JSON 顶层 `recommended_primary_personalization_metrics`）。
+
+**墙钟（A100、35 客户端、`eval_max_batches=50`）**：每个方法约 **4–10 小时**（不重训，但会重做 domain-macro + 跨域 off-domain 前向）；**两条合计约 8–20 小时**。可与通信表 **并行**（通信用另一张卡或先跑 10 分钟通信表）。
+
+**等价脚本（少打字）**：
+
+```bash
+export PERSONALIZATION_AGG_LIST=fedplora-oneshot,yoco
+bash scripts/RunScripts/run_exp_personalization.sh 35 0
+```
+
+**可选：12 方法一键**（时间充裕时）：`bash scripts/RunScripts/run_exp_post_main_35c.sh 0`（通信 + 全部默认列表）。
+
+---
+
+**代码含义（通信档位，与 `utilities/utils.py` → `estimate_round_communication_bytes` 对照）**
 
 
 | 通信档位                           | `agg_type`                                  | 上行（约）             | 下行（约）                      |
@@ -1307,20 +1432,11 @@ bash scripts/RunScripts/run_exp_personalization.sh 35 1
 - **FedPLoRA 族**（`fedplora` / `fedplora-oneshot` / `fedsa_lora`）通信约为 **YOCO / FedALT 全 LoRA 路径的一半量级**（只传 A，不传 B）。
 - **「B-only / local-only」**：当前仓库 **未**实现为独立 `agg_type`。
 
-**一键脚本（只打通信表，不训练）**
-
-```bash
-source configs/domain_sft.env
-bash scripts/RunScripts/run_exp_comm_profile.sh
-bash scripts/RunScripts/run_exp_comm_profile.sh 1
-```
-
-可选：`AGG_LIST=normal,fedplora-oneshot,ffa bash scripts/RunScripts/run_exp_comm_profile.sh 1`（默认列表已不含多轮 `fedplora`；末尾可选参数为 GPU）。  
-底层：`python scripts/RunScripts/print_sft_comm_profile.py --model "$MODEL_PATH"`（会 **加载一次** 基座+LoRA 以统计参数规模，首次较慢）。
+可选：`AGG_LIST=normal,yoco,fedsa_lora bash scripts/RunScripts/run_exp_comm_profile.sh 0`。
 
 ---
 
-### 【机制消融】
+### 【机制消融】（当前阶段可不做）
 
 对应原 **E7**。**多轮 `fedplora`**：`gp_*` 与 `--fedplora_ablation_no_consensus` / `no_momentum` 等在 `aggregate_models_fedplora` 路径上生效。`**fedplora-oneshot**`：联邦 **只跑 1 轮**，服务端为 `**aggregate_models_fedplora_oneshot`**（冲突门控 + 行统计加权等，见 `methods/fedplora_oneshotv2.py`），不是 `aggregate_models_yoco`。本地仍可加与 `yoco` 共用的 `**lora_A` L1 稀疏项**（`--yoco_sparse_lambda`）；服务端冲突门控的可调项主要为 `**--oneshot_`***（见 §11.1 示例）。
 
