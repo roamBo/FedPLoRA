@@ -59,6 +59,34 @@ def _aggregate_summary(layer_stats):
     }
 
 
+def _aggregate_plain_fedavg_on_a(global_dict, client_states, client_uploads, args):
+    """Ablation: sample-weighted FedAvg on LoRA A + heads (no conflict gate / row reweight)."""
+    weights = _client_weights(client_uploads, args)
+    n = len(client_states)
+    for key in list(global_dict.keys()):
+        if not all(key in st for st in client_states):
+            continue
+        if is_lora_a_param_name(key) or is_task_head_param_name(key):
+            agg = sum(
+                float(weights[i]) * client_states[i][key].float() for i in range(n)
+            )
+            global_dict[key] = agg.to(
+                device=global_dict[key].device, dtype=global_dict[key].dtype
+            )
+    setattr(
+        args,
+        "_fedplora_oneshot_conflict_stats",
+        {
+            "_summary": {
+                "ablation": "plain_fedavg",
+                "mean_conflict": float("nan"),
+                "high_conflict_row_frac": 0.0,
+            }
+        },
+    )
+    return global_dict
+
+
 def aggregate_models_fedplora_oneshot(global_model, client_uploads, args):
     """
     One-shot server rule:
@@ -69,6 +97,12 @@ def aggregate_models_fedplora_oneshot(global_model, client_uploads, args):
     """
     global_dict = global_model.state_dict()
     client_states = [M.upload_package_state(m) for m in client_uploads]
+    if bool(getattr(args, "oneshot_ablation_plain_fedavg", False)):
+        global_dict = _aggregate_plain_fedavg_on_a(
+            global_dict, client_states, client_uploads, args
+        )
+        global_model.load_state_dict(global_dict)
+        return global_model
     client_row_importance = [M.upload_package_row_importance(m) for m in client_uploads]
     n_clients = len(client_states)
     if n_clients == 0:

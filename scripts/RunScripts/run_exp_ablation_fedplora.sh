@@ -1,14 +1,19 @@
 #!/usr/bin/env bash
-# 【机制消融】单轮 fedplora-oneshot（FedP 上传 + 冲突门控聚合 A，见 methods/fedplora_oneshotv2.py）
-# 多轮 fedplora 的 gp_* / fedplora_ablation_* 在 train_eval 与 aggregate_models_fedplora 中生效。
-# 本脚本默认只跑：full（默认稀疏先验）与 no_sparse；--yoco_pcwa_components 不参与 oneshot 服务端聚合。
-# 产物：artifacts_{N}c/sft_metrics/* 与各 run 日志（N=客户端数）
+# 【FedPLoRA-Oneshot v2 机制消融】35c 默认；3 个核心模块（与 full 主实验对照，不必重跑 full）。
 #
-# Usage:
+# 论文对照：full = §11.1 主实验 fedplora-oneshot checkpoint / metrics（同超参即视为 full）。
+# 本脚本默认只训 3 个「去掉单模块」变体：
+#   wo_sparse   — 去掉本地 A 稀疏先验（--yoco_sparse_lambda 0）
+#   wo_conflict — 去掉服务端冲突门控（--oneshot_ablation_plain_fedavg → 样本量加权 FedAvg）
+#   wo_anchor   — 去掉本地 A0 锚定（--oneshot_anchor_lambda 0 --oneshot_prox_lambda 0）
+#
+# Usage (repo root):
 #   bash scripts/RunScripts/run_exp_ablation_fedplora.sh [7|14|21|35] [gpu]
 #
-# 环境变量 ABLATION_MODE 可选：full | no_sparse | pcwa_k1（pcwa_k1 已弃用，仍会跑 full 超参但仅改 yoco_pcwa，对服务端无影响）
-# 若未设置 ABLATION_MODE，则按顺序跑 full 与 no_sparse。
+# 环境变量：
+#   ABLATION_MODE     空格分隔：wo_sparse | wo_conflict | wo_anchor | full（默认前三项）
+#   ABLATION_RUN_FULL=1  额外重跑 full 基线（一般不需要，主实验已有）
+#   其余超参见 configs/domain_sft.env
 
 set -euo pipefail
 
@@ -22,6 +27,9 @@ if [[ -f "${_REPO_ROOT}/configs/domain_sft.env" ]]; then
   source "${_REPO_ROOT}/configs/domain_sft.env"
   set +a
 fi
+
+# shellcheck disable=SC1091
+source "${_SCRIPT_DIR}/domain_sft_agg_extra.inc.sh"
 
 NC="${1:-35}"
 GPU_CLI="${2:-}"
@@ -38,7 +46,6 @@ BENCHMARK_DIR="${BENCHMARK_DIR:-data/domain_benchmark_${NC}c/seed_42}"
 MODEL_PATH="${MODEL_PATH:-/data/yaominghao/gb/models/Meta-Llama-3.1-8B}"
 ROUNDS="${ROUNDS:-1}"
 EVAL_MAX_BATCHES="${EVAL_MAX_BATCHES:-50}"
-
 YS="${YOCO_SPARSE_LAMBDA:-1e-4}"
 
 BASE=(
@@ -62,13 +69,44 @@ BASE=(
 if [[ -n "${EVAL_MAX_BATCHES}" && "${EVAL_MAX_BATCHES}" != "0" ]]; then
   BASE+=(--eval_max_batches "${EVAL_MAX_BATCHES}")
 fi
+if [[ "${TRUST_REMOTE_CODE:-0}" == "1" ]]; then
+  BASE+=(--trust_remote_code)
+fi
+
+_ablation_checkpoint_dir() {
+  local tag="$1"
+  ABL_TAG="${tag}" _REPO_ROOT="${_REPO_ROOT}" MODEL_PATH="${MODEL_PATH}" \
+    BENCHMARK_DIR="${BENCHMARK_DIR}" ROUNDS="${ROUNDS}" LOCAL_EPOCHS="${LOCAL_EPOCHS:-1}" \
+    TRAINED_MODELS_ROOT="${TRAINED_MODELS_ROOT:-}" python - <<'PY'
+import os, sys
+from pathlib import Path
+repo = Path(os.environ["_REPO_ROOT"])
+sys.path.insert(0, str(repo))
+from utilities.sft_checkpoint_paths import default_save_run_checkpoint_dir
+base = default_save_run_checkpoint_dir(
+    repo,
+    os.environ.get("TRAINED_MODELS_ROOT") or None,
+    agg_type="fedplora-oneshot",
+    model_path=os.environ["MODEL_PATH"],
+    benchmark_split_dir=os.environ["BENCHMARK_DIR"],
+    rounds=int(os.environ["ROUNDS"]),
+    local_epochs=int(os.environ.get("LOCAL_EPOCHS") or "1"),
+    seed=int(os.environ.get("SEED") or "42"),
+)
+print(f"{base}_ablation_{os.environ['ABL_TAG']}")
+PY
+}
 
 run_one() {
   local tag="$1"
   shift
-  echo "[ablation fedplora-oneshot] ${tag}"
-  # 独立目录：避免多组 fedplora-oneshot 同名 metrics 覆盖；且磁盘 client 状态若复用会污染下一组
-  CUDA_VISIBLE_DEVICES="${CUDA_DEVICES}" "${BASE[@]}" \
+  local ckpt_dir
+  ckpt_dir="$(_ablation_checkpoint_dir "${tag}")"
+  echo "[ablation] fedplora-oneshot tag=${tag} NC=${NC} GPU=${CUDA_DEVICES} ckpt=${ckpt_dir}"
+  local -a CMD=("${BASE[@]}")
+  domain_sft_append_agg_cli_extras CMD "fedplora-oneshot"
+  CUDA_VISIBLE_DEVICES="${CUDA_DEVICES}" "${CMD[@]}" \
+    --save_run_checkpoint_dir "${ckpt_dir}" \
     --client_state_dir "artifacts_${NC}c/domain_client_states_oneshot_ablation/${tag}" \
     --metrics_output_dir "artifacts_${NC}c/sft_metrics_oneshot_ablation/${tag}" \
     "$@"
@@ -76,31 +114,42 @@ run_one() {
 
 if [[ -n "${ABLATION_MODE:-}" ]]; then
   MODES="${ABLATION_MODE}"
+elif [[ "${ABLATION_RUN_FULL:-0}" == "1" ]]; then
+  MODES="full wo_sparse wo_conflict wo_anchor"
 else
-  MODES="full no_sparse"
+  MODES="wo_sparse wo_conflict wo_anchor"
 fi
 
 echo "[exp_ablation_fedplora_oneshot] benchmark_dir=${BENCHMARK_DIR}"
+echo "[exp_ablation_fedplora_oneshot] modes=${MODES} (full 对照请用主实验 §11.1，或 ABLATION_RUN_FULL=1)"
 
 for mode in ${MODES}; do
   case "${mode}" in
     full)
-      run_one "full" \
-        --yoco_sparse_lambda "${YS}" ;;
-    no_sparse)
-      run_one "no_sparse" \
-        --yoco_sparse_lambda 0 ;;
-    pcwa_k1)
-      echo "[warn] pcwa_k1: yoco_pcwa_components does not affect fedplora-oneshot server; running full sparse + k=1 for legacy tag only" >&2
-      run_one "pcwa_k1" \
+      run_one "full" --yoco_sparse_lambda "${YS}" ;;
+    wo_sparse)
+      run_one "wo_sparse" --yoco_sparse_lambda 0 ;;
+    wo_conflict)
+      run_one "wo_conflict" \
         --yoco_sparse_lambda "${YS}" \
-        --yoco_pcwa_components 1 ;;
-    no_align|no_prox|no_orth|no_consensus|no_momentum)
-      echo "ABLATION_MODE=${mode} 仅适用于多轮 agg_type=fedplora（gp_* / fedplora_ablation_*）。oneshot 请用: full | no_sparse | pcwa_k1(legacy)" >&2
-      exit 1 ;;
+        --oneshot_ablation_plain_fedavg ;;
+    wo_anchor)
+      run_one "wo_anchor" \
+        --yoco_sparse_lambda "${YS}" \
+        --oneshot_anchor_lambda 0 \
+        --oneshot_prox_lambda 0 ;;
+    no_sparse)
+      echo "[warn] ABLATION_MODE=no_sparse 已更名为 wo_sparse" >&2
+      run_one "wo_sparse" --yoco_sparse_lambda 0 ;;
+    pcwa_k1)
+      echo "[warn] pcwa_k1 对 fedplora-oneshot 服务端无意义，已跳过" >&2
+      ;;
     *)
-      echo "Unknown ABLATION_MODE=${mode} (expected full|no_sparse|pcwa_k1)" >&2
+      echo "Unknown ABLATION_MODE=${mode}" >&2
+      echo "  可用: wo_sparse | wo_conflict | wo_anchor | full" >&2
       exit 1
       ;;
   esac
 done
+
+echo "[exp_ablation_fedplora_oneshot] done."

@@ -291,6 +291,12 @@ parser.add_argument(
     action="store_true",
     help="FedPLoRA-Oneshot ablation: QR-orthogonalize A rows after aggregation (off by default).",
 )
+parser.add_argument(
+    "--oneshot_ablation_plain_fedavg",
+    action="store_true",
+    help="FedPLoRA-Oneshot ablation: server uses plain sample-weighted FedAvg on A (+ heads), "
+    "disabling conflict gating / row-importance / A0 fallback.",
+)
 parser.add_argument("--v3_conflict_quantile", type=float, default=0.80)
 parser.add_argument("--v3_gate_temperature", type=float, default=0.05)
 parser.add_argument("--v3_conflict_blend", type=float, default=1.0)

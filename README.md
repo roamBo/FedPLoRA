@@ -499,7 +499,7 @@ cat data/domain_benchmark_35c/seed_42/clients.json | head
 - **7 域主实验**：**§11.1** 保留「每个 `agg_type` 一条」的手敲命令；指标 JSON 顶层含 `**recommended_kpis`**（索引 **token 准确率、PPL、`communication`、FedPLoRA-Oneshot 的 `fedplora_oneshot_conflict`**），与 `**recommended_primary_metrics**` / 各轮 `**rounds[]**` 字段一致。
 - **个性化实验**：脚本 `**scripts/RunScripts/run_exp_personalization.sh`**；指标与主实验同一套 acc / PPL / communication / conflict（oneshot 有），并额外有个性化字段；读同一 JSON 中的 `**recommended_kpis`**（含 `personalization_gaps`）。
 - **通信–性能实验**：脚本 `**scripts/RunScripts/run_exp_comm_profile.sh`**，指标仍为各 `**agg_type` 的 `down_bytes_per_client` / `up_bytes_per_client`**（与现实现一致）。
-- **消融**：`**run_exp_ablation_fedplora.sh`** 按你的要求**不改实验设计**；已默认带 `**EVAL_MAX_BATCHES`** 以加快 eval。
+- **消融**：`**run_exp_ablation_oneshot_35c.sh`** / `run_exp_ablation_fedplora.sh` 默认跑 **wo_sparse / wo_conflict / wo_anchor** 三组（full 对照主实验 §11.1）；已默认带 `**EVAL_MAX_BATCHES`**。
 - **GPU**：上述脚本均 `**source configs/cuda_resolve.inc.sh`**：优先环境变量 `**CUDA_DEVICES`**，否则可选 **命令行第二参数（或 comm 脚本的第一参数）** 传 `0`、`1`、`0,1`；再否则 **nvidia-smi 选空闲显存最大的单卡**。
 - **加快 eval**：全局环境变量 `**EVAL_MAX_BATCHES=50`**（已在 `domain_sft_*.env` 与各 RunScripts 默认）；主表全量测评前设为 `**0`** 或 **unset** 并去掉命令行中的 `--eval_max_batches`。
 - **一次训练，多次实验**：未手填 `--save_run_checkpoint_dir` 时，Python 默认把 bundle 写到 **仓库同级** `**../trained_models/<stem>/`**（无时间戳）。两类落盘与自动恢复：① eval 前（每轮聚合后、`snapshots/round_XXX_post_agg/`）：与紧接着要跑的 `_sft_eval_phase` 同一份 `global_shared.pt` / `full_clients.pt` + `clients/`** + meta，仅缺当轮 eval 指标；若再次启动且 meta 与当前 CLI 一致，则 跳过训练、只做 eval-only（防 eval 阶段崩溃白训）。② eval 后（全部 rounds 跑完且已写 metrics JSON 之后、根目录最终保存）：根下 `**checkpoint_ok.json**` 的 `**checkpoint_phase: final**`；若检测到，则 **训练与评估均跳过**（本方法本次配置已完整跑完）。失败落盘为同级 `**…_failed/`**。防白训靠 `save_run_checkpoint_dir`（默认自动启用）与 `artifacts_{N}c/sft_metrics/`；`**--save_client_state_to_disk`** 仅用于 **FedP / FedSA / FedALT 磁盘顺序协议**（见下），与 YOCO 无关。手动复评：`**python tasks/fed_train_sft.py --eval_only_from_checkpoint <子目录或根> ...`**。强制重训：`**--force_retrain`**。**  
@@ -945,7 +945,7 @@ CUDA_VISIBLE_DEVICES=0,1 python tasks/fed_train_sft.py \
   - 共享逻辑：`[_run_domain_sft_batch.inc.sh](scripts/RunScripts/_run_domain_sft_batch.inc.sh)`、`[_fed_train_speed.inc.sh](scripts/RunScripts/_fed_train_speed.inc.sh)`
 - [scripts/RunScripts/run_domain_sft_baselines1.sh](scripts/RunScripts/run_domain_sft_baselines1.sh)（旧版四合一分组：oneshot、fedalt、flora、normal；无统一 checkpoint 命名时可改用 §11.3.3 四脚本）
 - [scripts/RunScripts/run_domain_sft_baselines2.sh](scripts/RunScripts/run_domain_sft_baselines2.sh)（旧版：yoco、fedsa_lora、ffa）
-- 扩展实验脚本（详见 **§十四**）：`[run_exp_post_main_35c.sh](scripts/RunScripts/run_exp_post_main_35c.sh)`（通信+个性化一键）、`[run_exp_personalization.sh](scripts/RunScripts/run_exp_personalization.sh)`、`[run_exp_comm_profile.sh](scripts/RunScripts/run_exp_comm_profile.sh)`
+- 扩展实验脚本（详见 **§十四**）：`[run_exp_post_main_35c.sh](scripts/RunScripts/run_exp_post_main_35c.sh)`（通信+个性化）、`[run_exp_ablation_oneshot_35c.sh](scripts/RunScripts/run_exp_ablation_oneshot_35c.sh)`（oneshot v2 三模块消融）、`[run_exp_personalization.sh](scripts/RunScripts/run_exp_personalization.sh)`、`[run_exp_comm_profile.sh](scripts/RunScripts/run_exp_comm_profile.sh)`
 - [configs/domain_sft_pilot.env](configs/domain_sft_pilot.env)（单机 pilot 默认环境）
 - [configs/domain_sft.env](configs/domain_sft.env)（批量 baseline 默认环境）
 
@@ -1224,7 +1224,7 @@ python scripts/DataProcessScripts/merge_domain_jsonl.py \
 | **【7域主实验】**   | 各 `agg_type` 在 7 域上的整体 LM 表现谁更好                          | 是                | **§11.1** 手敲命令为主；可选 §11.3 `run_domain_sft_batch_group*.sh`（推荐）或 `run_domain_sft_baselines*.sh` | `artifacts_{N}c/sft_metrics/<agg>_<model>_*_r*_e*_seed*.json` | **主指标（推荐写进主表）**：每轮 `**domain_macro_token_accuracy`、`domain_macro_perplexity`** 及 `**worst_domain_token_accuracy`、`worst_domain_perplexity`**（均有 `best_*` 追踪最优轮）。辅助：`domain_macro_loss` / `worst_domain_loss`（与 NLL 一致，仍保留）。JSON 顶层含 `**recommended_primary_metrics`** 字段名列表。分域见 `rounds[].domain_metrics[<domain>]`。**通信**：顶层 `communication.*`。日志 `[eval]` 以 `primary_*` 打头、`aux_*loss` 为辅助。 |
 | **【个性化收益分析】** | 本域 vs 跨域 gap（时间紧：§十四 **仅 fedplora-oneshot + yoco** 手敲命令） | **否**（eval-only） | §十四最小集命令，或 `PERSONALIZATION_AGG_LIST=... run_exp_personalization.sh`                           | `artifacts_35c/sft_metrics/*_eval_ckpt_*.json`                | `personalization_gap_*`；**不需重训**。                                                                                                                                                                                                                                                                                                                                                             |
 | **【通信-性能实验】** | 各方法**单客户端单轮**上下行字节表（**不必** 12 个都跑；见 §十四）                 | **否**            | `run_exp_comm_profile.sh`                                                                      | `artifacts_35c/comm_profile/sft_comm_35c.json`                | 画 Pareto / 方法表；**不读 checkpoint**、**不训练**。                                                                                                                                                                                                                                                                                                                                                     |
-| **【机制消融】**    | （**当前阶段可不做**）oneshot 超参敏感                                | 是                | `run_exp_ablation_fedplora.sh`                                                                 | `artifacts_{N}c/sft_metrics_oneshot_ablation/<tag>/`          | 主表已定稿时可跳过；见 §十四末。                                                                                                                                                                                                                                                                                                                                                                             |
+| **【机制消融】**    | FedPLoRA-Oneshot v2 **3 模块**（服务端冲突门控 / 本地稀疏 / A0 锚定）                         | 是（默认 3 组）      | `run_exp_ablation_oneshot_35c.sh` 或 `run_exp_ablation_fedplora.sh 35 [gpu]`                   | `artifacts_{N}c/sft_metrics_oneshot_ablation/<tag>/`          | **full** 用主实验 §11.1；本脚本默认只跑 `wo_*` 三组；见 §十四。                                                                                                                                                                                                                                                                                                                                                  |
 
 
 **总通信量（直觉）**：`utilities/utils.py` 中 `estimate_round_communication_bytes` 给出的是 **每名客户端、每一轮** 的下行/上行字节；单轮全集群流量量级约为 `**num_clients × (down_bytes_per_client + up_bytes_per_client)`**（与函数注释一致）。论文里若写「总上传」，请自行用 `**up_bytes_per_client × num_clients × rounds`**（若各轮相同）或按实现说明截取。
@@ -1436,73 +1436,40 @@ bash scripts/RunScripts/run_exp_personalization.sh 35 0
 
 ---
 
-### 【机制消融】（当前阶段可不做）
+### 【机制消融】FedPLoRA-Oneshot v2：三个核心模块（35c）
 
-对应原 **E7**。**多轮 `fedplora`**：`gp_*` 与 `--fedplora_ablation_no_consensus` / `no_momentum` 等在 `aggregate_models_fedplora` 路径上生效。`**fedplora-oneshot**`：联邦 **只跑 1 轮**，服务端为 `**aggregate_models_fedplora_oneshot`**（冲突门控 + 行统计加权等，见 `methods/fedplora_oneshotv2.py`），不是 `aggregate_models_yoco`。本地仍可加与 `yoco` 共用的 `**lora_A` L1 稀疏项**（`--yoco_sparse_lambda`）；服务端冲突门控的可调项主要为 `**--oneshot_`***（见 §11.1 示例）。
+主文方法为 **`fedplora-oneshot`（v2，`methods/fedplora_oneshotv2.py`）**。`FedPLoRAOSv3_README.md` 中的残差冲突 / 簇 / RPCA 消融属于 **v3 变体**，与 v2 主线不重复；时间紧时 **只跑下面 3 组 + 主实验 full 对照**即可。
 
-`**run_exp_ablation_fedplora.sh` 说明**：脚本头部注释仍写「PCWA 消融」；当前实现下 `**--yoco_pcwa_components` 不参与 `fedplora-oneshot` 的服务端聚合**。脚本里 `full` / `no_sparse` / `pcwa_k1` 中 `**no_sparse`（关 `--yoco_sparse_lambda`）仍有意义**；`pcwa_k1` 等对服务端行为**应与代码同步后再依赖**，或改为手写命令扫 `**oneshot_conflict_threshold`** 等。
+#### 为何只选这 3 个？（去冗余）
 
-- **指标（汇总）**：见 §十四总览表「机制消融」行；与主实验相同的 `**rounds[]` 性能字段**，按 `**sft_metrics_oneshot_ablation/<tag>/`** 对比各 tag。
+| 模块 | 论文主张 | 关掉后（tag） | 与其它两项关系 |
+|------|----------|---------------|----------------|
+| **M1 服务端冲突门控** | 跨域上行 `A` 行方向冲突大，高冲突行回退 **A0**，否则按共识+行重要度融合 | `wo_conflict` → 样本量加权 **FedAvg**（`--oneshot_ablation_plain_fedavg`） | **服务端核心**；与 M2/M3 正交 |
+| **M2 本地 A 稀疏** | 共享 `A` 应稀疏、可解释（与 FedSA/YOCO 叙事一致） | `wo_sparse` → `--yoco_sparse_lambda 0` | 本地训练；不碰服务端公式 |
+| **M3 本地 A0 锚定** | one-shot 用初始 **A0** 约束行方向，与本地 **B** 兼容 | `wo_anchor` → `oneshot_anchor/prox_lambda=0` | 本地 one-shot 监督；不碰服务端公式 |
 
----
+**不纳入本批的原因**：`oneshot_orthogonalize`（次要）、扫 `conflict_threshold`（超参）、多轮 `fedplora` 的 `gp_align/prox/orth`（另一套方法）、v3 cluster/RPCA（另一套方法）、`pcwa_k1`（与 oneshot 服务端无关）。
 
-#### 消融要消融什么？（清单，便于你决定写进论文哪几行）
+**full 对照**：直接用 §11.1 已训好的 **`fedplora-oneshot` 主实验**（`artifacts_35c/sft_metrics/...`），**不必**在消融脚本里重跑 `full`，除非 `ABLATION_RUN_FULL=1`。
 
-下面按 **「机制块 → 代码位置 → 怎么关掉/扫参」** 列全。当前 `**run_exp_ablation_fedplora.sh` 只自动跑 A 类**；B 类需 `**--agg_type fedplora`** 自行组命令；C 类需你扩展脚本或手写多次运行。
-
-**A. `fedplora-oneshot` 上与当前实现一致、可优先写的机制**
-
-
-| 机制块                  | 作用（一句话）                | 实现位置                                           | CLI / 环境变量                                                                                                        | 备注                                                              |
-| -------------------- | ---------------------- | ---------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
-| **本地 A 稀疏先验**        | 本地对 `lora_A` 的 L1 风格惩罚 | `utilities/train_eval.py` → `_add_yoco_sparse` | `--yoco_sparse_lambda`；`**YOCO_SPARSE_LAMBDA`**                                                                   | 与 `yoco` 共用实现；`run_exp_ablation_fedplora.sh` 的 `no_sparse` 对应关断 |
-| **冲突门控 / 共识 / 行重要度** | 单轮服务端如何融合各客户端 `A`      | `methods/fedplora_oneshotv2.py`                | `--oneshot_anchor_lambda`、`--oneshot_consensus_power`、`--oneshot_conflict_threshold`、`--oneshot_conflict_blend` 等 | 主命令见 **§11.1**；脚本 `run_exp_ablation_fedplora.sh` 尚未系统扫这些项       |
-
-
-说明：**oneshot 固定 1 轮**；服务端用 `aggregate_models_fedplora_oneshot`（冲突门控），**不是** `aggregate_models_yoco`（FedMLLM B 相似度 `conflict` 聚合）。
-
-**B. 仅当 `agg_type=fedplora`（多轮 FedPLoRA）才生效——当前 oneshot 脚本不跑**
-
-若主文只写 **fedplora-oneshot**，下列项 **不会** 出现在 `run_exp_ablation_fedplora.sh` 里；若你**另开一节多轮 FedPLoRA** 或对比「多轮里的正则/聚合」，再按需选。
-
-
-| 机制块                | 作用（一句话）            | 实现位置                                                 | CLI                                        | 典型消融做法                 |
-| ------------------ | ------------------ | ---------------------------------------------------- | ------------------------------------------ | ---------------------- |
-| **对齐项 R_align**    | 约束本地更新与参考在 dW 空间一致 | `train_eval._add_fedplora_regularization`            | `--gp_align_lambda`                        | 置 `0`（w/o align）       |
-| **近端项 R_prox**     | FedP 风格近端          | 同上                                                   | `--gp_prox_lambda`                         | 置 `0`（w/o prox）        |
-| **正交项 R_orth**     | 正则化 A/B 结构         | 同上                                                   | `--gp_orth_lambda`                         | 置 `0`（w/o orth）        |
-| **共识加权（行符号 + 幂次）** | 服务端按行与上一轮 A 对齐并加权  | `methods/fedp_lora.py` → `aggregate_models_fedplora` | `--fedplora_ablation_no_consensus`         | 打开 flag（w/o consensus） |
-| **服务端 A 的动量 EMA**  | 与上一轮全局 A 混合        | 同上                                                   | `--fedplora_ablation_no_momentum`          | 打开 flag（w/o momentum）  |
-| **共识幂次、动量系数**      | 调服务端形状             | `fedp_lora` + argparse                               | `--gp_consensus_power`、`--gp_agg_momentum` | 扫参或极端值，属**超参消融**而非二元开关 |
-
-
-命令入口：直接 `python tasks/fed_train_sft.py --agg_type fedplora --rounds <大于 1 的整数> ...` 并按上表加减 flag/λ。
-
-**C. 论文可写、但需你自编实验（本仓库未写死成消融行）**
-
-
-| 方向                       | 说明                                                                                                                       |
-| ------------------------ | ------------------------------------------------------------------------------------------------------------------------ |
-| **YOCO 服务端变体**           | 默认 `--yoco_aggregate_mode conflict`（FedMLLM `aggregate_lora_weights`）；`fedavg` 为旧版；`--yoco_pcwa_components` 仍保留 CLI 但未接线 |
-| **稀疏强度扫描**               | 扫 `yoco_sparse_lambda`（如 `0,1e-5,1e-4,1e-3`），对 `fedplora-oneshot` 与 `yoco` 均影响本地                                         |
-| **冲突门控扫描**               | 对 `**fedplora-oneshot`** 扫 `--oneshot_conflict_threshold`、`--oneshot_conflict_blend` 等                                   |
-| **与 `agg_type=yoco` 对比** | 同单轮、不同服务端聚合，属方法级对比                                                                                                       |
-| **训练配方**                 | `local_epochs`、`lr`、`lora_r`：训练敏感性，一般单独小表                                                                                |
-| **FedP 行统计**             | 上传包含行统计；若要「关行统计」需改 `methods/` 或扩展 flag                                                                                   |
-
-
-**一键脚本（仅覆盖 A 类）**
+#### 一键脚本（35 客户端，可指定 GPU）
 
 ```bash
-source configs/domain_sft.env
-bash scripts/RunScripts/run_exp_ablation_fedplora.sh 35
-bash scripts/RunScripts/run_exp_ablation_fedplora.sh 35 1
+cd /path/to/FedPLoRA
+set -a && source configs/domain_sft.env && set +a
+
+# 默认串行：wo_sparse → wo_conflict → wo_anchor
+bash scripts/RunScripts/run_exp_ablation_oneshot_35c.sh 0
+# 或：bash scripts/RunScripts/run_exp_ablation_fedplora.sh 35 0
 ```
 
-单组：`ABLATION_MODE=no_sparse bash scripts/RunScripts/run_exp_ablation_fedplora.sh 35 1`。  
-子集：`ABLATION_MODE="full no_sparse" bash ...`（空格分隔）。`pcwa_k1` 对当前 `**fedplora-oneshot` 服务端无意义**，不建议写入主表结论。  
-脚本为每组消融写入 `artifacts_{N}c/sft_metrics_oneshot_ablation/<tag>/` 与 `domain_client_states_oneshot_ablation/<tag>/`，避免多组同名 `fedplora-oneshot` metrics 或磁盘 client 状态互相串。  
-若需 **多轮 `fedplora`** 上表 5 类消融，请直接对 `tasks/fed_train_sft.py` 使用 `--agg_type fedplora` 与对应 CLI，而非本脚本。
+只跑一组：`ABLATION_MODE=wo_conflict bash scripts/RunScripts/run_exp_ablation_fedplora.sh 35 1`
+
+**产物**：`artifacts_35c/sft_metrics_oneshot_ablation/<tag>/`；client 状态：`domain_client_states_oneshot_ablation/<tag>/`；checkpoint：`../trained_models/<stem>_ablation_<tag>/`（与主实验 stem 隔离，避免白训跳过）。对比主表：`rounds[].domain_macro_token_accuracy`、`worst_domain_*`；机制：`rounds[].fedplora_oneshot_conflict`。
+
+**A100 墙钟（35c、`EVAL_MAX_BATCHES=50`）**：每组约 **8–12 h**（与 yoco 训练+测评同量级）；**3 组串行约 1–1.5 天**。多卡可把 `ABLATION_MODE` 拆到不同 GPU 并行。
+
+**多轮 `fedplora` 消融**（`gp_align` / `fedplora_ablation_no_consensus` 等）见 `FedPLoRAOSv2_README.md`；需 `--agg_type fedplora --rounds>1`，不是 oneshot v2 本批三模块。
 
 ---
 
