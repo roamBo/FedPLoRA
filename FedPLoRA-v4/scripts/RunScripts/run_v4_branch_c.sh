@@ -2,6 +2,8 @@
 # Branch C — FedPLoRA-Sign runs
 # C1: Bsign regularizer only (server: v2 fedplora-oneshot)
 # C2: Bsign + sparse-A regularizer
+#
+# Usage: bash FedPLoRA-v4/scripts/RunScripts/run_v4_branch_c.sh [gpu]
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 V4_ROOT="$(cd "$HERE/../.." && pwd)"
@@ -9,6 +11,9 @@ ENV_FILE="$V4_ROOT/configs/v4_baseline.env"
 set -a
 . "$ENV_FILE"
 set +a
+# shellcheck disable=SC1091
+source "${HERE}/_v4_run_common.inc.sh"
+v4_resolve_gpu "${1:-}"
 
 # C1 — Bsign only
 CUDA_VISIBLE_DEVICES="${CUDA_DEVICES}" \

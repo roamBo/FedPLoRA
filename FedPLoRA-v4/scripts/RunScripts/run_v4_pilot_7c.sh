@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # 7c pilot: tiny benchmark with 1 client/domain, used for fast mechanism verification.
 # Goal: each run < 30 minutes so we can iterate on branch designs before 35c main.
+#
+# Usage: bash FedPLoRA-v4/scripts/RunScripts/run_v4_pilot_7c.sh [gpu]
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 V4_ROOT="$(cd "$HERE/../.." && pwd)"
@@ -8,6 +10,9 @@ ENV_FILE="$V4_ROOT/configs/v4_baseline.env"
 set -a
 . "$ENV_FILE"
 set +a
+# shellcheck disable=SC1091
+source "${HERE}/_v4_run_common.inc.sh"
+v4_resolve_gpu "${1:-}"
 
 BENCHMARK_DIR=data/domain_benchmark_7c/seed_42
 EVAL_MAX_BATCHES=100

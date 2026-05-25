@@ -3,6 +3,8 @@
 # D1: fixed eta=0.5
 # D2: per-domain eta grid search (TODO: wire up domain val loaders)
 # D3: per-input MoE gate (TODO: wire up hidden-state hook)
+#
+# Usage: bash FedPLoRA-v4/scripts/RunScripts/run_v4_branch_d.sh [gpu]
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 V4_ROOT="$(cd "$HERE/../.." && pwd)"
@@ -10,6 +12,9 @@ ENV_FILE="$V4_ROOT/configs/v4_baseline.env"
 set -a
 . "$ENV_FILE"
 set +a
+# shellcheck disable=SC1091
+source "${HERE}/_v4_run_common.inc.sh"
+v4_resolve_gpu "${1:-}"
 
 # D1 — fixed eta = 0.5
 CUDA_VISIBLE_DEVICES="${CUDA_DEVICES}" \
