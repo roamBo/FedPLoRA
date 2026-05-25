@@ -3,6 +3,9 @@
 # A1: soft gate, prior cluster (K=3)
 # A2: soft gate, spectral cluster (K=5)
 # A3: soft gate, prior cluster (K=3) + personalized eval focus
+#
+# Usage (FedPLoRA repo root): bash FedPLoRA-v4/scripts/RunScripts/run_v4_branch_a.sh [gpu]
+# Example: .../run_v4_branch_a.sh 0
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 V4_ROOT="$(cd "$HERE/../.." && pwd)"
@@ -10,6 +13,9 @@ ENV_FILE="$V4_ROOT/configs/v4_baseline.env"
 set -a
 . "$ENV_FILE"
 set +a
+# shellcheck disable=SC1091
+source "${HERE}/_v4_run_common.inc.sh"
+v4_resolve_gpu "${1:-}"
 
 CUDA_VISIBLE_DEVICES="${CUDA_DEVICES}" \
 python "$V4_ROOT/tasks/fed_train_sft_v4.py" \

@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Replicate v2 baselines with v4 evaluation settings (eval_max_batches=200, 3 seeds).
 # Used to give Branch A/C/D a stable reference point.
+#
+# Usage: bash FedPLoRA-v4/scripts/RunScripts/run_v4_baseline.sh [gpu]
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 V4_ROOT="$(cd "$HERE/../.." && pwd)"
@@ -8,6 +10,9 @@ ENV_FILE="$V4_ROOT/configs/v4_baseline.env"
 set -a
 . "$ENV_FILE"
 set +a
+# shellcheck disable=SC1091
+source "${HERE}/_v4_run_common.inc.sh"
+v4_resolve_gpu "${1:-}"
 
 # Baseline 1 — v2 fedplora-oneshot
 CUDA_VISIBLE_DEVICES="${CUDA_DEVICES}" \
