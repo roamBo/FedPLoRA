@@ -878,6 +878,83 @@ CUDA_VISIBLE_DEVICES=0 python tasks/fed_train_sft.py \
 
 **v3 三版对比建议**：三条命令除 `--agg_type` 与 cluster/rpca 专有参数外保持一致；跑完后对比各方法 metrics JSON 中的 `domain_macro_token_accuracy`、`worst_domain_token_accuracy` 与 `fedplora_v3_stats`。也可一键：`bash scripts/RunScripts/run_domain_sft_batch_group5_fedplora_v3.sh 35 0`。
 
+#### 13) FedPLoRA v4（独立子目录 `FedPLoRA-v4/`，不走 §11.1 的 `tasks/fed_train_sft.py`）
+
+v4 与 v2/v3 **分离**：聚合与支线实现位于 **`FedPLoRA-v4/methods/`**（如 `fedplora_v4_hier.py`、`fedplora_v4_sign.py`、`fedplora_v4_mix.py`），训练入口为 **`FedPLoRA-v4/tasks/fed_train_sft_v4.py`**。该入口会 **import 父目录本仓库**（`FedPLoRA/`）里的 `utilities/`、`methods/fedplora_oneshot.py` 等 v2 管线，**不会**改 `FedPLoRA/methods/` 下已有文件。
+
+| 项目 | v2/v3（§11.1 第 1–12 条） | v4 |
+|------|---------------------------|-----|
+| 工作目录 | 仓库根 `FedPLoRA/` | 建议仍在 **仓库根** 执行（`data/`、`../trained_models` 路径与 §11.1 一致） |
+| Python 入口 | `python tasks/fed_train_sft.py` | `python FedPLoRA-v4/tasks/fed_train_sft_v4.py` |
+| `--agg_type` | `fedplora-oneshot`、`fedplora_v3_*`、baseline 等 | `v4_hier_soft_*`、`v4_sign_*`、`v4_mix_*` 等（见下表） |
+| 默认 eval | `eval_max_batches=50`（`domain_sft.env`） | v4 默认 **`200`**，且支持 **`--eval_seeds 42,1234,9999`** 多种子（见 `FedPLoRA-v4/configs/v4_baseline.env`） |
+| 指标目录 | `artifacts_{N}c/sft_metrics/` | 默认 **`artifacts/v4_sft_metrics/`**（可在命令或 env 里改） |
+| 设计文档 | `FedPLoRAOSv2_README.md` / v3 | [FedPLoRA-v4/README_FedPLoRAv4.md](FedPLoRA-v4/README_FedPLoRAv4.md) |
+
+**公共前置**（在 **FedPLoRA 仓库根**）：
+
+```bash
+cd /path/to/FedPLoRA
+set -a && source FedPLoRA-v4/configs/v4_baseline.env && set +a
+# 可选：覆盖 GPU / benchmark / eval 强度
+# export CUDA_DEVICES=0
+# export BENCHMARK_DIR=data/domain_benchmark_35c/seed_42
+# export EVAL_MAX_BATCHES=200
+# export EVAL_SEEDS=42
+```
+
+**35c 手敲示例 — Branch A（Hier++，修 v3 软门控 + 个性化 A 路径）**
+
+```bash
+CUDA_VISIBLE_DEVICES=0 python FedPLoRA-v4/tasks/fed_train_sft_v4.py \
+  --model /data/yaominghao/gb/models/Meta-Llama-3.1-8B \
+  --benchmark_dir data/domain_benchmark_35c/seed_42 \
+  --agg_type v4_hier_soft_prior \
+  --rounds 1 --local_epochs 1 --lr 2e-4 \
+  --lora_r 8 --lora_alpha 16 --lora_dropout 0.05 \
+  --batch_size 2 --max_seq_length 2048 \
+  --gradient_checkpointing --torch_dtype bfloat16 \
+  --target_modules q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj \
+  --save_client_state_to_disk \
+  --client_state_dir artifacts_35c/v4_client_states_a1 \
+  --metrics_output_dir artifacts_35c/v4_sft_metrics \
+  --eval_max_batches 200 --eval_seeds 42 \
+  --v4_gate_kappa 1.0 --v4_gate_power 1.0 \
+  --v4_cluster_mode prior --v4_cluster_k 3 \
+  --v4_lambda_min 0.3 --v4_lambda_max 0.9 \
+  --v4_personalized_eval 1 \
+  --oneshot_anchor_lambda 1e-4
+```
+
+同结构替换 `--agg_type` 即可跑其它主线：
+
+| 支线 | `--agg_type` | 额外 CLI（相对上例） |
+|------|--------------|----------------------|
+| A2 谱聚类 | `v4_hier_soft_spectral` | `--v4_cluster_mode spectral --v4_cluster_k 5` |
+| A3 强化 PFL eval | `v4_hier_soft_pfl_eval` | `--v4_gate_power 2.0 --v4_lambda_min 0.2 --v4_lambda_max 1.0` |
+| C1 仅 B-sign | `v4_sign_v2agg` | `--v4_bsign_lambda 1e-3 --v4_bsign_gamma 5.0` |
+| C2 B-sign + sparse-A | `v4_sign_full` | 上式 + `--v4_asparse_lambda 1e-4`（或 `--yoco_sparse_lambda 1e-4`） |
+| D1 固定 mixer | `v4_mix_fixed05` | `--v4_mix_mode fixed --v4_mix_eta 0.5` |
+| D2 按域搜 η | `v4_mix_per_domain` | `--v4_mix_mode per_domain` |
+| D3 MoE mixer | `v4_mix_moe` | `--v4_mix_mode moe` |
+
+Branch C/D 的 **服务端聚合仍走 v2 `fedplora-oneshot`**，差异在本地正则（C）或 eval 时 A 混合（D）；Branch A 使用 **`FedPLoRA-v4/methods/fedplora_v4_hier.py`**。
+
+**v4 一键脚本**（均在仓库根执行；脚本内已指向 `FedPLoRA-v4/tasks/fed_train_sft_v4.py`）：
+
+```bash
+bash FedPLoRA-v4/scripts/RunScripts/run_v4_pilot_7c.sh          # 7c 机制快验（<30 min/run 量级）
+bash FedPLoRA-v4/scripts/RunScripts/run_v4_baseline.sh           # v2 oneshot + fedalt 对照（多种子）
+bash FedPLoRA-v4/scripts/RunScripts/run_v4_branch_a.sh           # A1/A2/A3
+bash FedPLoRA-v4/scripts/RunScripts/run_v4_branch_c.sh           # C1/C2
+bash FedPLoRA-v4/scripts/RunScripts/run_v4_branch_d.sh           # D1/D2/D3
+```
+
+**产物**：`artifacts_35c/v4_sft_metrics/`（或 env 里 `METRICS_OUTPUT_DIR`）下  
+`{agg_type}_{model}_seed_{seeds}_r1_e1.json`，内含 `per_seed[]` 每种种子的 `rounds[]`、`v4_stats_summary` 等。汇总：`python FedPLoRA-v4/scripts/Analysis/summarize_v4.py --metrics_dir artifacts_35c/v4_sft_metrics`。
+
+**注意**：v4 **不要** 用 §11.1 的 `python tasks/fed_train_sft.py --agg_type v4_*`（主入口未注册 v4 聚合器）。7c pilot 时将 `BENCHMARK_DIR` 改为 `data/domain_benchmark_7c/seed_42` 即可。
+
 ### 11.1.1 换一套 benchmark（7c / 14c / 21c）
 
 
@@ -945,7 +1022,7 @@ CUDA_VISIBLE_DEVICES=0,1 python tasks/fed_train_sft.py \
   - 共享逻辑：`[_run_domain_sft_batch.inc.sh](scripts/RunScripts/_run_domain_sft_batch.inc.sh)`、`[_fed_train_speed.inc.sh](scripts/RunScripts/_fed_train_speed.inc.sh)`
 - [scripts/RunScripts/run_domain_sft_baselines1.sh](scripts/RunScripts/run_domain_sft_baselines1.sh)（旧版四合一分组：oneshot、fedalt、flora、normal；无统一 checkpoint 命名时可改用 §11.3.3 四脚本）
 - [scripts/RunScripts/run_domain_sft_baselines2.sh](scripts/RunScripts/run_domain_sft_baselines2.sh)（旧版：yoco、fedsa_lora、ffa）
-- 扩展实验脚本（详见 **§十四**）：`[run_exp_post_main_35c.sh](scripts/RunScripts/run_exp_post_main_35c.sh)`（通信+个性化）、`[run_exp_ablation_oneshot_35c.sh](scripts/RunScripts/run_exp_ablation_oneshot_35c.sh)`（oneshot v2 三模块消融）、`[run_exp_personalization.sh](scripts/RunScripts/run_exp_personalization.sh)`、`[run_exp_comm_profile.sh](scripts/RunScripts/run_exp_comm_profile.sh)`
+- 扩展实验脚本（详见 **§十四**）：`[run_exp_post_main_35c.sh](scripts/RunScripts/run_exp_post_main_35c.sh)`（通信+个性化）、`[run_exp_ablation_oneshot_35c.sh](scripts/RunScripts/run_exp_ablation_oneshot_35c.sh)`（oneshot v2 三模块消融）、`[run_exp_personalization.sh](scripts/RunScripts/run_exp_personalization.sh)`、`[run_exp_comm_profile.sh](scripts/RunScripts/run_exp_comm_profile.sh)`；**v4** 见 **§11.1 第 13 条** 与 `FedPLoRA-v4/scripts/RunScripts/run_v4_*.sh`
 - [configs/domain_sft_pilot.env](configs/domain_sft_pilot.env)（单机 pilot 默认环境）
 - [configs/domain_sft.env](configs/domain_sft.env)（批量 baseline 默认环境）
 
@@ -1224,7 +1301,7 @@ python scripts/DataProcessScripts/merge_domain_jsonl.py \
 | **【7域主实验】**   | 各 `agg_type` 在 7 域上的整体 LM 表现谁更好                          | 是                | **§11.1** 手敲命令为主；可选 §11.3 `run_domain_sft_batch_group*.sh`（推荐）或 `run_domain_sft_baselines*.sh` | `artifacts_{N}c/sft_metrics/<agg>_<model>_*_r*_e*_seed*.json` | **主指标（推荐写进主表）**：每轮 `**domain_macro_token_accuracy`、`domain_macro_perplexity`** 及 `**worst_domain_token_accuracy`、`worst_domain_perplexity`**（均有 `best_*` 追踪最优轮）。辅助：`domain_macro_loss` / `worst_domain_loss`（与 NLL 一致，仍保留）。JSON 顶层含 `**recommended_primary_metrics`** 字段名列表。分域见 `rounds[].domain_metrics[<domain>]`。**通信**：顶层 `communication.*`。日志 `[eval]` 以 `primary_*` 打头、`aux_*loss` 为辅助。 |
 | **【个性化收益分析】** | 本域 vs 跨域 gap（时间紧：§十四 **仅 fedplora-oneshot + yoco** 手敲命令） | **否**（eval-only） | §十四最小集命令，或 `PERSONALIZATION_AGG_LIST=... run_exp_personalization.sh`                           | `artifacts_35c/sft_metrics/*_eval_ckpt_*.json`                | `personalization_gap_*`；**不需重训**。                                                                                                                                                                                                                                                                                                                                                             |
 | **【通信-性能实验】** | 各方法**单客户端单轮**上下行字节表（**不必** 12 个都跑；见 §十四）                 | **否**            | `run_exp_comm_profile.sh`                                                                      | `artifacts_35c/comm_profile/sft_comm_35c.json`                | 画 Pareto / 方法表；**不读 checkpoint**、**不训练**。                                                                                                                                                                                                                                                                                                                                                     |
-| **【机制消融】**    | FedPLoRA-Oneshot v2 **3 模块**（服务端冲突门控 / 本地稀疏 / A0 锚定）                         | 是（默认 3 组）      | `run_exp_ablation_oneshot_35c.sh` 或 `run_exp_ablation_fedplora.sh 35 [gpu]`                   | `artifacts_{N}c/sft_metrics_oneshot_ablation/<tag>/`          | **full** 用主实验 §11.1；本脚本默认只跑 `wo_*` 三组；见 §十四。                                                                                                                                                                                                                                                                                                                                                  |
+| **【机制消融】**    | FedPLoRA-Oneshot v2 **3 模块**（服务端冲突门控 / 本地稀疏 / A0 锚定）     | 是（默认 3 组）        | `run_exp_ablation_oneshot_35c.sh` 或 `run_exp_ablation_fedplora.sh 35 [gpu]`                    | `artifacts_{N}c/sft_metrics_oneshot_ablation/<tag>/`          | **full** 用主实验 §11.1；本脚本默认只跑 `wo_*` 三组；见 §十四。                                                                                                                                                                                                                                                                                                                                                  |
 
 
 **总通信量（直觉）**：`utilities/utils.py` 中 `estimate_round_communication_bytes` 给出的是 **每名客户端、每一轮** 的下行/上行字节；单轮全集群流量量级约为 `**num_clients × (down_bytes_per_client + up_bytes_per_client)`**（与函数注释一致）。论文里若写「总上传」，请自行用 `**up_bytes_per_client × num_clients × rounds`**（若各轮相同）或按实现说明截取。
@@ -1308,7 +1385,7 @@ bash scripts/RunScripts/run_exp_comm_profile.sh 0
 | --- | --------------------------------- | ---------------------------------------------------------- |
 | 训练  | 已做完                               | **不做**（读同一 checkpoint）                                     |
 | 权重  | `../trained_models/<stem>/`       | 同上                                                         |
-| 指标  | `domain_macro_`*、`worst_domain_*` | 额外 `client_local_*`、`off_domain_*`、`personalization_gap_*` |
+| 指标  | `domain_macro_`*、`worst_domain_`* | 额外 `client_local_*`、`off_domain_*`、`personalization_gap_*` |
 | 协议  | 各方法自己的聚合/评测                       | 相同 checkpoint + `--eval_personalization_metrics`           |
 
 
@@ -1402,7 +1479,7 @@ CUDA_VISIBLE_DEVICES=0 python tasks/fed_train_sft.py \
 
 **产物**：`artifacts_35c/sft_metrics/` 下新增  
 `*_eval_ckpt_<stem>_r1_e1_seed42.json`（文件名含 `eval_ckpt`）。  
-**优先读** `rounds[0].personalization_gap_token_accuracy`、`personalization_gap_perplexity`，以及 `client_local_macro_`* / `off_domain_macro_*`（见 JSON 顶层 `recommended_primary_personalization_metrics`）。
+**优先读** `rounds[0].personalization_gap_token_accuracy`、`personalization_gap_perplexity`，以及 `client_local_macro_`* / `off_domain_macro_`*（见 JSON 顶层 `recommended_primary_personalization_metrics`）。
 
 **墙钟（A100、35 客户端、`eval_max_batches=50`）**：每个方法约 **4–10 小时**（不重训，但会重做 domain-macro + 跨域 off-domain 前向）；**两条合计约 8–20 小时**。可与通信表 **并行**（通信用另一张卡或先跑 10 分钟通信表）。
 
@@ -1438,34 +1515,137 @@ bash scripts/RunScripts/run_exp_personalization.sh 35 0
 
 ### 【机制消融】FedPLoRA-Oneshot v2：三个核心模块（35c）
 
-主文方法为 **`fedplora-oneshot`（v2，`methods/fedplora_oneshotv2.py`）**。`FedPLoRAOSv3_README.md` 中的残差冲突 / 簇 / RPCA 消融属于 **v3 变体**，与 v2 主线不重复；时间紧时 **只跑下面 3 组 + 主实验 full 对照**即可。
+主文方法为 `**fedplora-oneshot`（v2，`methods/fedplora_oneshotv2.py`）**。`FedPLoRAOSv3_README.md` 中的残差冲突 / 簇 / RPCA 消融属于 **v3 变体**，与 v2 主线不重复；时间紧时 **只跑下面 3 组 + 主实验 full 对照**即可。
 
 #### 为何只选这 3 个？（去冗余）
 
-| 模块 | 论文主张 | 关掉后（tag） | 与其它两项关系 |
-|------|----------|---------------|----------------|
-| **M1 服务端冲突门控** | 跨域上行 `A` 行方向冲突大，高冲突行回退 **A0**，否则按共识+行重要度融合 | `wo_conflict` → 样本量加权 **FedAvg**（`--oneshot_ablation_plain_fedavg`） | **服务端核心**；与 M2/M3 正交 |
-| **M2 本地 A 稀疏** | 共享 `A` 应稀疏、可解释（与 FedSA/YOCO 叙事一致） | `wo_sparse` → `--yoco_sparse_lambda 0` | 本地训练；不碰服务端公式 |
-| **M3 本地 A0 锚定** | one-shot 用初始 **A0** 约束行方向，与本地 **B** 兼容 | `wo_anchor` → `oneshot_anchor/prox_lambda=0` | 本地 one-shot 监督；不碰服务端公式 |
+
+| 模块              | 论文主张                                       | 关掉后（tag）                                                            | 与其它两项关系                |
+| --------------- | ------------------------------------------ | ------------------------------------------------------------------- | ---------------------- |
+| **M1 服务端冲突门控**  | 跨域上行 `A` 行方向冲突大，高冲突行回退 **A0**，否则按共识+行重要度融合 | `wo_conflict` → 样本量加权 **FedAvg**（`--oneshot_ablation_plain_fedavg`） | **服务端核心**；与 M2/M3 正交   |
+| **M2 本地 A 稀疏**  | 共享 `A` 应稀疏、可解释（与 FedSA/YOCO 叙事一致）          | `wo_sparse` → `--yoco_sparse_lambda 0`                              | 本地训练；不碰服务端公式           |
+| **M3 本地 A0 锚定** | one-shot 用初始 **A0** 约束行方向，与本地 **B** 兼容     | `wo_anchor` → `oneshot_anchor/prox_lambda=0`                        | 本地 one-shot 监督；不碰服务端公式 |
+
 
 **不纳入本批的原因**：`oneshot_orthogonalize`（次要）、扫 `conflict_threshold`（超参）、多轮 `fedplora` 的 `gp_align/prox/orth`（另一套方法）、v3 cluster/RPCA（另一套方法）、`pcwa_k1`（与 oneshot 服务端无关）。
 
-**full 对照**：直接用 §11.1 已训好的 **`fedplora-oneshot` 主实验**（`artifacts_35c/sft_metrics/...`），**不必**在消融脚本里重跑 `full`，除非 `ABLATION_RUN_FULL=1`。
+**full 对照**：直接用 §11.1 已训好的 `**fedplora-oneshot` 主实验**（`artifacts_35c/sft_metrics/...`），**不必**重跑下面任何一组；三组均与 §11.1 第 9 条超参一致，仅改「关掉」的那一项，并写入独立 `metrics` / `client_state` / `checkpoint` 目录。
 
-#### 一键脚本（35 客户端，可指定 GPU）
+**公共前置**（仓库根；改 `CUDA_VISIBLE_DEVICES` 指定 GPU，如 `0` / `1`）：
 
 ```bash
 cd /path/to/FedPLoRA
 set -a && source configs/domain_sft.env && set +a
-
-# 默认串行：wo_sparse → wo_conflict → wo_anchor
-bash scripts/RunScripts/run_exp_ablation_oneshot_35c.sh 0
-# 或：bash scripts/RunScripts/run_exp_ablation_fedplora.sh 35 0
 ```
 
-只跑一组：`ABLATION_MODE=wo_conflict bash scripts/RunScripts/run_exp_ablation_fedplora.sh 35 1`
+Checkpoint 根目录默认与主实验相同：`../trained_models/`（可用环境变量 `TRAINED_MODELS_ROOT` 覆盖）。每组 bundle 名为  
+`fedplora-oneshot_Llama-3.1-8B_domain_benchmark_35c_seed_42_r1_e1_seed42_ablation_<tag>`（与脚本 `run_exp_ablation_fedplora.sh` 一致）。
 
-**产物**：`artifacts_35c/sft_metrics_oneshot_ablation/<tag>/`；client 状态：`domain_client_states_oneshot_ablation/<tag>/`；checkpoint：`../trained_models/<stem>_ablation_<tag>/`（与主实验 stem 隔离，避免白训跳过）。对比主表：`rounds[].domain_macro_token_accuracy`、`worst_domain_*`；机制：`rounds[].fedplora_oneshot_conflict`。
+#### 三条独立命令（35c，建议分开提交）
+
+**1）M2 去掉本地 A 稀疏 — `wo_sparse`**
+
+```bash
+CUDA_VISIBLE_DEVICES=1 python tasks/fed_train_sft.py \
+  --model /data/yaominghao/gb/models/Meta-Llama-3.1-8B \
+  --benchmark_dir data/domain_benchmark_35c/seed_42 \
+  --agg_type fedplora-oneshot \
+  --rounds 1 \
+  --local_epochs 1 \
+  --lr 2e-4 \
+  --lora_r 8 \
+  --lora_alpha 16 \
+  --lora_dropout 0.05 \
+  --batch_size 2 \
+  --max_seq_length 2048 \
+  --eval_max_batches 50 \
+  --gradient_checkpointing \
+  --torch_dtype bfloat16 \
+  --target_modules q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj \
+  --save_client_state_to_disk \
+  --yoco_sparse_lambda 0 \
+  --oneshot_anchor_lambda 1e-4 \
+  --oneshot_conflict_threshold 0.35 \
+  --oneshot_conflict_blend 1.0 \
+  --client_state_dir artifacts_35c/domain_client_states_oneshot_ablation/wo_sparse \
+  --metrics_output_dir artifacts_35c/sft_metrics_oneshot_ablation/wo_sparse \
+  --save_run_checkpoint_dir ../trained_models/fedplora-oneshot_Llama-3.1-8B_domain_benchmark_35c_seed_42_r1_e1_seed42_ablation_wo_sparse \
+  --seed 42
+```
+
+**2）M1 去掉服务端冲突门控（改为 FedAvg）— `wo_conflict`**
+
+```bash
+CUDA_VISIBLE_DEVICES=0 python tasks/fed_train_sft.py \
+  --model /data/yaominghao/gb/models/Meta-Llama-3.1-8B \
+  --benchmark_dir data/domain_benchmark_35c/seed_42 \
+  --agg_type fedplora-oneshot \
+  --rounds 1 \
+  --local_epochs 1 \
+  --lr 2e-4 \
+  --lora_r 8 \
+  --lora_alpha 16 \
+  --lora_dropout 0.05 \
+  --batch_size 2 \
+  --max_seq_length 2048 \
+  --eval_max_batches 50 \
+  --gradient_checkpointing \
+  --torch_dtype bfloat16 \
+  --target_modules q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj \
+  --save_client_state_to_disk \
+  --yoco_sparse_lambda 1e-4 \
+  --oneshot_ablation_plain_fedavg \
+  --oneshot_anchor_lambda 1e-4 \
+  --oneshot_conflict_threshold 0.35 \
+  --oneshot_conflict_blend 1.0 \
+  --client_state_dir artifacts_35c/domain_client_states_oneshot_ablation/wo_conflict \
+  --metrics_output_dir artifacts_35c/sft_metrics_oneshot_ablation/wo_conflict \
+  --save_run_checkpoint_dir ../trained_models/fedplora-oneshot_Llama-3.1-8B_domain_benchmark_35c_seed_42_r1_e1_seed42_ablation_wo_conflict \
+  --seed 42
+```
+
+**3）M3 去掉本地 A0 锚定 — `wo_anchor`**
+
+```bash
+CUDA_VISIBLE_DEVICES=0 python tasks/fed_train_sft.py \
+  --model /data/yaominghao/gb/models/Meta-Llama-3.1-8B \
+  --benchmark_dir data/domain_benchmark_35c/seed_42 \
+  --agg_type fedplora-oneshot \
+  --rounds 1 \
+  --local_epochs 1 \
+  --lr 2e-4 \
+  --lora_r 8 \
+  --lora_alpha 16 \
+  --lora_dropout 0.05 \
+  --batch_size 2 \
+  --max_seq_length 2048 \
+  --eval_max_batches 50 \
+  --gradient_checkpointing \
+  --torch_dtype bfloat16 \
+  --target_modules q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj \
+  --save_client_state_to_disk \
+  --yoco_sparse_lambda 1e-4 \
+  --oneshot_anchor_lambda 0 \
+  --oneshot_prox_lambda 0 \
+  --oneshot_conflict_threshold 0.35 \
+  --oneshot_conflict_blend 1.0 \
+  --client_state_dir artifacts_35c/domain_client_states_oneshot_ablation/wo_anchor \
+  --metrics_output_dir artifacts_35c/sft_metrics_oneshot_ablation/wo_anchor \
+  --save_run_checkpoint_dir ../trained_models/fedplora-oneshot_Llama-3.1-8B_domain_benchmark_35c_seed_42_r1_e1_seed42_ablation_wo_anchor \
+  --seed 42
+```
+
+#### 一键脚本（可选，等价于上面三条串行）
+
+```bash
+cd /path/to/FedPLoRA
+set -a && source configs/domain_sft.env && set +a
+bash scripts/RunScripts/run_exp_ablation_oneshot_35c.sh 0
+```
+
+单组：`ABLATION_MODE=wo_conflict bash scripts/RunScripts/run_exp_ablation_fedplora.sh 35 1`
+
+**产物**：`artifacts_35c/sft_metrics_oneshot_ablation/<tag>/`；client 状态：`domain_client_states_oneshot_ablation/<tag>/`；checkpoint：`../trained_models/<stem>_ablation_<tag>/`（与主实验 stem 隔离，避免白训跳过）。对比主表：`rounds[].domain_macro_token_accuracy`、`worst_domain_`*；机制：`rounds[].fedplora_oneshot_conflict`。
 
 **A100 墙钟（35c、`EVAL_MAX_BATCHES=50`）**：每组约 **8–12 h**（与 yoco 训练+测评同量级）；**3 组串行约 1–1.5 天**。多卡可把 `ABLATION_MODE` 拆到不同 GPU 并行。
 

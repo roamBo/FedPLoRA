@@ -30,8 +30,9 @@ import sys
 from pathlib import Path
 
 _V4_ROOT = Path(__file__).resolve().parents[1]
-_V2_ROOT = _V4_ROOT.parent / "FedPLoRA-v2"
-for _p in (_V2_ROOT, _V4_ROOT):
+# v2 训练/数据/评测在父目录 FedPLoRA/（本仓库根）；v4 聚合与 CLI 在 FedPLoRA-v4/
+_REPO_ROOT = _V4_ROOT.parent
+for _p in (_REPO_ROOT, _V4_ROOT):
     if str(_p) not in sys.path:
         sys.path.insert(0, str(_p))
 
