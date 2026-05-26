@@ -32,7 +32,10 @@ from pathlib import Path
 _V4_ROOT = Path(__file__).resolve().parents[1]
 # v2 训练/数据/评测在父目录 FedPLoRA/（本仓库根）；v4 聚合与 CLI 在 FedPLoRA-v4/
 _REPO_ROOT = _V4_ROOT.parent
-for _p in (_REPO_ROOT, _V4_ROOT):
+# IMPORTANT: Put repo root before v4 root on sys.path.
+# v4 has its own `utilities/` package (with __init__.py) that would otherwise shadow
+# the repo-root `utilities/` namespace (which contains data_utils.py, models.py, etc.).
+for _p in (_V4_ROOT, _REPO_ROOT):
     if str(_p) not in sys.path:
         sys.path.insert(0, str(_p))
 
