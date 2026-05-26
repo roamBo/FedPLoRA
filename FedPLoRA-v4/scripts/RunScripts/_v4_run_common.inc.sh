@@ -8,6 +8,7 @@
 v4_resolve_gpu() {
   local _repo_root
   _repo_root="$(cd "${V4_ROOT}/.." && pwd)"
+  cd "${_repo_root}"
   # Script positional arg wins over v4_baseline.env CUDA_DEVICES=0,1
   if [[ -n "${1:-}" ]]; then
     export CUDA_DEVICES="${1}"

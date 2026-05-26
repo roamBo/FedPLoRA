@@ -13,9 +13,9 @@ from pathlib import Path
 import numpy as np
 import torch
 
-_V2_ROOT = Path(__file__).resolve().parents[2] / "FedPLoRA-v2"
-if str(_V2_ROOT) not in sys.path:
-    sys.path.insert(0, str(_V2_ROOT))
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
 
 from methods import common as M  # noqa: E402  (v2 helpers)
 from utilities.utils import (  # noqa: E402

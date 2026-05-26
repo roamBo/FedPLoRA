@@ -29,15 +29,13 @@ import os
 import sys
 from pathlib import Path
 
+# Path bootstrap (repo utilities + v4 methods); see FedPLoRA-v4/repo_paths.py
 _V4_ROOT = Path(__file__).resolve().parents[1]
-# v2 训练/数据/评测在父目录 FedPLoRA/（本仓库根）；v4 聚合与 CLI 在 FedPLoRA-v4/
-_REPO_ROOT = _V4_ROOT.parent
-# IMPORTANT: Put repo root before v4 root on sys.path.
-# v4 has its own `utilities/` package (with __init__.py) that would otherwise shadow
-# the repo-root `utilities/` namespace (which contains data_utils.py, models.py, etc.).
-for _p in (_V4_ROOT, _REPO_ROOT):
-    if str(_p) not in sys.path:
-        sys.path.insert(0, str(_p))
+if str(_V4_ROOT) not in sys.path:
+    sys.path.insert(0, str(_V4_ROOT))
+from repo_paths import bootstrap as _bootstrap_repo_paths
+
+_V4_ROOT, _REPO_ROOT = _bootstrap_repo_paths(__file__)
 
 import numpy as np
 import torch

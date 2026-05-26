@@ -26,8 +26,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 _V4_ROOT = Path(__file__).resolve().parents[1]
-_V2_ROOT = _V4_ROOT.parent / "FedPLoRA-v2"
-for _p in (_V2_ROOT, _V4_ROOT):
+_REPO_ROOT = _V4_ROOT.parent
+for _p in (_REPO_ROOT, _V4_ROOT):
     if str(_p) not in sys.path:
         sys.path.insert(0, str(_p))
 
