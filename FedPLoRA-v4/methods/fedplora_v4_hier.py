@@ -49,9 +49,9 @@ from methods.common_v4 import (
     weighted_row_mean,
 )
 
-_V2_ROOT = Path(__file__).resolve().parents[2] / "FedPLoRA-v2"
-if str(_V2_ROOT) not in sys.path:
-    sys.path.insert(0, str(_V2_ROOT))
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
 
 # Prior clusters (kept for backwards compatibility with v3 setup).
 _DOMAIN_PRIOR_CLUSTERS = {
