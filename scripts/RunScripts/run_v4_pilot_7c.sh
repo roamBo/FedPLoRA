@@ -34,6 +34,7 @@ for AGG in fedplora_oneshot fedalt \
     --lora_r "$LORA_R" --lora_alpha "$LORA_ALPHA" --lora_dropout "$LORA_DROPOUT" \
     --batch_size "$BATCH_SIZE" --max_seq_length "$MAX_SEQ_LENGTH" \
     --torch_dtype "$TORCH_DTYPE" --target_modules "$TARGET_MODULES" \
+    --gradient_checkpointing \
     --client_state_dir "artifacts_7c/v4_client_states_${AGG}" --save_client_state_to_disk \
     --metrics_output_dir artifacts_7c/v4_sft_metrics \
     --eval_max_batches "$EVAL_MAX_BATCHES" --eval_seeds "$EVAL_SEEDS" \

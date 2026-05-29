@@ -29,6 +29,7 @@ python tasks/fed_train_sft_v4.py \
   --lora_r "$LORA_R" --lora_alpha "$LORA_ALPHA" --lora_dropout "$LORA_DROPOUT" \
   --batch_size "$BATCH_SIZE" --max_seq_length "$MAX_SEQ_LENGTH" \
   --torch_dtype "$TORCH_DTYPE" --target_modules "$TARGET_MODULES" \
+  --gradient_checkpointing \
   --client_state_dir "${CLIENT_STATE_DIR}_d1" --save_client_state_to_disk \
   --metrics_output_dir "$METRICS_OUTPUT_DIR" \
   --eval_max_batches "$EVAL_MAX_BATCHES" --eval_seeds "$EVAL_SEEDS" \
@@ -47,6 +48,7 @@ for eta in 0.3 0.4 0.5 0.6 0.7; do
     --lora_r "$LORA_R" --lora_alpha "$LORA_ALPHA" --lora_dropout "$LORA_DROPOUT" \
     --batch_size "$BATCH_SIZE" --max_seq_length "$MAX_SEQ_LENGTH" \
     --torch_dtype "$TORCH_DTYPE" --target_modules "$TARGET_MODULES" \
+  --gradient_checkpointing \
     --client_state_dir "${CLIENT_STATE_DIR}_d2_eta${eta}" --save_client_state_to_disk \
     --metrics_output_dir "$METRICS_OUTPUT_DIR" \
     --eval_max_batches "$EVAL_MAX_BATCHES" --eval_seeds "$EVAL_SEEDS" \
