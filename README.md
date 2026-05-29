@@ -878,37 +878,30 @@ CUDA_VISIBLE_DEVICES=0 python tasks/fed_train_sft.py \
 
 **v3 三版对比建议**：三条命令除 `--agg_type` 与 cluster/rpca 专有参数外保持一致；跑完后对比各方法 metrics JSON 中的 `domain_macro_token_accuracy`、`worst_domain_token_accuracy` 与 `fedplora_v3_stats`。也可一键：`bash scripts/RunScripts/run_domain_sft_batch_group5_fedplora_v3.sh 35 0`。
 
-#### 13) FedPLoRA v4（独立子目录 `FedPLoRA-v4/`，不走 §11.1 的 `tasks/fed_train_sft.py`）
+#### 13) FedPLoRA v4（`tasks/fed_train_sft_v4.py` + `methods/v4/`，见 [FedPLoRAOSv4_README.md](FedPLoRAOSv4_README.md)）
 
-v4 与 v2/v3 **分离**：聚合与支线实现位于 `**FedPLoRA-v4/methods/`**（如 `fedplora_v4_hier.py`、`fedplora_v4_sign.py`、`fedplora_v4_mix.py`），训练入口为 `**FedPLoRA-v4/tasks/fed_train_sft_v4.py**`。该入口会 **import 父目录本仓库**（`FedPLoRA/`）里的 `utilities/`、`methods/fedplora_oneshot.py` 等 v2 管线，**不会**改 `FedPLoRA/methods/` 下已有文件。
+v4 与 v2/v3 **同仓库并列**：聚合在 **`methods/v4/`**（如 `fedplora_v4_hier.py`），训练入口 **`tasks/fed_train_sft_v4.py`**（复用 v2 的 `utilities/` 与 `methods/fedplora_oneshot.py`，不修改 v2/v3 主入口）。
 
+| 项目 | v2/v3（§11.1 第 1–12 条） | v4 |
+|------|---------------------------|-----|
+| Python 入口 | `python tasks/fed_train_sft.py` | `python tasks/fed_train_sft_v4.py` |
+| 聚合代码 | `methods/fedplora_oneshot*.py` 等 | `methods/v4/fedplora_v4_*.py` |
+| `--agg_type` | `fedplora-oneshot`、`fedplora_v3_*` 等 | `v4_hier_soft_*`、`v4_sign_*`、`v4_mix_*` 等 |
+| 默认 eval | `eval_max_batches=50`（`domain_sft.env`） | 默认 **200** + `--eval_seeds`（`configs/v4_baseline.env`） |
+| 指标目录 | `artifacts_{N}c/sft_metrics/` | `artifacts_{N}c/v4_sft_metrics/` |
+| 设计文档 | FedPLoRAOSv2/v3 README | [FedPLoRAOSv4_README.md](FedPLoRAOSv4_README.md) |
 
-| 项目           | v2/v3（§11.1 第 1–12 条）                         | v4                                                                                               |
-| ------------ | --------------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| 工作目录         | 仓库根 `FedPLoRA/`                               | 建议仍在 **仓库根** 执行（`data/`、`../trained_models` 路径与 §11.1 一致）                                        |
-| Python 入口    | `python tasks/fed_train_sft.py`               | `python FedPLoRA-v4/tasks/fed_train_sft_v4.py`                                                   |
-| `--agg_type` | `fedplora-oneshot`、`fedplora_v3_*`、baseline 等 | `v4_hier_soft_*`、`v4_sign_*`、`v4_mix_*` 等（见下表）                                                   |
-| 默认 eval      | `eval_max_batches=50`（`domain_sft.env`）       | v4 默认 `**200`**，且支持 `**--eval_seeds 42,1234,9999**` 多种子（见 `FedPLoRA-v4/configs/v4_baseline.env`） |
-| 指标目录         | `artifacts_{N}c/sft_metrics/`                 | 默认 `**artifacts/v4_sft_metrics/**`（可在命令或 env 里改）                                                 |
-| 设计文档         | `FedPLoRAOSv2_README.md` / v3                 | [FedPLoRA-v4/README_FedPLoRAv4.md](FedPLoRA-v4/README_FedPLoRAv4.md)                             |
-
-
-**公共前置**（在 **FedPLoRA 仓库根**）：
+**公共前置**（仓库根）：
 
 ```bash
 cd /path/to/FedPLoRA
-set -a && source FedPLoRA-v4/configs/v4_baseline.env && set +a
-# 可选：覆盖 GPU / benchmark / eval 强度
-# export CUDA_DEVICES=0
-# export BENCHMARK_DIR=data/domain_benchmark_35c/seed_42
-# export EVAL_MAX_BATCHES=200
-# export EVAL_SEEDS=42
+set -a && source configs/v4_baseline.env && set +a
 ```
 
-**35c 手敲示例 — Branch A（Hier++，修 v3 软门控 + 个性化 A 路径）**
+**35c 手敲 — Branch A（Hier++）**
 
 ```bash
-CUDA_VISIBLE_DEVICES=0 python FedPLoRA-v4/tasks/fed_train_sft_v4.py \
+CUDA_VISIBLE_DEVICES=0 python tasks/fed_train_sft_v4.py \
   --model /data/yaominghao/gb/models/Meta-Llama-3.1-8B \
   --benchmark_dir data/domain_benchmark_35c/seed_42 \
   --agg_type v4_hier_soft_prior \
@@ -928,41 +921,27 @@ CUDA_VISIBLE_DEVICES=0 python FedPLoRA-v4/tasks/fed_train_sft_v4.py \
   --oneshot_anchor_lambda 1e-4
 ```
 
-同结构替换 `--agg_type` 即可跑其它主线：
+| 支线 | `--agg_type` | 额外 CLI |
+|------|--------------|----------|
+| A2 谱聚类 | `v4_hier_soft_spectral` | `--v4_cluster_mode spectral --v4_cluster_k 5` |
+| A3 PFL eval | `v4_hier_soft_pfl_eval` | `--v4_gate_power 2.0 --v4_lambda_min 0.2 --v4_lambda_max 1.0` |
+| C1 B-sign | `v4_sign_v2agg` | `--v4_bsign_lambda 1e-3 --v4_bsign_gamma 5.0` |
+| C2 B-sign+sparse | `v4_sign_full` | + `--v4_asparse_lambda 1e-4` |
+| D1 固定 mixer | `v4_mix_fixed05` | `--v4_mix_mode fixed --v4_mix_eta 0.5` |
 
-
-| 支线                   | `--agg_type`            | 额外 CLI（相对上例）                                                   |
-| -------------------- | ----------------------- | -------------------------------------------------------------- |
-| A2 谱聚类               | `v4_hier_soft_spectral` | `--v4_cluster_mode spectral --v4_cluster_k 5`                  |
-| A3 强化 PFL eval       | `v4_hier_soft_pfl_eval` | `--v4_gate_power 2.0 --v4_lambda_min 0.2 --v4_lambda_max 1.0`  |
-| C1 仅 B-sign          | `v4_sign_v2agg`         | `--v4_bsign_lambda 1e-3 --v4_bsign_gamma 5.0`                  |
-| C2 B-sign + sparse-A | `v4_sign_full`          | 上式 + `--v4_asparse_lambda 1e-4`（或 `--yoco_sparse_lambda 1e-4`） |
-| D1 固定 mixer          | `v4_mix_fixed05`        | `--v4_mix_mode fixed --v4_mix_eta 0.5`                         |
-| D2 按域搜 η             | `v4_mix_per_domain`     | `--v4_mix_mode per_domain`                                     |
-| D3 MoE mixer         | `v4_mix_moe`            | `--v4_mix_mode moe`                                            |
-
-
-Branch C/D 的 **服务端聚合仍走 v2 `fedplora-oneshot`**，差异在本地正则（C）或 eval 时 A 混合（D）；Branch A 使用 `**FedPLoRA-v4/methods/fedplora_v4_hier.py**`。
-
-**v4 一键脚本**（均在仓库根执行；**第一个可选参数为 GPU**，与 §11.3 一致）：
+**一键脚本**（仓库根；第一个参数为 GPU）：
 
 ```bash
-bash FedPLoRA-v4/scripts/RunScripts/run_v4_branch_a.sh 0       # 指定 GPU 0
-bash FedPLoRA-v4/scripts/RunScripts/run_v4_branch_a.sh 1       # 指定 GPU 1
-bash FedPLoRA-v4/scripts/RunScripts/run_v4_branch_a.sh         # 不写：用 env 的 CUDA_DEVICES，或自动选空闲显存最大的卡
-
-bash FedPLoRA-v4/scripts/RunScripts/run_v4_pilot_7c.sh 0
-bash FedPLoRA-v4/scripts/RunScripts/run_v4_baseline.sh 0
-bash FedPLoRA-v4/scripts/RunScripts/run_v4_branch_c.sh 0
-bash FedPLoRA-v4/scripts/RunScripts/run_v4_branch_d.sh 0
+bash scripts/RunScripts/run_v4_branch_a.sh 0
+bash scripts/RunScripts/run_v4_branch_c.sh 1
+bash scripts/RunScripts/run_v4_branch_d.sh 0
+bash scripts/RunScripts/run_v4_baseline.sh 0
+bash scripts/RunScripts/run_v4_pilot_7c.sh 0    # 7c 快验
 ```
 
-GPU 解析顺序（`FedPLoRA-v4/scripts/RunScripts/_v4_run_common.inc.sh` → 主仓库 `configs/cuda_resolve.inc.sh`）：① 已 `export CUDA_DEVICES`；② 脚本第一个参数（如 `0` 或 `0,1`）；③ `nvidia-smi` 选空闲显存最大单卡。强制不用自动选卡：`AUTO_CUDA_PICK=0 bash .../run_v4_branch_a.sh`。
+**产物**：`artifacts_35c/v4_sft_metrics/{agg_type}_*_r1_e1.json`（含 `per_seed[]`）。汇总：`python scripts/Analysis/summarize_v4.py --metrics_dir artifacts_35c/v4_sft_metrics`。
 
-**产物**：`artifacts_35c/v4_sft_metrics/`（或 env 里 `METRICS_OUTPUT_DIR`）下  
-`{agg_type}_{model}_seed_{seeds}_r1_e1.json`，内含 `per_seed[]` 每种种子的 `rounds[]`、`v4_stats_summary` 等。汇总：`python FedPLoRA-v4/scripts/Analysis/summarize_v4.py --metrics_dir artifacts_35c/v4_sft_metrics`。
-
-**注意**：v4 **不要** 用 §11.1 的 `python tasks/fed_train_sft.py --agg_type v4_`*（主入口未注册 v4 聚合器）。7c pilot 时将 `BENCHMARK_DIR` 改为 `data/domain_benchmark_7c/seed_42` 即可。
+**注意**：v4 **不要** 用 `tasks/fed_train_sft.py --agg_type v4_*`（主入口未注册 v4）。支线设计见 `docs/v4/branches/`。
 
 ### 11.1.1 换一套 benchmark（7c / 14c / 21c）
 
@@ -1031,7 +1010,7 @@ CUDA_VISIBLE_DEVICES=0,1 python tasks/fed_train_sft.py \
   - 共享逻辑：`[_run_domain_sft_batch.inc.sh](scripts/RunScripts/_run_domain_sft_batch.inc.sh)`、`[_fed_train_speed.inc.sh](scripts/RunScripts/_fed_train_speed.inc.sh)`
 - [scripts/RunScripts/run_domain_sft_baselines1.sh](scripts/RunScripts/run_domain_sft_baselines1.sh)（旧版四合一分组：oneshot、fedalt、flora、normal；无统一 checkpoint 命名时可改用 §11.3.3 四脚本）
 - [scripts/RunScripts/run_domain_sft_baselines2.sh](scripts/RunScripts/run_domain_sft_baselines2.sh)（旧版：yoco、fedsa_lora、ffa）
-- 扩展实验脚本（详见 **§十四**）：`[run_exp_post_main_35c.sh](scripts/RunScripts/run_exp_post_main_35c.sh)`（通信+个性化）、`[run_exp_ablation_oneshot_35c.sh](scripts/RunScripts/run_exp_ablation_oneshot_35c.sh)`（oneshot v2 三模块消融）、`[run_exp_personalization.sh](scripts/RunScripts/run_exp_personalization.sh)`、`[run_exp_comm_profile.sh](scripts/RunScripts/run_exp_comm_profile.sh)`；**v4** 见 **§11.1 第 13 条** 与 `FedPLoRA-v4/scripts/RunScripts/run_v4_*.sh`
+- 扩展实验脚本（详见 **§十四**）：`run_exp_post_main_35c.sh`、`run_exp_ablation_oneshot_35c.sh`、`run_exp_personalization.sh`、`run_exp_comm_profile.sh`；**v4** 见 **§11.1 第 13 条** 与 `scripts/RunScripts/run_v4_*.sh`（设计文档 [FedPLoRAOSv4_README.md](FedPLoRAOSv4_README.md)）
 - [configs/domain_sft_pilot.env](configs/domain_sft_pilot.env)（单机 pilot 默认环境）
 - [configs/domain_sft.env](configs/domain_sft.env)（批量 baseline 默认环境）
 
