@@ -90,60 +90,74 @@ from methods.v4.fedplora_v4_mix import (
 _orig_train_client = v2_train_eval.train_client
 
 
-def _patched_train_client(model, dataloader, args, client_idx=0):
-    """v2's train loop, with B-sign + A-sparse regularizers when v4 sign branch is active."""
-    agg_type = (getattr(args, "agg_type", "") or "").lower()
-    sign_active = agg_type in {"v4_sign_v2agg", "v4_sign_full"}
-    mix_active = agg_type.startswith("v4_mix_")
-    if sign_active:
-        maybe_init_bsign_anchor(model, args)
-
-    # Replicate v2 train_client body with extra hook
+def _train_client_v4_sign(model, dataloader, args, client_idx=0):
+    """Branch C only: v2 train loop + B-sign anchor updates (no lora_a2; removed from main repo)."""
+    maybe_init_bsign_anchor(model, args)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device)
-    if v2_train_eval.is_lora_a2_agg(getattr(args, "agg_type", None)):
-        v2_train_eval._apply_lora_a2_freeze(model, args)
-    steps_total = len(dataloader) * args.local_epochs
+    v2_train_eval._fedplora_refresh_reg_tensor_gpu_cache(model, args)
+
+    full_steps = len(dataloader) * args.local_epochs
+    cap_steps = int(getattr(args, "train_max_steps_per_client", 0) or 0)
+    steps_this_round = min(full_steps, cap_steps) if cap_steps > 0 else full_steps
+
     trainable = [p for p in model.parameters() if p.requires_grad] or list(model.parameters())
     optimizer = torch.optim.AdamW(trainable, lr=args.lr)
     scheduler = v2_train_eval.get_linear_schedule_with_warmup(
         optimizer,
-        num_warmup_steps=int(steps_total * args.warmup_ratio),
-        num_training_steps=steps_total,
+        num_warmup_steps=int(steps_this_round * args.warmup_ratio),
+        num_training_steps=steps_this_round,
     )
     scaler = v2_train_eval.GradScaler()
     model.train()
-    for _ in range(args.local_epochs):
-        for batch in v2_train_eval.tqdm(
-            dataloader,
-            leave=True,
-            dynamic_ncols=True,
-            desc=getattr(args, "_tqdm_desc", None),
-        ):
-            batch = {k: v.to(device) for k, v in batch.items()}
-            with v2_train_eval.autocast():
-                outputs = model(**batch)
-                loss = outputs.loss
-                loss = v2_train_eval._add_fedplora_regularization(loss, model, args)
-                loss = v2_train_eval._add_yoco_sparse(loss, model, args)
-                loss = v2_train_eval._add_fedplora_oneshot_anchor(loss, model, args)
-                if sign_active:
+    global_step = 0
+    try:
+        for _ in range(args.local_epochs):
+            for batch in v2_train_eval.tqdm(
+                dataloader,
+                leave=True,
+                dynamic_ncols=True,
+                desc=getattr(args, "_tqdm_desc", None),
+            ):
+                if global_step >= steps_this_round:
+                    break
+                batch = {k: v.to(device) for k, v in batch.items()}
+                with v2_train_eval.autocast():
+                    outputs = model(**batch)
+                    loss = outputs.loss
+                    loss = v2_train_eval._add_fedplora_regularization(loss, model, args)
+                    loss = v2_train_eval._add_yoco_sparse(loss, model, args)
+                    loss = v2_train_eval._add_fedplora_oneshot_anchor(loss, model, args)
                     loss = apply_sign_regularizers(loss, model, args)
-            scaler.scale(loss).backward()
-            scaler.step(optimizer)
-            scaler.update()
-            scheduler.step()
-            optimizer.zero_grad()
-            if sign_active:
+                scaler.scale(loss).backward()
+                scaler.step(optimizer)
+                scaler.update()
+                scheduler.step()
+                optimizer.zero_grad()
                 update_bsign_anchor(model, args)
+                global_step += 1
+            if global_step >= steps_this_round:
+                break
+        return model.state_dict()
+    finally:
+        args._fedplora_initial_A_gpu = None
+        args._fedplora_global_A_gpu = None
 
-    # Branch D: snapshot A_local right after local training
-    if mix_active:
+
+def _patched_train_client(model, dataloader, args, client_idx=0):
+    """v4: reuse v2 train_client; sign/mix add Branch C/D hooks only."""
+    agg_type = (getattr(args, "agg_type", "") or "").lower()
+    if agg_type in {"v4_sign_v2agg", "v4_sign_full"}:
+        return _train_client_v4_sign(model, dataloader, args, client_idx=client_idx)
+
+    sd = _orig_train_client(model, dataloader, args, client_idx=client_idx)
+
+    if agg_type.startswith("v4_mix_"):
         a_local = snapshot_local_A(model)
         save_dir = Path(getattr(args, "v4_mix_save_dir", "artifacts/v4_mix_a_local"))
         save_dir.mkdir(parents=True, exist_ok=True)
         torch.save(a_local, save_dir / f"client_{client_idx:03d}_A_local.pt")
-    return model.state_dict()
+    return sd
 
 
 v2_train_eval.train_client = _patched_train_client
