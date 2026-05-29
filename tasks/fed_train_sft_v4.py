@@ -189,7 +189,12 @@ def build_parser():
     p.add_argument("--warmup_ratio", type=float, default=0.03)
     p.add_argument("--max_seq_length", type=int, default=2048)
     p.add_argument("--seed", type=int, default=42)
-    p.add_argument("--gradient_checkpointing", action="store_true")
+    p.add_argument(
+        "--gradient_checkpointing",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Default on (match §11.1). 8B @ max_seq_length=2048 needs this on a single A100.",
+    )
     p.add_argument("--trust_remote_code", action="store_true")
     p.add_argument("--torch_dtype", type=str, default="bfloat16",
                    choices=["auto", "bfloat16", "float16", "float32"])
@@ -353,9 +358,10 @@ def federated_sft_single_seed(args):
     }
     args._fedplora_initial_A = initial_A
 
-    # Per-client local B store (in-memory for brevity; v2 supports disk persistence)
+    # Per-client local B on CPU (one shared seed; same as disk-protocol init)
+    _seed_local = extract_fedplora_local_state(global_model)
     local_states = {
-        int(cid): {k: v.clone() for k, v in extract_fedplora_local_state(global_model).items()}
+        int(cid): {k: v.clone() for k, v in _seed_local.items()}
         for cid in client_ids
     }
 
@@ -385,6 +391,8 @@ def federated_sft_single_seed(args):
             load_fedplora_local_state(global_model, local_states[int(client_id)])
             v2_train_eval.train_client(global_model, client_dataloaders[i], args, client_idx=i)
             local_states[int(client_id)] = extract_fedplora_local_state(global_model)
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
             fedplora_uploads.append(build_fedplora_upload_package(
                 global_model, client_sizes[i],
                 client_id=int(client_id),
