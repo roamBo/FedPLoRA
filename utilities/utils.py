@@ -14,6 +14,24 @@ def is_fedplora_agg(agg_type):
     return _norm_agg_type(agg_type) == "fedplora"
 
 
+def is_v4_agg(agg_type):
+    return _norm_agg_type(agg_type).startswith("v4_")
+
+
+def uses_fedplora_oneshot_server_agg(agg_type):
+    """Server-side conflict-gated oneshot (v2 + v4 sign/mix branches)."""
+    t = _norm_agg_type(agg_type)
+    if t == "fedplora_oneshot":
+        return True
+    return t in {
+        "v4_sign_v2agg",
+        "v4_sign_full",
+        "v4_mix_fixed05",
+        "v4_mix_per_domain",
+        "v4_mix_moe",
+    }
+
+
 def is_fedplora_oneshot_agg(agg_type):
     """
     FedPLoRA-Oneshot: exactly one federated round; clients upload LoRA A,
@@ -47,7 +65,7 @@ def is_lora_a_disk_agg(agg_type):
         "fedplora_oneshot",
         "fedsa_lora",
         "fedsa",
-    } or is_fedplora_v3_agg(agg_type)
+    } or is_fedplora_v3_agg(agg_type) or is_v4_agg(agg_type)
 
 
 def is_fedalt_sequential_agg(agg_type):

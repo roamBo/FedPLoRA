@@ -18,7 +18,12 @@ from methods.v4.common_v4 import M  # noqa: F401  (re-export to keep symmetry)
 
 
 def aggregate_models_v4_anchor(global_model, client_uploads, args):
-    raise NotImplementedError(
-        "Branch E (anchor calibration) is a Stage-5 task. Implement after "
-        "Branches A/C/D have been validated."
+    """Stub: anchor grid search not wired; fall back to Hier++ prior until Stage 5."""
+    print(
+        "[v4-anchor][stub] anchor calibration not implemented; "
+        "using v4_hier_soft_prior aggregation (see Stage 5 in FedPLoRAOSv4_README).",
+        flush=True,
     )
+    from methods.v4.fedplora_v4_hier import aggregate_models_v4_hier_soft_prior
+
+    return aggregate_models_v4_hier_soft_prior(global_model, client_uploads, args)
