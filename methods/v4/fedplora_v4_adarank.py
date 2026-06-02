@@ -30,7 +30,12 @@ def get_domain_rank(domain: str, default: int = 8) -> int:
 
 
 def aggregate_models_v4_adarank(global_model, client_uploads, args):
-    raise NotImplementedError(
-        "Branch F (heterogeneous rank) is a Stage-4 task. It requires changing "
-        "the PEFT LoRA factory; see branches/BRANCH_F_AdaRank.md for the plan."
+    """Stub: heterogeneous rank not wired; fall back to v2 oneshot until Stage 4."""
+    print(
+        "[v4-adarank][stub] per-domain rank not implemented; "
+        "using fedplora_oneshot aggregation (see Stage 4 in FedPLoRAOSv4_README).",
+        flush=True,
     )
+    from methods.fedplora_oneshot import aggregate_models_fedplora_oneshot
+
+    return aggregate_models_fedplora_oneshot(global_model, client_uploads, args)

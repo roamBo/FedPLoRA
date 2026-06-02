@@ -1,10 +1,9 @@
 #!/usr/bin/env bash
-# Branch D — FedPLoRA-Mix runs
-# D1: fixed eta=0.5
-# D2: per-domain eta grid search (TODO: wire up domain val loaders)
-# D3: per-input MoE gate (TODO: wire up hidden-state hook)
+# Branch F — FedPLoRA-AdaRank runs (Stage 4; aggregator stub → v2 oneshot until heterogeneous rank wired)
+# F1: risk domains r=16 (others r=8) — placeholder agg
+# F2: full heterogeneous rank table — placeholder agg
 #
-# Usage: bash scripts/RunScripts/run_v4_branch_d.sh [gpu]
+# Usage: bash scripts/RunScripts/run_v4_branch_f.sh [gpu]
 set -euo pipefail
 _SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 _REPO_ROOT="$(cd "${_SCRIPT_DIR}/../.." && pwd)"
@@ -19,57 +18,36 @@ fi
 source "${_SCRIPT_DIR}/_v4_run_common.inc.sh"
 v4_resolve_gpu "${1:-}"
 
-# D1 — fixed eta = 0.5
+# F1 — risk r=16 only
 CUDA_VISIBLE_DEVICES="${CUDA_DEVICES}" \
 python tasks/fed_train_sft_v4.py \
   --model "$MODEL_PATH" \
   --benchmark_dir "$BENCHMARK_DIR" \
-  --agg_type v4_mix_fixed05 \
+  --agg_type v4_adarank_risk16 \
   --rounds "$ROUNDS" --local_epochs "$LOCAL_EPOCHS" --lr "$LR" \
   --lora_r "$LORA_R" --lora_alpha "$LORA_ALPHA" --lora_dropout "$LORA_DROPOUT" \
   --batch_size "$BATCH_SIZE" --max_seq_length "$MAX_SEQ_LENGTH" \
   --torch_dtype "$TORCH_DTYPE" --target_modules "$TARGET_MODULES" \
   --gradient_checkpointing \
-  --client_state_dir "${CLIENT_STATE_DIR}_d1" --save_client_state_to_disk \
+  --client_state_dir "${CLIENT_STATE_DIR}_f1" --save_client_state_to_disk \
   --metrics_output_dir "$METRICS_OUTPUT_DIR" \
   --eval_max_batches "$EVAL_MAX_BATCHES" --eval_seeds "$EVAL_SEEDS" \
-  --v4_mix_mode fixed --v4_mix_eta 0.5 \
-  --v4_mix_save_dir "artifacts/v4_mix_a_local_d1" \
+  --v4_adarank_mode risk16 \
   --oneshot_anchor_lambda "$ONESHOT_ANCHOR_LAMBDA"
 
-# D2 — per-domain eta (grid search on val; stub uses fixed eta until wired)
+# F2 — full heterogeneous rank table
 CUDA_VISIBLE_DEVICES="${CUDA_DEVICES}" \
 python tasks/fed_train_sft_v4.py \
   --model "$MODEL_PATH" \
   --benchmark_dir "$BENCHMARK_DIR" \
-  --agg_type v4_mix_per_domain \
+  --agg_type v4_adarank_full \
   --rounds "$ROUNDS" --local_epochs "$LOCAL_EPOCHS" --lr "$LR" \
   --lora_r "$LORA_R" --lora_alpha "$LORA_ALPHA" --lora_dropout "$LORA_DROPOUT" \
   --batch_size "$BATCH_SIZE" --max_seq_length "$MAX_SEQ_LENGTH" \
   --torch_dtype "$TORCH_DTYPE" --target_modules "$TARGET_MODULES" \
   --gradient_checkpointing \
-  --client_state_dir "${CLIENT_STATE_DIR}_d2" --save_client_state_to_disk \
+  --client_state_dir "${CLIENT_STATE_DIR}_f2" --save_client_state_to_disk \
   --metrics_output_dir "$METRICS_OUTPUT_DIR" \
   --eval_max_batches "$EVAL_MAX_BATCHES" --eval_seeds "$EVAL_SEEDS" \
-  --v4_mix_mode per_domain --v4_mix_eta 0.5 \
-  --v4_mix_save_dir "artifacts/v4_mix_a_local_d2" \
-  --oneshot_anchor_lambda "$ONESHOT_ANCHOR_LAMBDA"
-
-# D3 — per-input MoE gate (stub)
-CUDA_VISIBLE_DEVICES="${CUDA_DEVICES}" \
-python tasks/fed_train_sft_v4.py \
-  --model "$MODEL_PATH" \
-  --benchmark_dir "$BENCHMARK_DIR" \
-  --agg_type v4_mix_moe \
-  --rounds "$ROUNDS" --local_epochs "$LOCAL_EPOCHS" --lr "$LR" \
-  --lora_r "$LORA_R" --lora_alpha "$LORA_ALPHA" --lora_dropout "$LORA_DROPOUT" \
-  --batch_size "$BATCH_SIZE" --max_seq_length "$MAX_SEQ_LENGTH" \
-  --torch_dtype "$TORCH_DTYPE" --target_modules "$TARGET_MODULES" \
-  --gradient_checkpointing \
-  --client_state_dir "${CLIENT_STATE_DIR}_d3" --save_client_state_to_disk \
-  --metrics_output_dir "$METRICS_OUTPUT_DIR" \
-  --eval_max_batches "$EVAL_MAX_BATCHES" --eval_seeds "$EVAL_SEEDS" \
-  --v4_mix_mode moe --v4_mix_eta 0.5 \
-  --v4_mix_gate_hidden 64 --v4_mix_gate_epochs 3 \
-  --v4_mix_save_dir "artifacts/v4_mix_a_local_d3" \
+  --v4_adarank_mode full \
   --oneshot_anchor_lambda "$ONESHOT_ANCHOR_LAMBDA"

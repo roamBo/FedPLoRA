@@ -81,6 +81,18 @@ from methods.v4.fedplora_v4_mix import (
     search_per_domain_eta,
     snapshot_local_A,
 )
+from methods.v4.fedplora_v4_svd import aggregate_models_v4_svd
+from methods.v4.fedplora_v4_anchor import aggregate_models_v4_anchor
+from methods.v4.fedplora_v4_adarank import aggregate_models_v4_adarank
+from utilities.v4_orth_init import orthogonalize_lora_A_in_model
+from utilities.v4_run_checkpoint import (
+    init_v4_client_store,
+    maybe_apply_default_save_run_checkpoint_dir,
+    persist_client_local_state,
+    save_v4_run_checkpoint,
+    try_resume_eval_only_from_post_agg,
+    try_skip_if_run_fully_complete,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -203,9 +215,26 @@ def build_parser():
     p.add_argument("--client_state_dir", type=str, default="artifacts/v4_client_states")
     p.add_argument("--save_client_state_to_disk", action="store_true")
     p.add_argument("--metrics_output_dir", type=str, default="artifacts/v4_sft_metrics")
-    p.add_argument("--eval_max_batches", type=int, default=200)
+    p.add_argument("--eval_max_batches", type=int, default=50,
+                   help="Max eval batches per client per domain (200 for final stats; 50 for pilot).")
     p.add_argument("--eval_seeds", type=str, default="42",
-                   help="Comma-separated list of seeds to repeat the experiment.")
+                   help="Comma-separated training seeds; EACH seed re-runs full 35-client "
+                   "local train + agg + eval (expensive). Use '42' for pilot; "
+                   "'42,1234,9999' only for final paper stats.")
+
+    # 防白训：与 v2 fed_train_sft.py 同机制（默认 auto ../trained_models/<stem>/）
+    p.add_argument("--save_run_checkpoint_dir", type=str, default="",
+                   help="Run bundle root; empty = auto under ../trained_models/<stem>/")
+    p.add_argument("--trained_models_root", type=str, default="",
+                   help="Override parent dir for auto checkpoint bundles")
+    p.add_argument("--no_auto_save_run_checkpoint", action="store_true",
+                   help="Disable automatic save_run_checkpoint_dir")
+    p.add_argument("--force_retrain", action="store_true",
+                   help="Ignore existing checkpoints and retrain from scratch")
+    p.add_argument("--skip_post_agg_snapshots", action="store_true",
+                   help="Do not write snapshots/round_XXX_post_agg/ (disables eval-only resume)")
+    p.add_argument("--eval_only_from_checkpoint", type=str, default="",
+                   help="Eval-only from a bundle dir (final or snapshots/round_XXX_post_agg)")
 
     # v2 regularizers (reused by v4)
     p.add_argument("--oneshot_anchor_lambda", type=float, default=1e-4)
@@ -246,6 +275,22 @@ def build_parser():
     p.add_argument("--v4_mix_search_grid", type=str,   default="0.0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1.0")
     p.add_argument("--v4_mix_gate_hidden", type=int,   default=64)
     p.add_argument("--v4_mix_gate_epochs", type=int,   default=3)
+
+    # Branch B: SVD
+    p.add_argument("--v4_svd_orth_init", type=int, default=1,
+                   help="1=QR-orthogonalize A_0 before local training (Branch B)")
+    p.add_argument("--v4_svd_refactor", type=int, default=1,
+                   help="1=SVD refactor on stacked client A at aggregation (B2)")
+    p.add_argument("--v4_svd_procrustes", type=int, default=1)
+
+    # Branch E: Anchor (stub → hier prior until anchor data wired)
+    p.add_argument("--v4_anchor_gate_threshold", type=float, default=0.35)
+    p.add_argument("--v4_anchor_cluster_lambda", type=float, default=0.5)
+    p.add_argument("--v4_use_anchor", type=int, default=1)
+
+    # Branch F: AdaRank (stub → oneshot until heterogeneous rank wired)
+    p.add_argument("--v4_adarank_mode", type=str, default="full",
+                   choices=["risk16", "full"])
     return p
 
 
@@ -277,6 +322,22 @@ def _dispatch_aggregate(agg_type, global_model, fedplora_uploads, args):
     # Branch D — server aggregation reuses v2 oneshot; mixer applied during eval
     if t in {"v4_mix_fixed05", "v4_mix_per_domain", "v4_mix_moe"}:
         return aggregate_models_fedplora_oneshot(global_model, fedplora_uploads, args)
+
+    # Branch B — SVD
+    if t in {"v4_svd_orth_only", "v4_svd_full"}:
+        if t == "v4_svd_orth_only":
+            args.v4_svd_refactor = 0
+        else:
+            args.v4_svd_refactor = 1
+        return aggregate_models_v4_svd(global_model, fedplora_uploads, args)
+
+    # Branch E — anchor (stub)
+    if t in {"v4_anchor_gate", "v4_anchor_lambda"}:
+        return aggregate_models_v4_anchor(global_model, fedplora_uploads, args)
+
+    # Branch F — AdaRank (stub)
+    if t in {"v4_adarank_risk16", "v4_adarank_full"}:
+        return aggregate_models_v4_adarank(global_model, fedplora_uploads, args)
 
     raise ValueError(f"Unknown v4 agg_type: {agg_type}")
 
@@ -321,9 +382,37 @@ def compute_lm_eval_stats(model, dataloader, device, max_batches=0):
             "n_eval_batches": int(steps)}
 
 
+def _build_round_block(global_model, round_idx, domain_metrics, macro_acc, worst_acc, macro_ppl, worst_ppl, args):
+    round_block = {
+        "round": round_idx + 1,
+        "domain_macro_token_accuracy": macro_acc,
+        "worst_domain_token_accuracy": worst_acc,
+        "domain_macro_perplexity": macro_ppl,
+        "worst_domain_perplexity": worst_ppl,
+        "domain_metrics": domain_metrics,
+    }
+    v4_stats = getattr(args, "_fedplora_v4_stats", None)
+    if v4_stats:
+        round_block["v4_stats_summary"] = v4_stats.get("_summary", {})
+    oneshot = getattr(args, "_fedplora_oneshot_conflict_stats", None)
+    if oneshot and oneshot.get("_summary"):
+        round_block["fedplora_oneshot_conflict"] = oneshot.get("_summary", {})
+    return round_block
+
+
+def _run_eval_round(global_model, client_ids, local_states, benchmark, tokenizer, args, round_idx):
+    domain_metrics, macro_acc, worst_acc, macro_ppl, worst_ppl = _evaluate(
+        global_model, client_ids, local_states, benchmark, tokenizer, args
+    )
+    return _build_round_block(
+        global_model, round_idx, domain_metrics, macro_acc, worst_acc, macro_ppl, worst_ppl, args
+    )
+
+
 def federated_sft_single_seed(args):
     """Run one federation pass for one seed. Returns metrics dict."""
     benchmark = load_domain_sft_benchmark(args.benchmark_dir)
+    split_dir = os.path.abspath(os.path.expanduser(args.benchmark_dir))
     from transformers import AutoTokenizer
     tokenizer = AutoTokenizer.from_pretrained(
         args.model, use_fast=False, trust_remote_code=args.trust_remote_code,
@@ -342,6 +431,20 @@ def federated_sft_single_seed(args):
         for c in benchmark.get("clients", [])
     }
 
+    maybe_apply_default_save_run_checkpoint_dir(args, split_dir)
+    skipped = try_skip_if_run_fully_complete(args, split_dir, client_ids)
+    if skipped is not None:
+        return skipped
+
+    def _eval_cb(global_model, client_ids, local_states, round_idx=0):
+        return _run_eval_round(
+            global_model, client_ids, local_states, benchmark, tokenizer, args, round_idx
+        )
+
+    resumed = try_resume_eval_only_from_post_agg(args, split_dir, client_ids, _eval_cb)
+    if resumed is not None:
+        return resumed
+
     global_model = create_peft_causal_lm_model(args)
     comm = estimate_round_communication_bytes(
         global_model.state_dict(), args.agg_type,
@@ -351,6 +454,11 @@ def federated_sft_single_seed(args):
           f"comm_down={comm['down_bytes_per_client']}B comm_up={comm['up_bytes_per_client']}B")
 
     init_fedplora_adapters(global_model)
+    agg_t = (args.agg_type or "").lower()
+    if agg_t.startswith("v4_svd_") and bool(int(getattr(args, "v4_svd_orth_init", 1) or 0)):
+        n_orth = orthogonalize_lora_A_in_model(global_model)
+        print(f"[v4-svd] orthogonalized {n_orth} LoRA A matrices at init", flush=True)
+
     initial_A = {
         k: v.detach().cpu().clone()
         for k, v in global_model.state_dict().items()
@@ -358,15 +466,11 @@ def federated_sft_single_seed(args):
     }
     args._fedplora_initial_A = initial_A
 
-    # Per-client local B on CPU (one shared seed; same as disk-protocol init)
-    _seed_local = extract_fedplora_local_state(global_model)
-    local_states = {
-        int(cid): {k: v.clone() for k, v in _seed_local.items()}
-        for cid in client_ids
-    }
+    client_store = init_v4_client_store(global_model, client_ids, args)
+    local_states = client_store["local_states"]
 
     metrics = {"args": vars(args).copy(), "seed": int(args.seed),
-               "benchmark_dir": args.benchmark_dir, "rounds": [],
+               "benchmark_dir": split_dir, "rounds": [],
                "communication": dict(comm, agg_type=args.agg_type)}
 
     for round_idx in range(args.rounds):
@@ -390,7 +494,9 @@ def federated_sft_single_seed(args):
             broadcast_fedplora_shared_state(global_model, gp_global_state)
             load_fedplora_local_state(global_model, local_states[int(client_id)])
             v2_train_eval.train_client(global_model, client_dataloaders[i], args, client_idx=i)
-            local_states[int(client_id)] = extract_fedplora_local_state(global_model)
+            local_state = extract_fedplora_local_state(global_model)
+            persist_client_local_state(client_store, client_id, local_state, args)
+            local_states[int(client_id)] = local_state
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
             fedplora_uploads.append(build_fedplora_upload_package(
@@ -400,26 +506,40 @@ def federated_sft_single_seed(args):
             ))
         args._tqdm_desc = None
 
-        print(f"[v4] round {round_idx + 1}: aggregating ({args.agg_type})")
+        print(f"[v4] round {round_idx + 1}: aggregating ({args.agg_type})", flush=True)
         global_model = _dispatch_aggregate(args.agg_type, global_model, fedplora_uploads, args)
+        print(f"[v4] round {round_idx + 1}: aggregation done; starting eval "
+              f"({len(benchmark['test_domain'])} domains × {len(client_ids)} clients, "
+              f"eval_max_batches={getattr(args, 'eval_max_batches', 0) or 'all'})", flush=True)
 
-        # Per-round eval (domain macro on test_domain)
-        domain_metrics, macro_acc, worst_acc, macro_ppl, worst_ppl = _evaluate(
-            global_model, client_ids, local_states, benchmark, tokenizer, args
+        if str(getattr(args, "save_run_checkpoint_dir", "") or "").strip():
+            save_v4_run_checkpoint(
+                global_model,
+                local_states,
+                client_ids,
+                args,
+                split_dir,
+                bundle_subdir=f"snapshots/round_{round_idx + 1:03d}_post_agg",
+                checkpoint_phase="post_aggregation",
+                round_saved_1based=round_idx + 1,
+            )
+
+        round_block = _run_eval_round(
+            global_model, client_ids, local_states, benchmark, tokenizer, args, round_idx
         )
-        round_block = {
-            "round": round_idx + 1,
-            "domain_macro_token_accuracy": macro_acc,
-            "worst_domain_token_accuracy": worst_acc,
-            "domain_macro_perplexity": macro_ppl,
-            "worst_domain_perplexity": worst_ppl,
-            "domain_metrics": domain_metrics,
-        }
-        # Dump v4 diagnostics if present
-        v4_stats = getattr(args, "_fedplora_v4_stats", None)
-        if v4_stats:
-            round_block["v4_stats_summary"] = v4_stats.get("_summary", {})
         metrics["rounds"].append(round_block)
+
+        if str(getattr(args, "save_run_checkpoint_dir", "") or "").strip():
+            save_v4_run_checkpoint(
+                global_model,
+                local_states,
+                client_ids,
+                args,
+                split_dir,
+                checkpoint_phase="final",
+                round_saved_1based=round_idx + 1,
+                round_metrics=round_block,
+            )
 
     return metrics
 
@@ -448,10 +568,18 @@ def _evaluate(global_model, client_ids, local_states, benchmark, tokenizer, args
             mix_eta_by_domain[d] = float(args.v4_mix_eta)
 
     metrics = {}
-    for domain, rows in sorted(by_domain.items()):
+    domains_sorted = sorted(by_domain.items())
+    n_domains = len(domains_sorted)
+    n_clients = len(client_ids)
+    for di, (domain, rows) in enumerate(domains_sorted, start=1):
         dl = create_domain_eval_dataloader(rows, tokenizer, args)
         stats_per_client = []
-        for client_id in client_ids:
+        for ci, client_id in enumerate(client_ids, start=1):
+            print(
+                f"[v4] eval domain {di}/{n_domains} {domain} "
+                f"client {ci}/{n_clients} (id={client_id})",
+                flush=True,
+            )
             client_shared = dict(shared_state)
             client_shared.update(personalized.get(int(client_id), {}))
             broadcast_fedplora_shared_state(global_model, client_shared)
@@ -491,6 +619,10 @@ def _evaluate(global_model, client_ids, local_states, benchmark, tokenizer, args
     worst_acc = float(min(accs)) if accs else float("nan")
     macro_ppl = float(np.mean([v["perplexity"] for v in metrics.values()]))
     worst_ppl = float(max(v["perplexity"] for v in metrics.values()))
+    print(
+        f"[v4] eval done: macro_acc={macro_acc:.4f} worst_acc={worst_acc:.4f}",
+        flush=True,
+    )
     return metrics, macro_acc, worst_acc, macro_ppl, worst_ppl
 
 
@@ -500,14 +632,40 @@ def main():
         args, log_dir="log_v4", filename_prefix="v4_sft"
     )
     try:
-        seeds = [int(s) for s in str(args.eval_seeds).split(",") if s.strip()]
-        per_seed_results = []
-        for seed in seeds:
-            args.seed = seed
-            set_seed(seed)
-            print(f"\n========== v4 run seed={seed} ==========")
-            result = federated_sft_single_seed(args)
-            per_seed_results.append(result)
+        if str(getattr(args, "eval_only_from_checkpoint", "") or "").strip():
+            split_dir = os.path.abspath(os.path.expanduser(args.benchmark_dir))
+            benchmark = load_domain_sft_benchmark(split_dir)
+            from transformers import AutoTokenizer
+            tokenizer = AutoTokenizer.from_pretrained(
+                args.model, use_fast=False, trust_remote_code=args.trust_remote_code,
+            )
+            if tokenizer.pad_token is None:
+                tokenizer.pad_token = tokenizer.eos_token
+            client_ids, _ = create_domain_client_dataloaders(benchmark["train"], tokenizer, args)
+            args.num_clients = len(client_ids)
+            maybe_apply_default_save_run_checkpoint_dir(args, split_dir)
+
+            def _eval_cb(global_model, cids, local_states, round_idx=0):
+                return _run_eval_round(
+                    global_model, cids, local_states, benchmark, tokenizer, args, round_idx
+                )
+
+            result = try_resume_eval_only_from_post_agg(args, split_dir, client_ids, _eval_cb)
+            if result is None:
+                raise RuntimeError(
+                    f"--eval_only_from_checkpoint failed for {args.eval_only_from_checkpoint}"
+                )
+            per_seed_results = [result]
+            seeds = [int(args.seed)]
+        else:
+            seeds = [int(s) for s in str(args.eval_seeds).split(",") if s.strip()]
+            per_seed_results = []
+            for seed in seeds:
+                args.seed = seed
+                set_seed(seed)
+                print(f"\n========== v4 run seed={seed} ==========")
+                result = federated_sft_single_seed(args)
+                per_seed_results.append(result)
 
         # Aggregate across seeds
         os.makedirs(args.metrics_output_dir, exist_ok=True)
