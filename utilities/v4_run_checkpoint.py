@@ -20,7 +20,7 @@ from utilities.state_dict_ops import extract_fedplora_local_state
 from utilities.utils import (
     get_fedplora_shared_param_names,
     is_fedplora_oneshot_agg,
-    is_lora_a_param_name,
+    tensor_to_list,
     uses_fedplora_oneshot_server_agg,
 )
 
@@ -313,7 +313,7 @@ def save_v4_run_checkpoint(
             json.dump(meta, f, indent=2, ensure_ascii=False)
         if round_metrics is not None and checkpoint_phase == "final":
             with open(os.path.join(root, "metrics_round.json"), "w", encoding="utf-8") as f:
-                json.dump(round_metrics, f, indent=2, ensure_ascii=False)
+                json.dump(tensor_to_list(round_metrics), f, indent=2, ensure_ascii=False)
         _write_checkpoint_ok_file(root, checkpoint_phase, round_saved_1based)
         tag = "post-aggregation snapshot" if checkpoint_phase == "post_aggregation" else "final bundle"
         print(f"[v4-checkpoint] {tag} -> {root}", flush=True)
@@ -359,7 +359,7 @@ def try_skip_if_run_fully_complete(args, split_dir: str, client_ids):
         flush=True,
     )
     return {
-        "args": vars(args).copy(),
+        "args": {k: v for k, v in vars(args).items() if not str(k).startswith("_")},
         "seed": int(args.seed),
         "benchmark_dir": split_dir,
         "rounds": [round_block],
@@ -426,7 +426,7 @@ def try_resume_eval_only_from_post_agg(args, split_dir: str, client_ids, evaluat
                 round_metrics=round_block,
             )
         return {
-            "args": vars(args).copy(),
+            "args": {k: v for k, v in vars(args).items() if not str(k).startswith("_")},
             "seed": int(args.seed),
             "benchmark_dir": split_dir,
             "rounds": [round_block],

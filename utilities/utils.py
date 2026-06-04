@@ -4,6 +4,8 @@ from datetime import datetime
 import json
 import sys
 
+import numpy as np
+
 
 def _norm_agg_type(agg_type):
     return (agg_type or "").strip().lower().replace("-", "_")
@@ -171,12 +173,15 @@ def get_fedplora_shared_param_names(model):
 def tensor_to_list(obj):
     if isinstance(obj, torch.Tensor):
         return obj.detach().cpu().numpy().tolist()
-    elif isinstance(obj, dict):
+    if isinstance(obj, (np.floating, np.integer)):
+        return obj.item()
+    if isinstance(obj, np.ndarray):
+        return obj.tolist()
+    if isinstance(obj, dict):
         return {k: tensor_to_list(v) for k, v in obj.items()}
-    elif isinstance(obj, list):
+    if isinstance(obj, (list, tuple)):
         return [tensor_to_list(v) for v in obj]
-    else:
-        return obj
+    return obj
 
 
 def save_dict_to_json(data_dict, args, base_path):

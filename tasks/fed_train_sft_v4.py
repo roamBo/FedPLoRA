@@ -58,6 +58,7 @@ from utilities.utils import (
     is_lora_a_param_name,
     restore_logging,
     setup_run_logging,
+    tensor_to_list,
 )
 from utilities import train_eval as v2_train_eval
 from methods.fedp_lora import build_fedplora_upload_package
@@ -347,6 +348,16 @@ def _dispatch_aggregate(agg_type, global_model, fedplora_uploads, args):
 # ---------------------------------------------------------------------------
 
 
+def _metrics_args_snapshot(args) -> dict:
+    """CLI args only — omit runtime attrs (_fedplora_initial_A, etc.) that hold tensors."""
+    return {k: v for k, v in vars(args).items() if not str(k).startswith("_")}
+
+
+def _write_v4_metrics_json(path: str, payload: dict) -> None:
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(tensor_to_list(payload), f, indent=2, ensure_ascii=False)
+
+
 def set_seed(seed):
     np.random.seed(seed)
     torch.manual_seed(seed)
@@ -469,7 +480,7 @@ def federated_sft_single_seed(args):
     client_store = init_v4_client_store(global_model, client_ids, args)
     local_states = client_store["local_states"]
 
-    metrics = {"args": vars(args).copy(), "seed": int(args.seed),
+    metrics = {"args": _metrics_args_snapshot(args), "seed": int(args.seed),
                "benchmark_dir": split_dir, "rounds": [],
                "communication": dict(comm, agg_type=args.agg_type)}
 
@@ -672,11 +683,12 @@ def main():
         out_name = (f"{args.agg_type}_"
                     f"{Path(args.model).name}_seed_{','.join(str(s) for s in seeds)}_"
                     f"r{args.rounds}_e{args.local_epochs}.json")
-        with open(os.path.join(args.metrics_output_dir, out_name), "w") as f:
-            json.dump({"per_seed": per_seed_results,
-                       "agg_type": args.agg_type,
-                       "seeds": seeds}, f, indent=2)
-        print(f"[v4] wrote metrics to {os.path.join(args.metrics_output_dir, out_name)}")
+        out_path = os.path.join(args.metrics_output_dir, out_name)
+        _write_v4_metrics_json(
+            out_path,
+            {"per_seed": per_seed_results, "agg_type": args.agg_type, "seeds": seeds},
+        )
+        print(f"[v4] wrote metrics to {out_path}")
     finally:
         restore_logging(log_file, orig_out, orig_err)
 
