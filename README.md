@@ -934,7 +934,7 @@ CUDA_VISIBLE_DEVICES=0 python tasks/fed_train_sft_v4.py \
 ```bash
 bash scripts/RunScripts/run_v4_branch_a.sh 0
 bash scripts/RunScripts/run_v4_branch_c.sh 1
-![1780071622950](image/README/1780071622950.png)
+![1780400845296](image/README/1780400845296.png)
 bash scripts/RunScripts/run_v4_baseline.sh 0
 bash scripts/RunScripts/run_v4_pilot_7c.sh 0    # 7c 快验
 ```
