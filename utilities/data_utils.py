@@ -483,6 +483,7 @@ def build_domain_benchmark_from_jsonl(
     val_ratio=0.1,
     test_ratio=0.1,
     seed=42,
+    per_client_data_fraction=1.0,
 ):
     """
     Build a federated domain benchmark from a single JSONL file whose rows contain:
@@ -533,9 +534,19 @@ def build_domain_benchmark_from_jsonl(
         global_test.extend(domain_test)
         domain_test_rows.extend(domain_test)
 
-        shards = [[] for _ in range(num_clients_per_domain)]
-        for idx, row in enumerate(remain):
-            shards[idx % num_clients_per_domain].append(row)
+        pool = list(remain)
+        if per_client_data_fraction < 1.0:
+            n_keep = max(min_samples_per_client, int(len(pool) * float(per_client_data_fraction)))
+            n_keep = min(n_keep, len(pool))
+            rng.shuffle(pool)
+            pool = pool[:n_keep]
+
+        if num_clients_per_domain <= 1:
+            shards = [pool]
+        else:
+            shards = [[] for _ in range(num_clients_per_domain)]
+            for idx, row in enumerate(pool):
+                shards[idx % num_clients_per_domain].append(row)
 
         kept_clients = 0
         for shard in shards:

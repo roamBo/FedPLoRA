@@ -236,6 +236,10 @@ def build_parser():
                    help="Do not write snapshots/round_XXX_post_agg/ (disables eval-only resume)")
     p.add_argument("--eval_only_from_checkpoint", type=str, default="",
                    help="Eval-only from a bundle dir (final or snapshots/round_XXX_post_agg)")
+    p.add_argument("--log_dir", type=str, default="log_v4",
+                   help="Directory for tee logs (LW runs: log_LWv4)")
+    p.add_argument("--log_filename_prefix", type=str, default="v4_sft",
+                   help="Log filename prefix (LW runs: LWv4_sft)")
 
     # v2 regularizers (reused by v4)
     p.add_argument("--oneshot_anchor_lambda", type=float, default=1e-4)
@@ -640,7 +644,9 @@ def _evaluate(global_model, client_ids, local_states, benchmark, tokenizer, args
 def main():
     args = build_parser().parse_args()
     log_file, orig_out, orig_err, log_path = setup_run_logging(
-        args, log_dir="log_v4", filename_prefix="v4_sft"
+        args,
+        log_dir=getattr(args, "log_dir", "log_v4"),
+        filename_prefix=getattr(args, "log_filename_prefix", "v4_sft"),
     )
     try:
         if str(getattr(args, "eval_only_from_checkpoint", "") or "").strip():

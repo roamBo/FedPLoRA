@@ -31,6 +31,13 @@ def main():
         help="Benchmark output root.",
     )
     parser.add_argument("--num_clients_per_domain", type=int, default=5)
+    parser.add_argument(
+        "--per_client_data_fraction",
+        type=float,
+        default=1.0,
+        help="Fraction of each domain's non-test pool assigned to ONE client shard "
+        "(use 0.2 for LW: 1 client/domain with 1/5 data, not 5 clients merged).",
+    )
     parser.add_argument("--min_samples_per_client", type=int, default=50)
     parser.add_argument("--val_ratio", type=float, default=0.1)
     parser.add_argument("--test_ratio", type=float, default=0.1)
@@ -45,6 +52,7 @@ def main():
         val_ratio=args.val_ratio,
         test_ratio=args.test_ratio,
         seed=args.seed,
+        per_client_data_fraction=args.per_client_data_fraction,
     )
 
     split_dir = info["split_dir"]
