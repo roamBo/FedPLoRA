@@ -3,4 +3,4 @@ __pycache__/
 *.pt.tmp
 .pytest_cache/
 .mypy_cache/
-*.log
+#*.log
