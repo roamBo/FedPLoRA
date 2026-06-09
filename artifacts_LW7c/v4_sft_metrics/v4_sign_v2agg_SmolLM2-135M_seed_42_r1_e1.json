@@ -1,0 +1,144 @@
+{
+  "per_seed": [
+    {
+      "args": {
+        "model": "/data/yaominghao/gb/models/SmolLM2-135M",
+        "benchmark_dir": "data/domain_benchmark_LW7c/seed_42",
+        "agg_type": "v4_sign_v2agg",
+        "rounds": 1,
+        "num_clients": 7,
+        "local_epochs": 1,
+        "lr": 0.0002,
+        "lora_r": 8,
+        "lora_alpha": 16,
+        "lora_dropout": 0.05,
+        "rslora": false,
+        "batch_size": 2,
+        "warmup_ratio": 0.03,
+        "max_seq_length": 256,
+        "seed": 42,
+        "gradient_checkpointing": true,
+        "trust_remote_code": false,
+        "torch_dtype": "bfloat16",
+        "target_modules": "q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj",
+        "client_state_dir": "artifacts_LW7c/v4_client_states_LW_c1",
+        "save_client_state_to_disk": true,
+        "metrics_output_dir": "artifacts_LW7c/v4_sft_metrics",
+        "eval_max_batches": 10,
+        "eval_seeds": "42",
+        "save_run_checkpoint_dir": "/data/yaominghao/gb/trained_models_LW/v4_sign_v2agg_SmolLM2-135M_domain_benchmark_LW7c_seed_42_r1_e1_seed42",
+        "trained_models_root": "../trained_models_LW",
+        "no_auto_save_run_checkpoint": false,
+        "force_retrain": false,
+        "skip_post_agg_snapshots": false,
+        "eval_only_from_checkpoint": "",
+        "log_dir": "log_LWv4",
+        "log_filename_prefix": "LWv4_sft",
+        "oneshot_anchor_lambda": 0.0001,
+        "oneshot_prox_lambda": 0.0,
+        "oneshot_consensus_power": 2.0,
+        "oneshot_importance_power": 1.0,
+        "oneshot_importance_clip": 5.0,
+        "oneshot_conflict_threshold": 0.35,
+        "oneshot_conflict_blend": 1.0,
+        "oneshot_scale_clip_ratio": 0.0,
+        "oneshot_no_keep_init_on_conflict": false,
+        "oneshot_orthogonalize": false,
+        "yoco_sparse_lambda": 0.0,
+        "v4_gate_kappa": 1.0,
+        "v4_gate_power": 1.0,
+        "v4_cluster_mode": "prior",
+        "v4_cluster_k": 3,
+        "v4_lambda_min": 0.3,
+        "v4_lambda_max": 0.9,
+        "v4_personalized_eval": 1,
+        "v4_default_uniform": 1,
+        "v4_residual_eps": 1e-07,
+        "v4_bsign_lambda": 0.001,
+        "v4_bsign_gamma": 5.0,
+        "v4_bsign_anchor_steps": 1,
+        "v4_asparse_lambda": 0.0,
+        "v4_mix_mode": "fixed",
+        "v4_mix_eta": 0.5,
+        "v4_mix_save_dir": "artifacts/v4_mix_a_local",
+        "v4_mix_search_grid": "0.0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1.0",
+        "v4_mix_gate_hidden": 64,
+        "v4_mix_gate_epochs": 3,
+        "v4_svd_orth_init": 1,
+        "v4_svd_refactor": 1,
+        "v4_svd_procrustes": 1,
+        "v4_anchor_gate_threshold": 0.35,
+        "v4_anchor_cluster_lambda": 0.5,
+        "v4_use_anchor": 1,
+        "v4_adarank_mode": "full"
+      },
+      "seed": 42,
+      "benchmark_dir": "/data/yaominghao/gb/FedPLoRA/data/domain_benchmark_LW7c/seed_42",
+      "rounds": [
+        {
+          "round": 1,
+          "domain_macro_token_accuracy": 0.5857088891577504,
+          "worst_domain_token_accuracy": 0.4687312687312687,
+          "domain_macro_perplexity": NaN,
+          "worst_domain_perplexity": 9.044253061679076,
+          "domain_metrics": {
+            "code": {
+              "loss": 1.3107297224657875,
+              "token_accuracy": 0.7211219959123264,
+              "perplexity": 3.711046736118231
+            },
+            "education": {
+              "loss": NaN,
+              "token_accuracy": 0.5769545640605812,
+              "perplexity": NaN
+            },
+            "finance": {
+              "loss": 2.199580659185137,
+              "token_accuracy": 0.4687312687312687,
+              "perplexity": 9.044253061679076
+            },
+            "general": {
+              "loss": 2.077430646760123,
+              "token_accuracy": 0.5383617109634551,
+              "perplexity": 7.990947480272717
+            },
+            "legal": {
+              "loss": 2.0958695019994464,
+              "token_accuracy": 0.533216476774759,
+              "perplexity": 8.182500189519489
+            },
+            "math": {
+              "loss": 1.2907246266092574,
+              "token_accuracy": 0.6756019261637239,
+              "perplexity": 3.6411067897255807
+            },
+            "medical": {
+              "loss": 1.8633652635983058,
+              "token_accuracy": 0.5859742814981379,
+              "perplexity": 6.45878749622917
+            }
+          },
+          "fedplora_oneshot_conflict": {
+            "num_lora_a_matrices": 210,
+            "num_rows": 1680,
+            "mean_conflict": 0.01809321790933609,
+            "max_conflict": 0.06740927696228027,
+            "high_conflict_row_frac": 0.0,
+            "mean_consensus": 0.9819067798909686,
+            "mean_ref_similarity": 0.9694960318860554,
+            "mean_init_gate": 0.0
+          }
+        }
+      ],
+      "communication": {
+        "down_bytes_per_client": 4792320,
+        "up_bytes_per_client": 4792320,
+        "agg_type": "v4_sign_v2agg"
+      }
+    }
+  ],
+  "agg_type": "v4_sign_v2agg",
+  "seeds": [
+    42
+  ]
+}
