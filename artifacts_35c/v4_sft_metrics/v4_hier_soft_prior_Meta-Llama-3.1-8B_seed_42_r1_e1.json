@@ -1,0 +1,145 @@
+{
+  "per_seed": [
+    {
+      "args": {
+        "model": "/data/yaominghao/gb/models/Meta-Llama-3.1-8B",
+        "benchmark_dir": "data/domain_benchmark_35c/seed_42",
+        "agg_type": "v4_hier_soft_prior",
+        "rounds": 1,
+        "num_clients": 35,
+        "local_epochs": 1,
+        "lr": 0.0002,
+        "lora_r": 8,
+        "lora_alpha": 16,
+        "lora_dropout": 0.05,
+        "rslora": false,
+        "batch_size": 2,
+        "warmup_ratio": 0.03,
+        "max_seq_length": 2048,
+        "seed": 42,
+        "gradient_checkpointing": true,
+        "trust_remote_code": false,
+        "torch_dtype": "bfloat16",
+        "target_modules": "q_proj,k_proj,v_proj,o_proj,up_proj,down_proj,gate_proj",
+        "client_state_dir": "artifacts_35c/v4_client_states_a1",
+        "save_client_state_to_disk": true,
+        "metrics_output_dir": "artifacts_35c/v4_sft_metrics",
+        "eval_max_batches": 50,
+        "eval_seeds": "42",
+        "save_run_checkpoint_dir": "/data/yaominghao/gb/trained_models/v4_hier_soft_prior_Meta-Llama-3.1-8B_domain_benchmark_35c_seed_42_r1_e1_seed42",
+        "trained_models_root": "",
+        "no_auto_save_run_checkpoint": false,
+        "force_retrain": false,
+        "skip_post_agg_snapshots": false,
+        "eval_only_from_checkpoint": "",
+        "oneshot_anchor_lambda": 0.0001,
+        "oneshot_prox_lambda": 0.0,
+        "oneshot_consensus_power": 2.0,
+        "oneshot_importance_power": 1.0,
+        "oneshot_importance_clip": 5.0,
+        "oneshot_conflict_threshold": 0.35,
+        "oneshot_conflict_blend": 1.0,
+        "oneshot_scale_clip_ratio": 0.0,
+        "oneshot_no_keep_init_on_conflict": false,
+        "oneshot_orthogonalize": false,
+        "yoco_sparse_lambda": 0.0,
+        "v4_gate_kappa": 1.0,
+        "v4_gate_power": 1.0,
+        "v4_cluster_mode": "prior",
+        "v4_cluster_k": 3,
+        "v4_lambda_min": 0.3,
+        "v4_lambda_max": 0.9,
+        "v4_personalized_eval": 1,
+        "v4_default_uniform": 1,
+        "v4_residual_eps": 1e-07,
+        "v4_bsign_lambda": 0.0,
+        "v4_bsign_gamma": 5.0,
+        "v4_bsign_anchor_steps": 1,
+        "v4_asparse_lambda": 0.0,
+        "v4_mix_mode": "fixed",
+        "v4_mix_eta": 0.5,
+        "v4_mix_save_dir": "artifacts/v4_mix_a_local",
+        "v4_mix_search_grid": "0.0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1.0",
+        "v4_mix_gate_hidden": 64,
+        "v4_mix_gate_epochs": 3,
+        "v4_svd_orth_init": 1,
+        "v4_svd_refactor": 1,
+        "v4_svd_procrustes": 1,
+        "v4_anchor_gate_threshold": 0.35,
+        "v4_anchor_cluster_lambda": 0.5,
+        "v4_use_anchor": 1,
+        "v4_adarank_mode": "full"
+      },
+      "seed": 42,
+      "benchmark_dir": "/data/yaominghao/gb/FedPLoRA/data/domain_benchmark_35c/seed_42",
+      "rounds": [
+        {
+          "round": 1,
+          "domain_macro_token_accuracy": 0.6954286499279094,
+          "worst_domain_token_accuracy": 0.5194814933847555,
+          "domain_macro_perplexity": 4.168491774059283,
+          "worst_domain_perplexity": 10.431324679269744,
+          "domain_metrics": {
+            "code": {
+              "loss": 0.7081227526494435,
+              "token_accuracy": 0.815230477278756,
+              "perplexity": 2.030740362224471
+            },
+            "education": {
+              "loss": 0.8363056398928165,
+              "token_accuracy": 0.7789839471745006,
+              "perplexity": 2.3106351330020813
+            },
+            "finance": {
+              "loss": 1.7949194356032778,
+              "token_accuracy": 0.5194814933847555,
+              "perplexity": 6.046461507867941
+            },
+            "general": {
+              "loss": 1.0709125786764278,
+              "token_accuracy": 0.752984132809545,
+              "perplexity": 2.9199598129403648
+            },
+            "legal": {
+              "loss": 2.3405966734886166,
+              "token_accuracy": 0.5237047020065887,
+              "perplexity": 10.431324679269744
+            },
+            "math": {
+              "loss": 0.729049483520644,
+              "token_accuracy": 0.7994608879891121,
+              "perplexity": 2.0758533370800407
+            },
+            "medical": {
+              "loss": 1.2091913825443814,
+              "token_accuracy": 0.6781549088521082,
+              "perplexity": 3.3644675860303397
+            }
+          },
+          "v4_stats_summary": {
+            "variant": "hier_soft_prior",
+            "num_lora_a_matrices": 224,
+            "num_rows": 1792,
+            "num_clusters": 3,
+            "mean_conflict": 0.7360059839806387,
+            "max_conflict": 0.8172483444213867,
+            "mean_gate": 0.5034049163971629,
+            "mean_residual_norm": 0.17739680555782147,
+            "mean_lambda_g": 0.6020429770329169,
+            "mean_common_norm": 0.13359239374819612,
+            "mean_cluster_norm": 0.2140786738046224
+          }
+        }
+      ],
+      "communication": {
+        "agg_type": "v4_hier_soft_prior",
+        "resume": "final_checkpoint"
+      },
+      "resume_note": "skipped_train_and_eval"
+    }
+  ],
+  "agg_type": "v4_hier_soft_prior",
+  "seeds": [
+    42
+  ]
+}

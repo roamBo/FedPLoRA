@@ -1,0 +1,132 @@
+{
+  "per_seed": [
+    {
+      "args": {
+        "model": "/data/yaominghao/gb/models/Meta-Llama-3.1-8B",
+        "benchmark_dir": "data/domain_benchmark_35c/seed_42",
+        "agg_type": "v4_svd_orth_only",
+        "rounds": 1,
+        "num_clients": 35,
+        "local_epochs": 1,
+        "lr": 0.0002,
+        "lora_r": 8,
+        "lora_alpha": 16,
+        "lora_dropout": 0.05,
+        "rslora": false,
+        "batch_size": 2,
+        "warmup_ratio": 0.03,
+        "max_seq_length": 2048,
+        "seed": 42,
+        "gradient_checkpointing": true,
+        "trust_remote_code": false,
+        "torch_dtype": "bfloat16",
+        "target_modules": "q_proj,k_proj,v_proj,o_proj,up_proj,down_proj,gate_proj",
+        "client_state_dir": "artifacts_35c/v4_client_states_b1",
+        "save_client_state_to_disk": true,
+        "metrics_output_dir": "artifacts_35c/v4_sft_metrics",
+        "eval_max_batches": 50,
+        "eval_seeds": "42",
+        "save_run_checkpoint_dir": "/data/yaominghao/gb/trained_models/v4_svd_orth_only_Meta-Llama-3.1-8B_domain_benchmark_35c_seed_42_r1_e1_seed42",
+        "trained_models_root": "",
+        "no_auto_save_run_checkpoint": false,
+        "force_retrain": false,
+        "skip_post_agg_snapshots": false,
+        "eval_only_from_checkpoint": "",
+        "oneshot_anchor_lambda": 0.0001,
+        "oneshot_prox_lambda": 0.0,
+        "oneshot_consensus_power": 2.0,
+        "oneshot_importance_power": 1.0,
+        "oneshot_importance_clip": 5.0,
+        "oneshot_conflict_threshold": 0.35,
+        "oneshot_conflict_blend": 1.0,
+        "oneshot_scale_clip_ratio": 0.0,
+        "oneshot_no_keep_init_on_conflict": false,
+        "oneshot_orthogonalize": false,
+        "yoco_sparse_lambda": 0.0,
+        "v4_gate_kappa": 1.0,
+        "v4_gate_power": 1.0,
+        "v4_cluster_mode": "prior",
+        "v4_cluster_k": 3,
+        "v4_lambda_min": 0.3,
+        "v4_lambda_max": 0.9,
+        "v4_personalized_eval": 1,
+        "v4_default_uniform": 1,
+        "v4_residual_eps": 1e-07,
+        "v4_bsign_lambda": 0.0,
+        "v4_bsign_gamma": 5.0,
+        "v4_bsign_anchor_steps": 1,
+        "v4_asparse_lambda": 0.0,
+        "v4_mix_mode": "fixed",
+        "v4_mix_eta": 0.5,
+        "v4_mix_save_dir": "artifacts/v4_mix_a_local",
+        "v4_mix_search_grid": "0.0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1.0",
+        "v4_mix_gate_hidden": 64,
+        "v4_mix_gate_epochs": 3,
+        "v4_svd_orth_init": 1,
+        "v4_svd_refactor": 0,
+        "v4_svd_procrustes": 0,
+        "v4_anchor_gate_threshold": 0.35,
+        "v4_anchor_cluster_lambda": 0.5,
+        "v4_use_anchor": 1,
+        "v4_adarank_mode": "full"
+      },
+      "seed": 42,
+      "benchmark_dir": "/data/yaominghao/gb/FedPLoRA/data/domain_benchmark_35c/seed_42",
+      "rounds": [
+        {
+          "round": 1,
+          "domain_macro_token_accuracy": 0.695528942752449,
+          "worst_domain_token_accuracy": 0.5199135822307926,
+          "domain_macro_perplexity": 4.163255126853413,
+          "worst_domain_perplexity": 10.427258968282208,
+          "domain_metrics": {
+            "code": {
+              "loss": 0.707801982147353,
+              "token_accuracy": 0.8152280286489685,
+              "perplexity": 2.0300894779955527
+            },
+            "education": {
+              "loss": 0.836745381816512,
+              "token_accuracy": 0.778888583854701,
+              "perplexity": 2.3115580064541525
+            },
+            "finance": {
+              "loss": 1.7902599541459767,
+              "token_accuracy": 0.5199135822307926,
+              "perplexity": 6.01932166503622
+            },
+            "general": {
+              "loss": 1.0714039938960758,
+              "token_accuracy": 0.7527923933355554,
+              "perplexity": 2.921215665295774
+            },
+            "legal": {
+              "loss": 2.340247100080762,
+              "token_accuracy": 0.5238394728960767,
+              "perplexity": 10.427258968282208
+            },
+            "math": {
+              "loss": 0.7292159112691878,
+              "token_accuracy": 0.7995159301944196,
+              "perplexity": 2.0762125509230516
+            },
+            "medical": {
+              "loss": 1.2069940866402218,
+              "token_accuracy": 0.678524608106629,
+              "perplexity": 3.357129553986928
+            }
+          }
+        }
+      ],
+      "communication": {
+        "down_bytes_per_client": 39845888,
+        "up_bytes_per_client": 39845888,
+        "agg_type": "v4_svd_orth_only"
+      }
+    }
+  ],
+  "agg_type": "v4_svd_orth_only",
+  "seeds": [
+    42
+  ]
+}
