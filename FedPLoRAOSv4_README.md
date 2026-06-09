@@ -104,6 +104,30 @@
 
 **推进顺序**：主线先 A → C → D；B/F 为 Stage 4，E 为 Stage 5。E/F 当前聚合器为 **stub**（分别回退 Hier++ / v2 oneshot），脚本可跑通 pipeline，但机制未完整实现。
 
+### 轻量级筛选（LW）— Qwen2.5-0.5B + LW7c
+
+**目的**：用最小代价跑完 A–F 全矩阵（18 配置），看哪个 v4 方向相对 v2 baseline 最好，再上大模型 35c。
+
+| 项 | 35c 主实验 | LW 轻量 |
+|----|-----------|---------|
+| 模型 | Llama-3.1-8B | **Qwen2.5-0.5B-Instruct**（约 16× 小） |
+| 客户端 | 35（5/域） | **7（1/域）** |
+| 每客户端训练量 | ~720/域 | **~720/域（= 35c 单客户端，≠ 7c 全域合并）** |
+| seq / eval | 2048 / 50 batch | **512 / 20 batch** |
+| metrics | `artifacts_35c/v4_sft_metrics` | **`artifacts_LW7c/v4_sft_metrics`** |
+| logs | `log_v4/` | **`log_LWv4/`（前缀 `LWv4_sft_`）** |
+| checkpoint | `../trained_models/` | **`../trained_models_LW/`** |
+
+**三步启动**（仓库根目录）：
+
+```bash
+bash scripts/RunScripts/LWv4/build_lw7c_benchmark.sh
+bash scripts/RunScripts/LWv4/download_lw_model_modelscope.sh
+bash scripts/RunScripts/LWv4/run_lwv4_all.sh 0
+```
+
+环境：`configs/lwv4_baseline.env`；脚本：`scripts/RunScripts/LWv4/`。
+
 ### 防白训（与 v2 一致）
 
 `tasks/fed_train_sft_v4.py` 默认启用 run checkpoint（`../trained_models/<agg>_<model>_<benchmark>_r1_e1_seed42/`）：
