@@ -1,5 +1,5 @@
 # shellcheck shell=bash
-# Shared helpers for LW v4 RunScripts (7 clients, Qwen-0.5B, LW-tagged artifacts).
+# Shared helpers for LW v4 RunScripts (7 clients, SmolLM2-135M base default, LW-tagged artifacts).
 
 _lwv4_repo_root() {
   local script_dir="${1:?}"
