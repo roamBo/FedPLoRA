@@ -33,7 +33,35 @@ def client_state_path(base_dir: str, client_id) -> str:
 
 
 def disk_state_dir(args) -> str:
-    return os.path.join(os.path.abspath(os.path.expanduser(args.client_state_dir)), f"seed_{args.seed}")
+    """Isolate client .pt by model name so switching backbone (Qwen→SmolLM) never reuses stale B."""
+    model_tag = Path(str(getattr(args, "model", "model")).rstrip("/")).name
+    base = os.path.abspath(os.path.expanduser(args.client_state_dir))
+    return os.path.join(base, model_tag, f"seed_{args.seed}")
+
+
+def _local_state_compatible(stored: dict, reference: dict) -> bool:
+    if not stored or not reference:
+        return False
+    for key, ref in reference.items():
+        if key not in stored:
+            return False
+        if tuple(stored[key].shape) != tuple(ref.shape):
+            return False
+    return True
+
+
+def _torch_load_cpu(path: str):
+    try:
+        return torch.load(path, map_location="cpu", weights_only=True)
+    except TypeError:
+        return torch.load(path, map_location="cpu")
+
+
+def load_client_local_state(base_dir: str, client_id):
+    path = client_state_path(base_dir, client_id)
+    if not os.path.isfile(path):
+        return None
+    return _torch_load_cpu(path)
 
 
 def save_client_local_state(local_state, base_dir: str, client_id) -> str:
@@ -45,13 +73,6 @@ def save_client_local_state(local_state, base_dir: str, client_id) -> str:
     return path
 
 
-def load_client_local_state(base_dir: str, client_id):
-    path = client_state_path(base_dir, client_id)
-    if not os.path.isfile(path):
-        return None
-    return torch.load(path, map_location="cpu")
-
-
 def init_v4_client_store(global_model, client_ids, args) -> dict:
     """Initialize per-client local B; optionally persist under client_state_dir/seed_{seed}/."""
     seed_sd = extract_fedplora_local_state(global_model)
@@ -60,9 +81,21 @@ def init_v4_client_store(global_model, client_ids, args) -> dict:
         os.makedirs(state_dir, exist_ok=True)
         local_states = {}
         for client_id in client_ids:
-            if not os.path.isfile(client_state_path(state_dir, client_id)):
+            path = client_state_path(state_dir, client_id)
+            loaded = load_client_local_state(state_dir, client_id) if os.path.isfile(path) else None
+            if loaded is not None and _local_state_compatible(loaded, seed_sd):
+                local_states[int(client_id)] = loaded
+            else:
+                if loaded is not None:
+                    print(
+                        f"[v4-checkpoint] stale client state shape for client {client_id} "
+                        f"under {state_dir}; re-initializing from current model.",
+                        flush=True,
+                    )
                 save_client_local_state(seed_sd, state_dir, client_id)
-            local_states[int(client_id)] = load_client_local_state(state_dir, client_id)
+                local_states[int(client_id)] = {
+                    k: v.clone() for k, v in seed_sd.items()
+                }
         return {"mode": "disk", "state_dir": state_dir, "local_states": local_states}
     local_states = {
         int(client_id): {k: v.clone() for k, v in seed_sd.items()} for client_id in client_ids
@@ -214,21 +247,29 @@ def load_v4_bundle(ckpt_dir: str, global_model, client_ids):
     shared_path = os.path.join(ckpt_dir, "global_shared.pt")
     if not os.path.isfile(shared_path):
         raise FileNotFoundError(f"missing {shared_path}")
-    shared_sd = torch.load(shared_path, map_location="cpu")
+    shared_sd = _torch_load_cpu(shared_path)
     from utilities.state_dict_ops import broadcast_fedplora_shared_state
 
     broadcast_fedplora_shared_state(global_model, shared_sd)
+    ref_local = extract_fedplora_local_state(global_model)
     clients_dir = os.path.join(ckpt_dir, "clients")
     local_states = {}
     for cid in client_ids:
         src = os.path.join(clients_dir, f"client_{int(cid):03d}.pt")
         if not os.path.isfile(src):
             raise FileNotFoundError(f"missing client state {src}")
-        local_states[int(cid)] = torch.load(src, map_location="cpu")
+        st = _torch_load_cpu(src)
+        if not _local_state_compatible(st, ref_local):
+            raise RuntimeError(
+                f"checkpoint client state shape mismatch at {src} "
+                f"(checkpoint model={meta.get('model')!r} vs current run). "
+                "Use --force_retrain or remove the stale bundle."
+            )
+        local_states[int(cid)] = st
     personalized_path = os.path.join(ckpt_dir, "personalized_shared.pt")
     personalized = {}
     if os.path.isfile(personalized_path):
-        personalized = torch.load(personalized_path, map_location="cpu")
+        personalized = _torch_load_cpu(personalized_path)
     return meta, local_states, personalized
 
 
