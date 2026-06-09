@@ -6,6 +6,7 @@ _SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck disable=SC1091
 source "${_SCRIPT_DIR}/_lwv4_run_common.inc.sh"
 _REPO_ROOT="$(_lwv4_repo_root "${_SCRIPT_DIR}")"
+cd "${_REPO_ROOT}"
 _lwv4_source_env "${_REPO_ROOT}"
 _lwv4_resolve_gpu "${_REPO_ROOT}" "${1:-}"
 
