@@ -11,7 +11,8 @@ cd "${_REPO_ROOT}"
 # shellcheck disable=SC1091
 source "${_REPO_ROOT}/configs/lwv4_baseline.env"
 
-MODELSCOPE_ID="${MODELSCOPE_ID:-LLM-Research/SmolLM2-135M}"
+# ModelScope: https://www.modelscope.cn/models/HuggingFaceTB/SmolLM2-135M
+MODELSCOPE_ID="${MODELSCOPE_ID:-HuggingFaceTB/SmolLM2-135M}"
 MODEL_PATH="${MODEL_PATH:-/data/yaominghao/gb/models/SmolLM2-135M}"
 MODEL_PARENT="$(dirname "${MODEL_PATH}")"
 mkdir -p "${MODEL_PARENT}"

@@ -112,7 +112,7 @@
 
 | 项 | 35c 主实验 | LW 轻量 |
 |----|-----------|---------|
-| 模型 | Llama-3.1-8B（base） | **SmolLM2-135M base**（备选 Qwen2.5-0.5B base） |
+| 模型 | Llama-3.1-8B（base） | **SmolLM2-135M base**（[ModelScope: HuggingFaceTB/SmolLM2-135M](https://www.modelscope.cn/models/HuggingFaceTB/SmolLM2-135M)；备选 Qwen2.5-0.5B base） |
 | 客户端 | 35（5/域） | **7（1/域）** |
 | 每客户端训练量 | ~720/域 | **~720/域（= 35c 单客户端，≠ 7c 全域合并）** |
 | seq / batch / GC | 2048 / 2 / 开 | **256 / 2 / 开** |
