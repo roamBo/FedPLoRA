@@ -1,0 +1,202 @@
+{
+  "args": {
+    "model": "/data/yaominghao/gb/models/Meta-Llama-3.1-8B",
+    "benchmark_dir": "data/domain_benchmark_35c/seed_42",
+    "benchmark_jsonl": "",
+    "build_benchmark": false,
+    "benchmark_output_dir": "data/domain_benchmark",
+    "num_clients_per_domain": 5,
+    "min_samples_per_client": 50,
+    "agg_type": "fedplora-oneshot",
+    "rounds": 1,
+    "num_clients": 35,
+    "local_epochs": 1,
+    "lr": 0.0002,
+    "lora_r": 8,
+    "lora_alpha": 16,
+    "lora_dropout": 0.05,
+    "rslora": false,
+    "batch_size": 2,
+    "warmup_ratio": 0.03,
+    "max_seq_length": 2048,
+    "seed": 42,
+    "gradient_checkpointing": true,
+    "trust_remote_code": false,
+    "torch_dtype": "bfloat16",
+    "target_modules": "q_proj,k_proj,v_proj,o_proj,up_proj,down_proj,gate_proj",
+    "client_state_dir": "artifacts_35c/domain_client_states",
+    "save_client_state_to_disk": true,
+    "metrics_output_dir": "artifacts_35c/sft_metrics",
+    "save_run_checkpoint_dir": "/data/yaominghao/gb/trained_models/fedplora-oneshot_Meta-Llama-3.1-8B_domain_benchmark_35c_seed_42_r1_e1_seed42",
+    "skip_post_agg_snapshots": false,
+    "trained_models_root": "",
+    "no_auto_save_run_checkpoint": false,
+    "force_retrain": false,
+    "eval_only_from_checkpoint": "",
+    "gp_align_lambda": 0.01,
+    "gp_prox_lambda": 0.001,
+    "gp_orth_lambda": 0.0001,
+    "gp_consensus_power": 2.0,
+    "gp_agg_momentum": 0.5,
+    "yoco_sparse_lambda": 0.0001,
+    "yoco_pcwa_components": 3,
+    "oneshot_consensus_power": 2.0,
+    "oneshot_importance_power": 1.0,
+    "oneshot_importance_clip": 5.0,
+    "oneshot_conflict_threshold": 0.35,
+    "oneshot_conflict_blend": 1.0,
+    "oneshot_scale_clip_ratio": 0.0,
+    "oneshot_anchor_lambda": 0.0001,
+    "oneshot_prox_lambda": 0.0,
+    "oneshot_no_keep_init_on_conflict": false,
+    "oneshot_orthogonalize": false,
+    "eval_max_batches": 50,
+    "eval_batch_size": 0,
+    "train_max_steps_per_client": 0,
+    "max_train_samples_per_client": 0,
+    "dataloader_num_workers": 6,
+    "eval_dataloader_num_workers": 2,
+    "dataloader_pin_memory": true,
+    "dataloader_persistent_workers": true,
+    "attn_implementation": "sdpa",
+    "tokenizer_use_fast": true,
+    "eval_personalization_metrics": false,
+    "fedplora_ablation_no_consensus": false,
+    "fedplora_ablation_no_momentum": false,
+    "_runtime_client_sizes": [
+      720,
+      720,
+      720,
+      720,
+      720,
+      70,
+      69,
+      69,
+      69,
+      69,
+      720,
+      720,
+      720,
+      720,
+      720,
+      720,
+      720,
+      720,
+      720,
+      720,
+      720,
+      720,
+      720,
+      720,
+      720,
+      720,
+      720,
+      720,
+      720,
+      720,
+      288,
+      288,
+      288,
+      288,
+      288
+    ]
+  },
+  "benchmark_dir": "data/domain_benchmark_35c/seed_42",
+  "recommended_primary_metrics": [
+    "domain_macro_token_accuracy",
+    "domain_macro_perplexity",
+    "worst_domain_token_accuracy",
+    "worst_domain_perplexity"
+  ],
+  "communication": {
+    "agg_type": "fedplora-oneshot",
+    "down_bytes_per_client": 39845888,
+    "up_bytes_per_client": 39853056
+  },
+  "rounds": [
+    {
+      "round": 1,
+      "domain_macro_token_accuracy": 0.69594984013063,
+      "best_domain_macro_token_accuracy": 0.69594984013063,
+      "worst_domain_token_accuracy": 0.5198171657114288,
+      "best_worst_domain_token_accuracy": 0.5198171657114288,
+      "domain_macro_perplexity": 4.1624525259856355,
+      "best_domain_macro_perplexity": 4.1624525259856355,
+      "worst_domain_perplexity": 10.446599757594832,
+      "best_worst_domain_perplexity": 10.446599757594832,
+      "domain_macro_loss": 1.239695485686161,
+      "best_domain_macro_loss": 1.239695485686161,
+      "worst_domain_loss": 2.341907301289695,
+      "best_worst_domain_loss": 2.341907301289695,
+      "domain_metrics": {
+        "code": {
+          "loss": 0.7087522614853722,
+          "token_accuracy": 0.8152541473667028,
+          "perplexity": 2.0320410825591395
+        },
+        "education": {
+          "loss": 0.8317569878484521,
+          "token_accuracy": 0.7802670172954382,
+          "perplexity": 2.301166966129848
+        },
+        "finance": {
+          "loss": 1.7876588483878544,
+          "token_accuracy": 0.5198171657114288,
+          "perplexity": 6.005609133687014
+        },
+        "general": {
+          "loss": 1.0731848341482026,
+          "token_accuracy": 0.7527519482902605,
+          "perplexity": 2.9266087976356476
+        },
+        "legal": {
+          "loss": 2.341907301289695,
+          "token_accuracy": 0.5239967056004792,
+          "perplexity": 10.446599757594832
+        },
+        "math": {
+          "loss": 0.73189369564397,
+          "token_accuracy": 0.799327429491312,
+          "perplexity": 2.082058547926099
+        },
+        "medical": {
+          "loss": 1.2027144709995814,
+          "token_accuracy": 0.6802344671587883,
+          "perplexity": 3.3430833963668682
+        }
+      },
+      "fedplora_oneshot_conflict": {
+        "num_lora_a_matrices": 224,
+        "num_rows": 1792,
+        "mean_conflict": 0.043046230383749516,
+        "max_conflict": 0.115398108959198,
+        "high_conflict_row_frac": 0.0,
+        "mean_consensus": 0.9569537682192666,
+        "mean_ref_similarity": 0.9534520975181034,
+        "mean_init_gate": 0.0
+      }
+    }
+  ],
+  "recommended_kpis": {
+    "token_accuracy": [
+      "domain_macro_token_accuracy",
+      "worst_domain_token_accuracy"
+    ],
+    "perplexity": [
+      "domain_macro_perplexity",
+      "worst_domain_perplexity"
+    ],
+    "communication": {
+      "path": "communication",
+      "fields": [
+        "down_bytes_per_client",
+        "up_bytes_per_client",
+        "agg_type"
+      ]
+    },
+    "fedplora_oneshot_conflict": {
+      "path": "rounds[i].fedplora_oneshot_conflict",
+      "note": "Present after FedPLoRA-Oneshot server aggregation; typically mean_conflict, max_conflict, high_conflict_row_frac, mean_init_gate. Other agg_type: omit or {}. Eval-only reload uses checkpoint meta when available."
+    }
+  }
+}
