@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Download lightweight backbone via ModelScope (same parent dir as Llama-8B).
+# Download lightweight **base** (non-Instruct) backbone via ModelScope.
+# LW SFT uses domain prompt/response JSONL; no chat-tuned checkpoint needed.
 #
 # Usage: bash scripts/RunScripts/LWv4/download_lw_model_modelscope.sh
 # Override: MODELSCOPE_ID=... MODEL_PATH=... bash ...
@@ -10,8 +11,8 @@ cd "${_REPO_ROOT}"
 # shellcheck disable=SC1091
 source "${_REPO_ROOT}/configs/lwv4_baseline.env"
 
-MODELSCOPE_ID="${MODELSCOPE_ID:-Qwen/Qwen2.5-0.5B-Instruct}"
-MODEL_PATH="${MODEL_PATH:-/data/yaominghao/gb/models/Qwen2.5-0.5B-Instruct}"
+MODELSCOPE_ID="${MODELSCOPE_ID:-LLM-Research/SmolLM2-135M}"
+MODEL_PATH="${MODEL_PATH:-/data/yaominghao/gb/models/SmolLM2-135M}"
 MODEL_PARENT="$(dirname "${MODEL_PATH}")"
 mkdir -p "${MODEL_PARENT}"
 
