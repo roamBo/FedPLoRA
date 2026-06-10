@@ -15,4 +15,6 @@ bash "${_SCRIPT_DIR}/run_lwv4_branch_d.sh" "${GPU}"
 bash "${_SCRIPT_DIR}/run_lwv4_branch_e.sh" "${GPU}"
 bash "${_SCRIPT_DIR}/run_lwv4_branch_f.sh" "${GPU}"
 
-echo "[lwv4] all branches done. Metrics: artifacts_LW7c/v4_sft_metrics/  Logs: log_LWv4/"
+echo "[lwv4] all branches done."
+echo "[lwv4]   baselines metrics: artifacts_LW7c/sft_metrics/"
+echo "[lwv4]   v4 branch metrics: artifacts_LW7c/v4_sft_metrics/  logs: log_LWv4/"

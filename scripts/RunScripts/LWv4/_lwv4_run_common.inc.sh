@@ -74,3 +74,78 @@ lwv4_train() {
     --oneshot_anchor_lambda "$ONESHOT_ANCHOR_LAMBDA" \
     "$@"
 }
+
+# Classic SFT baselines via tasks/fed_train_sft.py (normal, yoco, fedalt, ffa, …).
+# Requires _LWv4_RUNSCRIPTS_DIR = scripts/RunScripts (set by run_lwv4_baseline.sh).
+lwv4_train_baseline() {
+  local agg_type="${1:?}"
+  local rs_dir="${_LWv4_RUNSCRIPTS_DIR:?missing _LWv4_RUNSCRIPTS_DIR}"
+  local metrics_dir="${METRICS_BASELINE_OUTPUT_DIR:-artifacts_LW7c/sft_metrics}"
+  local seed="${SEED:-42}"
+
+  # shellcheck disable=SC1091
+  source "${rs_dir}/_fed_train_speed.inc.sh"
+  # shellcheck disable=SC1091
+  source "${rs_dir}/_run_domain_sft_batch.inc.sh"
+
+  local -a cmd=(
+    python tasks/fed_train_sft.py
+    --model "${MODEL_PATH}"
+    --benchmark_dir "${BENCHMARK_DIR}"
+    --agg_type "${agg_type}"
+    --rounds "${ROUNDS}"
+    --local_epochs "${LOCAL_EPOCHS}"
+    --lr "${LR}"
+    --lora_r "${LORA_R}"
+    --lora_alpha "${LORA_ALPHA}"
+    --lora_dropout "${LORA_DROPOUT}"
+    --batch_size "${BATCH_SIZE}"
+    --max_seq_length "${MAX_SEQ_LENGTH}"
+    --torch_dtype "${TORCH_DTYPE}"
+    --target_modules "${TARGET_MODULES}"
+    --client_state_dir "${CLIENT_STATE_DIR}"
+    --metrics_output_dir "${metrics_dir}"
+    --seed "${seed}"
+  )
+
+  if [[ -n "${TRAINED_MODELS_ROOT:-}" ]]; then
+    cmd+=(--trained_models_root "${TRAINED_MODELS_ROOT}")
+  fi
+  if [[ "${GRADIENT_CHECKPOINTING:-1}" != "0" ]]; then
+    cmd+=(--gradient_checkpointing)
+  fi
+  if [[ -n "${EVAL_MAX_BATCHES:-}" && "${EVAL_MAX_BATCHES}" != "0" ]]; then
+    cmd+=(--eval_max_batches "${EVAL_MAX_BATCHES}")
+  fi
+  if [[ "${TRUST_REMOTE_CODE:-0}" == "1" ]]; then
+    cmd+=(--trust_remote_code)
+  fi
+
+  case "${agg_type}" in
+    fedplora|fedplora-oneshot|fedplora_v3_lite|fedplora_v3_cluster|fedplora_v3_rpca|v3_lite|v3_cluster|v3_rpca|fedalt|fedsa_lora|fedsa|yoco)
+      cmd+=(--save_client_state_to_disk)
+      ;;
+  esac
+
+  case "${agg_type}" in
+    fedplora-oneshot|fedplora_v3_lite|fedplora_v3_cluster|fedplora_v3_rpca|v3_lite|v3_cluster|v3_rpca)
+      domain_sft_append_oneshot_v3_flags cmd "${agg_type}"
+      ;;
+  esac
+
+  if [[ "${agg_type}" == "yoco" ]]; then
+    cmd+=(
+      --yoco_sparse_lambda "${YOCO_SPARSE_LAMBDA:-1e-4}"
+      --yoco_pcwa_components "${YOCO_PCWA_COMPONENTS:-3}"
+    )
+  fi
+
+  if [[ "${agg_type}" == "feddat" ]]; then
+    cmd+=(--feddat_teacher_lambda "${FEDDAT_TEACHER_LAMBDA:-0.01}")
+  fi
+
+  fed_train_append_speed_flags cmd
+
+  echo "[lwv4][baseline] agg_type=${agg_type} metrics=${metrics_dir}" >&2
+  CUDA_VISIBLE_DEVICES="${CUDA_DEVICES}" "${cmd[@]}"
+}

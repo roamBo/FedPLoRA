@@ -118,7 +118,7 @@
 | seq / batch / GC | 2048 / 2 / 开 | **256 / 2 / 开** |
 | eval | 50 batch | **10 batch** |
 | 预期显存 | ~30GB（8B+2048+GC） | **~4–6GB（135M 默认配置）** |
-| metrics | `artifacts_35c/v4_sft_metrics` | **`artifacts_LW7c/v4_sft_metrics`** |
+| metrics | `artifacts_35c/v4_sft_metrics` | **baseline：`artifacts_LW7c/sft_metrics`；v4 支线：`artifacts_LW7c/v4_sft_metrics`** |
 | logs | `log_v4/` | **`log_LWv4/`（前缀 `LWv4_sft_`）** |
 | checkpoint | `../trained_models/` | **`../trained_models_LW/`** |
 
@@ -129,8 +129,15 @@
 ```bash
 bash scripts/RunScripts/LWv4/build_lw7c_benchmark.sh
 bash scripts/RunScripts/LWv4/download_lw_model_modelscope.sh
+
+# 仅经典对比 baseline（normal / flora / flexlora / feddat / fedplora-oneshot / fedalt / yoco / fedsa_lora / ffa）
+bash scripts/RunScripts/LWv4/run_lwv4_baseline.sh 0
+
+# baseline + v4 支线 A–F
 bash scripts/RunScripts/LWv4/run_lwv4_all.sh 0
 ```
+
+`run_lwv4_baseline.sh` 走 `tasks/fed_train_sft.py`（与 35c `run_domain_sft_baselines1/2.sh` 同套方法）；v4 支线仍走 `fed_train_sft_v4.py`。
 
 仍 OOM 时在 `configs/lwv4_baseline.env` 改为 `BATCH_SIZE=1`、`MAX_SEQ_LENGTH=128`。
 
