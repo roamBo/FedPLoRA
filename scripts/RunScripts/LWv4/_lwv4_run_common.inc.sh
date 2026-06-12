@@ -149,3 +149,71 @@ lwv4_train_baseline() {
   echo "[lwv4][baseline] agg_type=${agg_type} metrics=${metrics_dir}" >&2
   CUDA_VISIBLE_DEVICES="${CUDA_DEVICES}" "${cmd[@]}"
 }
+
+# Standard Alpaca non-IID baselines via tasks/fed_train_standard_sft.py (LW env).
+# Source configs/lw_standard_noniid.env before calling.
+lwv4_train_standard_baseline() {
+  local agg_type="${1:?}"
+  local rs_dir="${_LWv4_RUNSCRIPTS_DIR:?missing _LWv4_RUNSCRIPTS_DIR}"
+  local metrics_dir="${METRICS_OUTPUT_DIR:-artifacts_LW_standard/sft_metrics}"
+  local seed="${SEED:-42}"
+  local gc_flag
+  gc_flag="$(_lwv4_gc_flag)"
+
+  # shellcheck disable=SC1091
+  source "${rs_dir}/_fed_train_speed.inc.sh"
+
+  local -a cmd=(
+    python tasks/fed_train_standard_sft.py
+    --model "${MODEL_PATH}"
+    --benchmark_dir "${BENCHMARK_DIR}"
+    --agg_type "${agg_type}"
+    --rounds "${ROUNDS}"
+    --local_epochs "${LOCAL_EPOCHS}"
+    --lr "${LR}"
+    --lora_r "${LORA_R}"
+    --lora_alpha "${LORA_ALPHA}"
+    --lora_dropout "${LORA_DROPOUT}"
+    --batch_size "${BATCH_SIZE}"
+    --max_seq_length "${MAX_SEQ_LENGTH}"
+    --torch_dtype "${TORCH_DTYPE}"
+    --target_modules "${TARGET_MODULES}"
+    --client_state_dir "${CLIENT_STATE_DIR}"
+    --metrics_output_dir "${metrics_dir}"
+    --seed "${seed}"
+  )
+
+  if [[ -n "${TRAINED_MODELS_ROOT:-}" ]]; then
+    cmd+=("--trained_models_root" "${TRAINED_MODELS_ROOT}")
+  fi
+  # shellcheck disable=SC2086
+  cmd+=(${gc_flag})
+  if [[ "${TRUST_REMOTE_CODE:-0}" == "1" ]]; then
+    cmd+=(--trust_remote_code)
+  fi
+  if [[ -n "${EVAL_MAX_BATCHES:-}" && "${EVAL_MAX_BATCHES}" != "0" ]]; then
+    cmd+=(--eval_max_batches "${EVAL_MAX_BATCHES}")
+  fi
+
+  case "${agg_type}" in
+    fedalt|fedsa_lora|fedsa|yoco)
+      cmd+=(--save_client_state_to_disk)
+      ;;
+  esac
+
+  if [[ "${agg_type}" == "yoco" ]]; then
+    cmd+=(
+      --yoco_sparse_lambda "${YOCO_SPARSE_LAMBDA:-1e-4}"
+      --yoco_pcwa_components "${YOCO_PCWA_COMPONENTS:-3}"
+    )
+  fi
+
+  if [[ "${agg_type}" == "feddat" ]]; then
+    cmd+=(--feddat_teacher_lambda "${FEDDAT_TEACHER_LAMBDA:-0.01}")
+  fi
+
+  fed_train_append_speed_flags cmd
+
+  echo "[lw][standard][noniid] agg_type=${agg_type} benchmark=${BENCHMARK_DIR} metrics=${metrics_dir}" >&2
+  CUDA_VISIBLE_DEVICES="${CUDA_DEVICES}" "${cmd[@]}"
+}
