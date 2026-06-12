@@ -612,6 +612,303 @@ def build_domain_benchmark_from_jsonl(
     }
 
 
+def _tokenize_prompt_for_tfidf(text):
+    import re
+
+    return re.findall(r"[a-z0-9]+", (text or "").lower())
+
+
+def _build_tfidf_matrix(prompts, max_features=8000, min_df=1):
+    """Lightweight TF-IDF (numpy only) for pseudo-label clustering."""
+    doc_freq = defaultdict(int)
+    tokenized = []
+    for prompt in prompts:
+        toks = _tokenize_prompt_for_tfidf(prompt)
+        tokenized.append(toks)
+        for tok in set(toks):
+            doc_freq[tok] += 1
+
+    vocab = [
+        tok
+        for tok, df in sorted(doc_freq.items(), key=lambda item: (-item[1], item[0]))
+        if df >= min_df
+    ][:max_features]
+    if not vocab:
+        raise ValueError("Cannot build TF-IDF features: empty vocabulary")
+
+    word2idx = {word: idx for idx, word in enumerate(vocab)}
+    n_docs = len(prompts)
+    matrix = np.zeros((n_docs, len(vocab)), dtype=np.float32)
+    for row_idx, toks in enumerate(tokenized):
+        tf_counts = defaultdict(int)
+        for tok in toks:
+            if tok in word2idx:
+                tf_counts[tok] += 1
+        if not tf_counts:
+            continue
+        max_tf = max(tf_counts.values())
+        for tok, count in tf_counts.items():
+            col = word2idx[tok]
+            tf_weight = 0.5 + 0.5 * (count / max_tf)
+            idf = np.log((1.0 + n_docs) / (1.0 + doc_freq[tok])) + 1.0
+            matrix[row_idx, col] = tf_weight * idf
+
+    norms = np.linalg.norm(matrix, axis=1, keepdims=True)
+    norms = np.maximum(norms, 1e-12)
+    return matrix / norms
+
+
+def _kmeans_numpy(matrix, num_clusters, seed, n_init=5, max_iter=100):
+    rng = np.random.default_rng(seed)
+    n_samples = matrix.shape[0]
+    k = int(num_clusters)
+    best_labels = None
+    best_inertia = float("inf")
+
+    for _ in range(n_init):
+        centroid_idx = rng.choice(n_samples, size=k, replace=False)
+        centroids = matrix[centroid_idx].copy()
+        labels = np.zeros(n_samples, dtype=np.int64)
+
+        for _ in range(max_iter):
+            dists = np.sum((matrix[:, None, :] - centroids[None, :, :]) ** 2, axis=2)
+            labels = np.argmin(dists, axis=1)
+            new_centroids = np.zeros_like(centroids)
+            for cluster_id in range(k):
+                mask = labels == cluster_id
+                if np.any(mask):
+                    new_centroids[cluster_id] = matrix[mask].mean(axis=0)
+                else:
+                    new_centroids[cluster_id] = matrix[rng.integers(0, n_samples)]
+            if np.allclose(new_centroids, centroids, atol=1e-6, rtol=0.0):
+                break
+            centroids = new_centroids
+
+        inertia = float(np.sum(np.min(dists, axis=1)))
+        if inertia < best_inertia:
+            best_inertia = inertia
+            best_labels = labels.copy()
+
+    return best_labels.astype(np.int64)
+
+
+def _assign_prompt_pseudo_labels(prompts, num_pseudo_labels, seed):
+    """Cluster instruction prompts (TF-IDF + KMeans) for Dirichlet non-IID partition."""
+    if num_pseudo_labels <= 0:
+        raise ValueError("num_pseudo_labels must be positive")
+    n = len(prompts)
+    if n < num_pseudo_labels:
+        raise ValueError(
+            f"Need at least {num_pseudo_labels} samples for clustering, got {n}"
+        )
+
+    min_df = 1 if n < 10000 else 2
+    matrix = _build_tfidf_matrix(prompts, max_features=8000, min_df=min_df)
+    return _kmeans_numpy(matrix, int(num_pseudo_labels), int(seed))
+
+
+def _pseudo_label_hist(rows, label_key="pseudo_label"):
+    counts = defaultdict(int)
+    for row in rows:
+        if label_key in row:
+            counts[int(row[label_key])] += 1
+    return {str(k): int(v) for k, v in sorted(counts.items())}
+
+
+def _partition_pool_iid(pool, num_clients):
+    shards = [[] for _ in range(num_clients)]
+    for idx, row in enumerate(pool):
+        shards[idx % num_clients].append(row)
+    return shards
+
+
+def _partition_pool_dirichlet(pool, num_clients, alpha, num_pseudo_labels, seed):
+    prompts = [row["prompt"] for row in pool]
+    pseudo_labels = _assign_prompt_pseudo_labels(prompts, num_pseudo_labels, seed)
+    for row, label in zip(pool, pseudo_labels):
+        row["pseudo_label"] = int(label)
+        meta = dict(row.get("metadata") or {})
+        meta["pseudo_label"] = int(label)
+        row["metadata"] = meta
+
+    rng = np.random.default_rng(seed)
+    client_idx_lists = dirichlet_label_skew_indices(
+        pseudo_labels, num_clients, float(alpha), rng
+    )
+    return [[pool[i] for i in idxs] for idxs in client_idx_lists]
+
+
+def build_standard_sft_benchmark_from_jsonl(
+    input_path,
+    output_dir,
+    num_clients=10,
+    min_samples_per_client=50,
+    val_ratio=0.1,
+    test_ratio=0.1,
+    seed=42,
+    domain_label="standard",
+    partition="dirichlet",
+    dirichlet_alpha=0.5,
+    num_pseudo_labels=0,
+    max_samples=0,
+):
+    """
+    Build a **non-cross-domain** federated SFT benchmark on a single dataset.
+
+    partition:
+      - ``iid``: round-robin shards across clients
+      - ``dirichlet``: TF-IDF/KMeans pseudo-labels + per-class Dirichlet skew
+        (same spirit as GLUE ``partition=dirichlet``; smaller alpha => stronger skew)
+
+    All rows share one pseudo-domain label (default ``alpaca`` / ``standard``).
+    Output layout matches load_domain_sft_benchmark().
+    """
+    partition = (partition or "dirichlet").strip().lower()
+    if partition not in {"iid", "dirichlet"}:
+        raise ValueError(f"partition must be iid or dirichlet, got {partition!r}")
+
+    rows = []
+    for row in _load_jsonl(input_path):
+        prompt = (row.get("prompt") or "").strip()
+        response = (row.get("response") or "").strip()
+        if not prompt or not response:
+            continue
+        normalized = dict(row)
+        normalized["domain"] = (row.get("domain") or domain_label).strip() or domain_label
+        normalized["prompt"] = prompt
+        normalized["response"] = response
+        rows.append(normalized)
+
+    if not rows:
+        raise ValueError(f"No valid prompt/response rows in {input_path}")
+
+    rng = np.random.default_rng(seed)
+    rng.shuffle(rows)
+    if max_samples and int(max_samples) > 0:
+        rows = rows[: int(max_samples)]
+
+    split_dir = os.path.join(output_dir, f"seed_{seed}")
+    os.makedirs(split_dir, exist_ok=True)
+
+    n = len(rows)
+    n_test = max(1, int(n * test_ratio))
+    test_rows = rows[:n_test]
+    pool = rows[n_test:]
+
+    if num_clients <= 0:
+        raise ValueError("num_clients must be positive")
+
+    n_pseudo = int(num_pseudo_labels) if int(num_pseudo_labels or 0) > 0 else max(
+        10, num_clients
+    )
+
+    if partition == "iid":
+        shards = _partition_pool_iid(pool, num_clients)
+    else:
+        shards = _partition_pool_dirichlet(
+            pool,
+            num_clients,
+            dirichlet_alpha,
+            n_pseudo,
+            seed,
+        )
+
+    clients_manifest = []
+    client_train_rows = []
+    client_val_rows = []
+    client_local_test_rows = []
+    client_id = 0
+
+    for shard in shards:
+        if len(shard) < min_samples_per_client:
+            continue
+        rng.shuffle(shard)
+        n_local_test = max(1, int(len(shard) * test_ratio))
+        n_local_val = max(1, int(len(shard) * val_ratio))
+        local_test = shard[:n_local_test]
+        local_val = shard[n_local_test : n_local_test + n_local_val]
+        local_train = shard[n_local_test + n_local_val :]
+        if len(local_train) < max(1, min_samples_per_client // 2):
+            continue
+
+        domain = domain_label
+        for row in local_train:
+            row = dict(row)
+            row["client_id"] = client_id
+            row["domain"] = domain
+            client_train_rows.append(row)
+        for row in local_val:
+            row = dict(row)
+            row["client_id"] = client_id
+            row["domain"] = domain
+            client_val_rows.append(row)
+        for row in local_test:
+            row = dict(row)
+            row["client_id"] = client_id
+            row["domain"] = domain
+            client_local_test_rows.append(row)
+
+        entry = {
+            "client_id": client_id,
+            "domain": domain,
+            "n_train": len(local_train),
+            "n_val": len(local_val),
+            "n_local_test": len(local_test),
+        }
+        if partition == "dirichlet":
+            entry["pseudo_label_hist"] = _pseudo_label_hist(shard)
+        clients_manifest.append(entry)
+        client_id += 1
+
+    if not clients_manifest:
+        raise ValueError(
+            f"No clients kept (partition={partition}, num_clients={num_clients}, "
+            f"min_samples_per_client={min_samples_per_client}, pool={len(pool)})"
+        )
+
+    domain_test_rows = [dict(row, domain=domain_label) for row in test_rows]
+    global_test_rows = list(domain_test_rows)
+
+    _write_jsonl(os.path.join(split_dir, "train.jsonl"), client_train_rows)
+    _write_jsonl(os.path.join(split_dir, "val.jsonl"), client_val_rows)
+    _write_jsonl(os.path.join(split_dir, "test_local.jsonl"), client_local_test_rows)
+    _write_jsonl(os.path.join(split_dir, "test_domain.jsonl"), domain_test_rows)
+    _write_jsonl(os.path.join(split_dir, "test_global.jsonl"), global_test_rows)
+
+    domain_stats = {
+        domain_label: {
+            "n_total": n,
+            "n_domain_test": len(domain_test_rows),
+            "n_clients": len(clients_manifest),
+        }
+    }
+
+    partition_info = {
+        "partition": partition,
+        "dirichlet_alpha": float(dirichlet_alpha) if partition == "dirichlet" else None,
+        "num_pseudo_labels": n_pseudo if partition == "dirichlet" else None,
+        "pseudo_label_method": "tfidf_kmeans_numpy" if partition == "dirichlet" else None,
+        "num_clients": len(clients_manifest),
+        "max_samples": int(max_samples) if max_samples else None,
+        "seed": int(seed),
+    }
+
+    with open(os.path.join(split_dir, "clients.json"), "w", encoding="utf-8") as f:
+        json.dump(clients_manifest, f, indent=2, ensure_ascii=False)
+    with open(os.path.join(split_dir, "domain_stats.json"), "w", encoding="utf-8") as f:
+        json.dump(domain_stats, f, indent=2, ensure_ascii=False)
+    with open(os.path.join(split_dir, "partition_info.json"), "w", encoding="utf-8") as f:
+        json.dump(partition_info, f, indent=2, ensure_ascii=False)
+
+    return {
+        "split_dir": split_dir,
+        "num_clients": len(clients_manifest),
+        "domains": [domain_label],
+        "partition": partition,
+        "dirichlet_alpha": float(dirichlet_alpha) if partition == "dirichlet" else None,
+    }
+
+
 def load_domain_sft_benchmark(split_dir):
     train_rows = _load_jsonl(os.path.join(split_dir, "train.jsonl"))
     val_rows = _load_jsonl(os.path.join(split_dir, "val.jsonl"))

@@ -26,7 +26,7 @@
 ### 工程目录说明（与 `data/` 同级）
 
 - `**methods/`**：各 baseline 的服务端聚合与（部分）上传逻辑，**每个方法一个 `.py` 文件**；不含 `__init__.py`（使用隐式命名空间包，便于 `from methods.xxx import ...`）。
-- `**tasks/`**：可执行入口：`fed_train_sft.py`（域 SFT）、`fed_train_glue.py`、`fed_train_e2e.py`。
+- `**tasks/`**：可执行入口：`fed_train_sft.py`（域 SFT）、`fed_train_standard_sft.py`（标准非跨域 SFT）、`fed_train_glue.py`、`fed_train_e2e.py`。
 - `**utilities/`**：`data_utils.py`、`models.py`、`utils.py`、训练/评估 `train_eval.py`、联邦状态 `state_dict_ops.py`。
 - `**scripts/`**：子目录 `**DataProcessScripts/`**（数据准备、benchmark 构建）、`**RunScripts/**`（`run_domain_sft*.sh`、`run_script.py` 等训练/批量实验入口）。
 - `**__pycache__/**`：Python 解释器自动生成的字节码缓存，**可删**；运行后会再次出现，已写入 `.gitignore` 建议不要提交。
@@ -46,6 +46,12 @@
   - 支持 `Qwen`、`Mistral`、`Llama`、`Gemma` 等 Hugging Face 因果语言模型
   - 已支持大模型场景下的 **sequential client training**
   即单次只在 GPU 上保留一份模型，客户端本地 `B` 状态保存在 CPU 或磁盘中，更适合 `2 x A100 80G`
+4. **标准（非跨域）联邦 SFT — 论文通用对比**
+  - 文档：[README_STANDARD_SFT.md](README_STANDARD_SFT.md)
+  - 数据集：**Stanford Alpaca**；任务：**Instruction-following SFT**；划分：**Dirichlet non-IID（α=0.5）**
+  - 入口：[tasks/fed_train_standard_sft.py](tasks/fed_train_standard_sft.py)
+  - Llama baseline：`bash scripts/RunScripts/run_standard_sft_baselines.sh [gpu]`
+  - LW baseline（SmolLM2-135M）：`bash scripts/RunScripts/LWv4/run_lw_standard_noniid_baseline.sh [gpu]`
 
 ---
 

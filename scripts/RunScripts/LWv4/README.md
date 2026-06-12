@@ -14,3 +14,12 @@ bash scripts/RunScripts/LWv4/run_lwv4_all.sh 0
 ```
 
 Baseline 指标写入 `artifacts_LW7c/sft_metrics/`；v4 支线写入 `artifacts_LW7c/v4_sft_metrics/`。
+
+**标准 Alpaca non-IID（α=0.5）LW baseline**（与跨域 LW7c 独立）：
+
+```bash
+bash scripts/DataProcessScripts/build_alpaca_lw_standard_noniid_benchmark.sh
+bash scripts/RunScripts/LWv4/run_lw_standard_noniid_baseline.sh 0
+```
+
+指标：`artifacts_LW_standard/sft_metrics/`（见 `configs/lw_standard_noniid.env`）。
