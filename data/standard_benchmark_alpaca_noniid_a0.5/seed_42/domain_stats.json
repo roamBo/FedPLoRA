@@ -1,0 +1,7 @@
+{
+  "alpaca": {
+    "n_total": 51974,
+    "n_domain_test": 5197,
+    "n_clients": 10
+  }
+}
