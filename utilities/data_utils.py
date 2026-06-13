@@ -658,20 +658,27 @@ def _build_tfidf_matrix(prompts, max_features=8000, min_df=1):
     return matrix / norms
 
 
-def _kmeans_numpy(matrix, num_clusters, seed, n_init=5, max_iter=100):
+def _kmeans_pairwise_sq_dists(matrix, centroids):
+    """Squared L2 distances, shape (n_samples, n_clusters). Memory-efficient."""
+    x_sq = np.sum(matrix * matrix, axis=1, dtype=np.float64)[:, None]
+    c_sq = np.sum(centroids * centroids, axis=1, dtype=np.float64)[None, :]
+    dots = matrix.astype(np.float64) @ centroids.astype(np.float64).T
+    return x_sq + c_sq - 2.0 * dots
+
+
+def _kmeans_fit_centroids(matrix, num_clusters, seed, n_init=3, max_iter=50):
     rng = np.random.default_rng(seed)
     n_samples = matrix.shape[0]
     k = int(num_clusters)
-    best_labels = None
+    best_centroids = None
     best_inertia = float("inf")
 
     for _ in range(n_init):
         centroid_idx = rng.choice(n_samples, size=k, replace=False)
         centroids = matrix[centroid_idx].copy()
-        labels = np.zeros(n_samples, dtype=np.int64)
 
         for _ in range(max_iter):
-            dists = np.sum((matrix[:, None, :] - centroids[None, :, :]) ** 2, axis=2)
+            dists = _kmeans_pairwise_sq_dists(matrix, centroids)
             labels = np.argmin(dists, axis=1)
             new_centroids = np.zeros_like(centroids)
             for cluster_id in range(k):
@@ -681,15 +688,29 @@ def _kmeans_numpy(matrix, num_clusters, seed, n_init=5, max_iter=100):
                 else:
                     new_centroids[cluster_id] = matrix[rng.integers(0, n_samples)]
             if np.allclose(new_centroids, centroids, atol=1e-6, rtol=0.0):
+                centroids = new_centroids
                 break
             centroids = new_centroids
 
+        dists = _kmeans_pairwise_sq_dists(matrix, centroids)
         inertia = float(np.sum(np.min(dists, axis=1)))
         if inertia < best_inertia:
             best_inertia = inertia
-            best_labels = labels.copy()
+            best_centroids = centroids.copy()
 
-    return best_labels.astype(np.int64)
+    return best_centroids
+
+
+def _kmeans_assign(matrix, centroids):
+    dists = _kmeans_pairwise_sq_dists(matrix, centroids)
+    return np.argmin(dists, axis=1).astype(np.int64)
+
+
+def _kmeans_numpy(matrix, num_clusters, seed, n_init=3, max_iter=50):
+    centroids = _kmeans_fit_centroids(
+        matrix, num_clusters, seed, n_init=n_init, max_iter=max_iter
+    )
+    return _kmeans_assign(matrix, centroids)
 
 
 def _assign_prompt_pseudo_labels(prompts, num_pseudo_labels, seed):
@@ -703,8 +724,36 @@ def _assign_prompt_pseudo_labels(prompts, num_pseudo_labels, seed):
         )
 
     min_df = 1 if n < 10000 else 2
-    matrix = _build_tfidf_matrix(prompts, max_features=8000, min_df=min_df)
-    return _kmeans_numpy(matrix, int(num_pseudo_labels), int(seed))
+    max_features = 2000 if n >= 20000 else 8000
+    print(
+        f"[partition] building TF-IDF: n={n} max_features={max_features} ...",
+        flush=True,
+    )
+    matrix = _build_tfidf_matrix(prompts, max_features=max_features, min_df=min_df)
+
+    # Fit centroids on a subsample for large pools; assign labels to all rows.
+    fit_cap = 12000
+    if n > fit_cap:
+        rng = np.random.default_rng(int(seed))
+        fit_idx = np.sort(rng.choice(n, size=fit_cap, replace=False))
+        print(
+            f"[partition] KMeans fit on subsample={fit_cap}, assign all n={n} ...",
+            flush=True,
+        )
+        centroids = _kmeans_fit_centroids(
+            matrix[fit_idx],
+            int(num_pseudo_labels),
+            int(seed),
+            n_init=3,
+            max_iter=40,
+        )
+        labels = _kmeans_assign(matrix, centroids)
+    else:
+        print(f"[partition] KMeans on n={n} ...", flush=True)
+        labels = _kmeans_numpy(matrix, int(num_pseudo_labels), int(seed))
+
+    print(f"[partition] pseudo-labels ready (k={num_pseudo_labels})", flush=True)
+    return labels
 
 
 def _pseudo_label_hist(rows, label_key="pseudo_label"):
@@ -883,11 +932,19 @@ def build_standard_sft_benchmark_from_jsonl(
         }
     }
 
+    if partition == "dirichlet":
+        if len(pool) > 12000:
+            pseudo_method = "tfidf_kmeans_numpy_subsample12k"
+        else:
+            pseudo_method = "tfidf_kmeans_numpy"
+    else:
+        pseudo_method = None
+
     partition_info = {
         "partition": partition,
         "dirichlet_alpha": float(dirichlet_alpha) if partition == "dirichlet" else None,
         "num_pseudo_labels": n_pseudo if partition == "dirichlet" else None,
-        "pseudo_label_method": "tfidf_kmeans_numpy" if partition == "dirichlet" else None,
+        "pseudo_label_method": pseudo_method,
         "num_clients": len(clients_manifest),
         "max_samples": int(max_samples) if max_samples else None,
         "seed": int(seed),

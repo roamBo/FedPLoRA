@@ -1,0 +1,9 @@
+{
+  "partition": "dirichlet",
+  "dirichlet_alpha": 0.5,
+  "num_pseudo_labels": 10,
+  "pseudo_label_method": "tfidf_kmeans_numpy_subsample12k",
+  "num_clients": 10,
+  "max_samples": null,
+  "seed": 42
+}
