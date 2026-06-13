@@ -1,0 +1,178 @@
+{
+  "args": {
+    "model": "/data/yaominghao/gb/models/SmolLM2-135M",
+    "benchmark_dir": "data/standard_benchmark_alpaca_LW_noniid_a0.5/seed_42",
+    "benchmark_jsonl": "",
+    "build_benchmark": false,
+    "benchmark_output_dir": "data/domain_benchmark",
+    "num_clients_per_domain": 5,
+    "min_samples_per_client": 50,
+    "agg_type": "yoco",
+    "rounds": 1,
+    "num_clients": 7,
+    "local_epochs": 1,
+    "lr": 0.0002,
+    "lora_r": 8,
+    "lora_alpha": 16,
+    "lora_dropout": 0.05,
+    "rslora": false,
+    "batch_size": 2,
+    "warmup_ratio": 0.03,
+    "max_seq_length": 256,
+    "seed": 42,
+    "gradient_checkpointing": true,
+    "trust_remote_code": false,
+    "torch_dtype": "bfloat16",
+    "target_modules": "q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj",
+    "client_state_dir": "artifacts_LW_standard/client_states",
+    "save_client_state_to_disk": true,
+    "metrics_output_dir": "artifacts_LW_standard/sft_metrics",
+    "save_run_checkpoint_dir": "/data/yaominghao/gb/trained_models_LW_standard/yoco_SmolLM2-135M_standard_benchmark_alpaca_LW_noniid_a0.5_seed_42_r1_e1_seed42",
+    "skip_post_agg_snapshots": false,
+    "trained_models_root": "../trained_models_LW_standard",
+    "no_auto_save_run_checkpoint": false,
+    "force_retrain": false,
+    "eval_only_from_checkpoint": "",
+    "gp_align_lambda": 0.01,
+    "gp_prox_lambda": 0.001,
+    "gp_orth_lambda": 0.0001,
+    "gp_consensus_power": 2.0,
+    "gp_agg_momentum": 0.5,
+    "yoco_sparse_lambda": 0.0001,
+    "yoco_pcwa_components": 3,
+    "yoco_aggregate_mode": "conflict",
+    "yoco_conflict_method": "avgm",
+    "yoco_sign_lambda": 0.01,
+    "yoco_eval_use_local_clients": false,
+    "memory_agg_eval_use_local_clients": false,
+    "flora_svd_device": "auto",
+    "oneshot_consensus_power": 2.0,
+    "oneshot_importance_power": 1.0,
+    "oneshot_importance_clip": 5.0,
+    "oneshot_conflict_threshold": 0.35,
+    "oneshot_conflict_blend": 1.0,
+    "oneshot_scale_clip_ratio": 0.0,
+    "oneshot_anchor_lambda": 0.0001,
+    "oneshot_prox_lambda": 0.0,
+    "oneshot_no_keep_init_on_conflict": false,
+    "oneshot_orthogonalize": false,
+    "oneshot_ablation_plain_fedavg": false,
+    "v3_conflict_quantile": 0.8,
+    "v3_gate_temperature": 0.05,
+    "v3_conflict_blend": 1.0,
+    "v3_residual_norm_power": 1.0,
+    "v3_residual_eps": 1e-07,
+    "v3_cluster_mode": "domain_prior",
+    "v3_cluster_lambda_min": 0.2,
+    "v3_cluster_lambda_max": 1.0,
+    "v3_rpca_rank": 1,
+    "v3_sparse_quantile": 0.8,
+    "v3_domain_cluster_map": "",
+    "feddat_teacher_lambda": 0.01,
+    "eval_max_batches": 10,
+    "eval_batch_size": 0,
+    "train_max_steps_per_client": 0,
+    "max_train_samples_per_client": 0,
+    "dataloader_num_workers": 6,
+    "eval_dataloader_num_workers": 2,
+    "dataloader_pin_memory": true,
+    "dataloader_persistent_workers": true,
+    "attn_implementation": "sdpa",
+    "tokenizer_use_fast": true,
+    "eval_personalization_metrics": false,
+    "fedplora_ablation_no_consensus": false,
+    "fedplora_ablation_no_momentum": false,
+    "standard_domain_label": "alpaca",
+    "standard_val_ratio": 0.1,
+    "standard_test_ratio": 0.1,
+    "standard_partition": "dirichlet",
+    "standard_dirichlet_alpha": 0.5,
+    "standard_num_pseudo_labels": 0,
+    "standard_max_samples": 0,
+    "_runtime_client_sizes": [
+      677,
+      480,
+      419,
+      332,
+      757,
+      679,
+      408
+    ],
+    "_fedplora_client_domains": {
+      "0": "alpaca",
+      "1": "alpaca",
+      "2": "alpaca",
+      "3": "alpaca",
+      "4": "alpaca",
+      "5": "alpaca",
+      "6": "alpaca"
+    },
+    "_fedplora_round_client_ids": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ]
+  },
+  "benchmark_dir": "data/standard_benchmark_alpaca_LW_noniid_a0.5/seed_42",
+  "recommended_primary_metrics": [
+    "domain_macro_token_accuracy",
+    "domain_macro_perplexity",
+    "worst_domain_token_accuracy",
+    "worst_domain_perplexity"
+  ],
+  "communication": {
+    "agg_type": "yoco",
+    "down_bytes_per_client": 9768960,
+    "up_bytes_per_client": 9768960
+  },
+  "rounds": [
+    {
+      "round": 1,
+      "domain_macro_token_accuracy": 0.5355191256830601,
+      "best_domain_macro_token_accuracy": 0.5355191256830601,
+      "worst_domain_token_accuracy": 0.5355191256830601,
+      "best_worst_domain_token_accuracy": 0.5355191256830601,
+      "domain_macro_perplexity": 6.993134454611252,
+      "best_domain_macro_perplexity": 6.993134454611252,
+      "worst_domain_perplexity": 6.993134454611252,
+      "best_worst_domain_perplexity": 6.993134454611252,
+      "domain_macro_loss": 1.9449288755655287,
+      "best_domain_macro_loss": 1.9449288755655287,
+      "worst_domain_loss": 1.9449288755655287,
+      "best_worst_domain_loss": 1.9449288755655287,
+      "domain_metrics": {
+        "alpaca": {
+          "loss": 1.9449288755655287,
+          "token_accuracy": 0.5355191256830601,
+          "perplexity": 6.993134454611252
+        }
+      }
+    }
+  ],
+  "recommended_kpis": {
+    "token_accuracy": [
+      "domain_macro_token_accuracy",
+      "worst_domain_token_accuracy"
+    ],
+    "perplexity": [
+      "domain_macro_perplexity",
+      "worst_domain_perplexity"
+    ],
+    "communication": {
+      "path": "communication",
+      "fields": [
+        "down_bytes_per_client",
+        "up_bytes_per_client",
+        "agg_type"
+      ]
+    },
+    "fedplora_oneshot_conflict": {
+      "path": "rounds[i].fedplora_oneshot_conflict",
+      "note": "Present after FedPLoRA-Oneshot server aggregation; typically mean_conflict, max_conflict, high_conflict_row_frac, mean_init_gate. Other agg_type: omit or {}. Eval-only reload uses checkpoint meta when available."
+    }
+  }
+}
