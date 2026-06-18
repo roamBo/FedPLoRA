@@ -48,4 +48,4 @@ for agg_type in "${METHODS[@]}"; do
   lwv4_train_standard_baseline "${agg_type}"
 done
 
-echo "[lw][standard][noniid] done. Metrics: ${METRICS_OUTPUT_DIR:-artifacts_LW_standard/sft_metrics}/"
+echo "[lw][standard][noniid] done. Metrics: ${METRICS_BASELINE_OUTPUT_DIR:-artifacts_LW_standard/sft_metrics}/"

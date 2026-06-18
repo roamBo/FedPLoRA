@@ -121,6 +121,14 @@ bash scripts/RunScripts/LWv4/run_lw_standard_noniid_baseline.sh 0
 指标：`artifacts_LW_standard/sft_metrics/`  
 同样 8 个 baseline，**不含** FedPLoRA。
 
+**FedPLoRA v2 + v4（SmolLM LW）**：
+
+```bash
+bash scripts/RunScripts/LWv4/run_lw_standard_fedplora_all.sh 0
+```
+
+共 17 个 run（v2 oneshot + v4 支线 A–F）；指标：`artifacts_LW_standard/v4_sft_metrics/`。
+
 ---
 
 ## 五、推荐论文表述

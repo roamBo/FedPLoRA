@@ -91,16 +91,18 @@
 
 ### 一键脚本（35c）
 
-| 脚本 | Branch | 包含配置 |
-|------|--------|----------|
+
+| 脚本                   | Branch   | 包含配置                |
+| -------------------- | -------- | ------------------- |
 | `run_v4_baseline.sh` | baseline | v2 oneshot + fedalt |
-| `run_v4_branch_a.sh` | A | A1/A2/A3 |
-| `run_v4_branch_b.sh` | B | B1/B2 |
-| `run_v4_branch_c.sh` | C | C1/C2 |
-| `run_v4_branch_d.sh` | D | D1/D2/D3 |
-| `run_v4_branch_e.sh` | E | E1/E2（Stage 5 stub） |
-| `run_v4_branch_f.sh` | F | F1/F2（Stage 4 stub） |
-| `run_v4_pilot_7c.sh` | 快验 | 7 客户端 smoke |
+| `run_v4_branch_a.sh` | A        | A1/A2/A3            |
+| `run_v4_branch_b.sh` | B        | B1/B2               |
+| `run_v4_branch_c.sh` | C        | C1/C2               |
+| `run_v4_branch_d.sh` | D        | D1/D2/D3            |
+| `run_v4_branch_e.sh` | E        | E1/E2（Stage 5 stub） |
+| `run_v4_branch_f.sh` | F        | F1/F2（Stage 4 stub） |
+| `run_v4_pilot_7c.sh` | 快验       | 7 客户端 smoke         |
+
 
 **推进顺序**：主线先 A → C → D；B/F 为 Stage 4，E 为 Stage 5。E/F 当前聚合器为 **stub**（分别回退 Hier++ / v2 oneshot），脚本可跑通 pipeline，但机制未完整实现。
 
@@ -110,17 +112,19 @@
 
 **模型选择**：使用 **base（非 Instruct）** checkpoint——本 pipeline 本身做域 SFT 微调，benchmark 已提供 prompt/response 格式，无需 chat 对齐版本。
 
-| 项 | 35c 主实验 | LW 轻量 |
-|----|-----------|---------|
-| 模型 | Llama-3.1-8B（base） | **SmolLM2-135M base**（[ModelScope: HuggingFaceTB/SmolLM2-135M](https://www.modelscope.cn/models/HuggingFaceTB/SmolLM2-135M)；备选 Qwen2.5-0.5B base） |
-| 客户端 | 35（5/域） | **7（1/域）** |
-| 每客户端训练量 | ~720/域 | **~720/域（= 35c 单客户端，≠ 7c 全域合并）** |
-| seq / batch / GC | 2048 / 2 / 开 | **256 / 2 / 开** |
-| eval | 50 batch | **10 batch** |
-| 预期显存 | ~30GB（8B+2048+GC） | **~4–6GB（135M 默认配置）** |
-| metrics | `artifacts_35c/v4_sft_metrics` | **baseline：`artifacts_LW7c/sft_metrics`；v4 支线：`artifacts_LW7c/v4_sft_metrics`** |
-| logs | `log_v4/` | **`log_LWv4/`（前缀 `LWv4_sft_`）** |
-| checkpoint | `../trained_models/` | **`../trained_models_LW/`** |
+
+| 项                | 35c 主实验                        | LW 轻量                                                                                                                                             |
+| ---------------- | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 模型               | Llama-3.1-8B（base）             | **SmolLM2-135M base**（[ModelScope: HuggingFaceTB/SmolLM2-135M](https://www.modelscope.cn/models/HuggingFaceTB/SmolLM2-135M)；备选 Qwen2.5-0.5B base） |
+| 客户端              | 35（5/域）                        | **7（1/域）**                                                                                                                                        |
+| 每客户端训练量          | ~720/域                         | **~720/域（= 35c 单客户端，≠ 7c 全域合并）**                                                                                                                  |
+| seq / batch / GC | 2048 / 2 / 开                   | **256 / 2 / 开**                                                                                                                                   |
+| eval             | 50 batch                       | **10 batch**                                                                                                                                      |
+| 预期显存             | ~30GB（8B+2048+GC）              | **~4–6GB（135M 默认配置）**                                                                                                                             |
+| metrics          | `artifacts_35c/v4_sft_metrics` | **baseline：`artifacts_LW7c/sft_metrics`；v4 支线：`artifacts_LW7c/v4_sft_metrics`**                                                                   |
+| logs             | `log_v4/`                      | `**log_LWv4/`（前缀 `LWv4_sft_`）**                                                                                                                   |
+| checkpoint       | `../trained_models/`           | `**../trained_models_LW/`**                                                                                                                       |
+
 
 **为何 0.5B 仍可能占 20GB？** 显存峰值 ≠ 参数量×比例。LoRA 微调时还要存 **激活值**（∝ `batch×seq×层数`）和 **logits**（∝ `batch×seq×词表大小`）。Qwen 词表 ~15 万，在 `batch=8, seq=512` 且无 gradient checkpointing 时，logits 一项即可 ~1GB+，反向还需多份激活，峰值 10–20GB 很常见；Llama-8B 的 30GB 里权重 ~16GB，其余也是激活与训练开销。
 
@@ -149,7 +153,7 @@ bash scripts/RunScripts/LWv4/run_lwv4_all.sh 0
 
 1. **聚合后、eval 前**：`snapshots/round_001_post_agg/` — eval 崩溃后重跑 **跳过 35 客户端训练**，只做 eval。
 2. **eval 完成后**：根目录 `checkpoint_ok.json`（`phase=final`）— 同配置 **训练 + eval 均跳过**。
-3. 必须加 **`--save_client_state_to_disk`**（各 `run_v4_*.sh` 已包含），否则 bundle 缺 `clients/*.pt`。
+3. 必须加 `**--save_client_state_to_disk`**（各 `run_v4_*.sh` 已包含），否则 bundle 缺 `clients/*.pt`。
 4. 强制重训：`--force_retrain`；仅补 eval：`--eval_only_from_checkpoint <bundle 或 snapshot 路径>`。
 
 ---

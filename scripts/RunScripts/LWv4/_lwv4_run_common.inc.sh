@@ -19,6 +19,19 @@ _lwv4_source_env() {
   fi
 }
 
+_lw_standard_source_env() {
+  local repo_root="${1:?}"
+  if [[ -f "${repo_root}/configs/lw_standard_noniid.env" ]]; then
+    set -a
+    # shellcheck disable=SC1091
+    source "${repo_root}/configs/lw_standard_noniid.env"
+    set +a
+  else
+    echo "[lw][standard][error] missing configs/lw_standard_noniid.env" >&2
+    return 1
+  fi
+}
+
 _lwv4_resolve_gpu() {
   local repo_root="${1:?}"
   local gpu_arg="${2:-}"
@@ -48,6 +61,36 @@ _lwv4_trust_flag() {
 
 # Usage: lwv4_train <agg_type> <client_state_suffix> [extra python args...]
 lwv4_train() {
+  local agg_type="${1:?}"
+  local state_suffix="${2:?}"
+  shift 2
+  local gc_flag
+  gc_flag="$(_lwv4_gc_flag)"
+  # shellcheck disable=SC2086
+  CUDA_VISIBLE_DEVICES="${CUDA_DEVICES}" \
+  python tasks/fed_train_sft_v4.py \
+    --model "$MODEL_PATH" \
+    --benchmark_dir "$BENCHMARK_DIR" \
+    --agg_type "$agg_type" \
+    --rounds "$ROUNDS" --local_epochs "$LOCAL_EPOCHS" --lr "$LR" \
+    --lora_r "$LORA_R" --lora_alpha "$LORA_ALPHA" --lora_dropout "$LORA_DROPOUT" \
+    --batch_size "$BATCH_SIZE" --max_seq_length "$MAX_SEQ_LENGTH" \
+    --torch_dtype "$TORCH_DTYPE" --target_modules "$TARGET_MODULES" \
+    ${gc_flag} \
+    $(_lwv4_trust_flag) \
+    --client_state_dir "${CLIENT_STATE_DIR}_${state_suffix}" --save_client_state_to_disk \
+    --metrics_output_dir "$METRICS_OUTPUT_DIR" \
+    --log_dir "$LOG_DIR" \
+    --log_filename_prefix "$LOG_FILENAME_PREFIX" \
+    --trained_models_root "$TRAINED_MODELS_ROOT" \
+    --eval_max_batches "$EVAL_MAX_BATCHES" --eval_seeds "$EVAL_SEEDS" \
+    --oneshot_anchor_lambda "$ONESHOT_ANCHOR_LAMBDA" \
+    "$@"
+}
+
+# FedPLoRA v2/v4 on Stanford Alpaca LW benchmark (SmolLM2-135M).
+# Requires configs/lw_standard_noniid.env via _lw_standard_source_env.
+lw_standard_train() {
   local agg_type="${1:?}"
   local state_suffix="${2:?}"
   shift 2
@@ -155,7 +198,7 @@ lwv4_train_baseline() {
 lwv4_train_standard_baseline() {
   local agg_type="${1:?}"
   local rs_dir="${_LWv4_RUNSCRIPTS_DIR:?missing _LWv4_RUNSCRIPTS_DIR}"
-  local metrics_dir="${METRICS_OUTPUT_DIR:-artifacts_LW_standard/sft_metrics}"
+  local metrics_dir="${METRICS_BASELINE_OUTPUT_DIR:-artifacts_LW_standard/sft_metrics}"
   local seed="${SEED:-42}"
   local gc_flag
   gc_flag="$(_lwv4_gc_flag)"
@@ -178,7 +221,7 @@ lwv4_train_standard_baseline() {
     --max_seq_length "${MAX_SEQ_LENGTH}"
     --torch_dtype "${TORCH_DTYPE}"
     --target_modules "${TARGET_MODULES}"
-    --client_state_dir "${CLIENT_STATE_DIR}"
+    --client_state_dir "${CLIENT_STATE_DIR}_baseline"
     --metrics_output_dir "${metrics_dir}"
     --seed "${seed}"
   )
