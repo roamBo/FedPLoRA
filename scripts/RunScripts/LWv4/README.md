@@ -22,4 +22,16 @@ bash scripts/DataProcessScripts/build_alpaca_lw_standard_noniid_benchmark.sh
 bash scripts/RunScripts/LWv4/run_lw_standard_noniid_baseline.sh 0
 ```
 
-指标：`artifacts_LW_standard/sft_metrics/`（见 `configs/lw_standard_noniid.env`）。
+**FedPLoRA v2 + v4 全矩阵（Stanford Alpaca LW + SmolLM2-135M）**：
+
+```bash
+bash scripts/RunScripts/LWv4/run_lw_standard_fedplora_all.sh 0
+```
+
+| 产物 | 路径 |
+|------|------|
+| baseline 指标 | `artifacts_LW_standard/sft_metrics/` |
+| v2/v4 指标 | `artifacts_LW_standard/v4_sft_metrics/` |
+| checkpoint | `../trained_models_LW_standard/` |
+
+见 `configs/lw_standard_noniid.env`。
