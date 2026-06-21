@@ -1,0 +1,82 @@
+nohup: ignoring input
+Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:  50%|█████     | 2/4 [00:00<00:00, 11.04it/s]Loading checkpoint shards: 100%|██████████| 4/4 [00:00<00:00, 13.92it/s]Loading checkpoint shards: 100%|██████████| 4/4 [00:00<00:00, 12.80it/s]
+[diag] captured 0 (code) [1/35]
+[diag] captured 1 (code) [2/35]
+[diag] captured 2 (code) [3/35]
+[diag] captured 3 (code) [4/35]
+[diag] captured 4 (code) [5/35]
+[diag] captured 5 (education) [6/35]
+[diag] captured 6 (education) [7/35]
+[diag] captured 7 (education) [8/35]
+[diag] captured 8 (education) [9/35]
+[diag] captured 9 (education) [10/35]
+[diag] captured 10 (finance) [11/35]
+[diag] captured 11 (finance) [12/35]
+[diag] captured 12 (finance) [13/35]
+[diag] captured 13 (finance) [14/35]
+[diag] captured 14 (finance) [15/35]
+[diag] captured 15 (general) [16/35]
+[diag] captured 16 (general) [17/35]
+[diag] captured 17 (general) [18/35]
+[diag] captured 18 (general) [19/35]
+[diag] captured 19 (general) [20/35]
+[diag] captured 20 (legal) [21/35]
+[diag] captured 21 (legal) [22/35]
+[diag] captured 22 (legal) [23/35]
+[diag] captured 23 (legal) [24/35]
+[diag] captured 24 (legal) [25/35]
+[diag] captured 25 (math) [26/35]
+[diag] captured 26 (math) [27/35]
+[diag] captured 27 (math) [28/35]
+[diag] captured 28 (math) [29/35]
+[diag] captured 29 (math) [30/35]
+[diag] captured 30 (medical) [31/35]
+[diag] captured 31 (medical) [32/35]
+[diag] captured 32 (medical) [33/35]
+[diag] captured 33 (medical) [34/35]
+[diag] captured 34 (medical) [35/35]
+[swap] c0(code) local=nan intra=nan inter=nan
+[swap] c1(code) local=nan intra=nan inter=nan
+[swap] c2(code) local=nan intra=nan inter=nan
+[swap] c3(code) local=nan intra=nan inter=nan
+[swap] c4(code) local=nan intra=nan inter=nan
+[swap] c5(education) local=nan intra=nan inter=nan
+[swap] c6(education) local=nan intra=nan inter=nan
+[swap] c7(education) local=nan intra=nan inter=nan
+[swap] c8(education) local=nan intra=nan inter=nan
+[swap] c9(education) local=nan intra=nan inter=nan
+[swap] c10(finance) local=1.3014 intra=1.3221 inter=1.5465
+[swap] c11(finance) local=1.3817 intra=1.3310 inter=1.5073
+[swap] c12(finance) local=1.3599 intra=1.3172 inter=1.4367
+[swap] c13(finance) local=1.3209 intra=1.3097 inter=1.6040
+[swap] c14(finance) local=1.3053 intra=1.3506 inter=1.6438
+[swap] c15(general) local=nan intra=nan inter=nan
+[swap] c16(general) local=nan intra=nan inter=nan
+[swap] c17(general) local=nan intra=nan inter=nan
+[swap] c18(general) local=nan intra=nan inter=nan
+[swap] c19(general) local=nan intra=nan inter=nan
+[swap] c20(legal) local=2.1629 intra=2.1159 inter=2.3732
+[swap] c21(legal) local=2.1032 intra=2.0969 inter=2.3532
+[swap] c22(legal) local=2.1503 intra=2.1139 inter=2.3887
+[swap] c23(legal) local=2.2353 intra=2.1153 inter=2.3412
+[swap] c24(legal) local=2.2131 intra=2.1450 inter=2.3898
+[swap] c25(math) local=0.7338 intra=0.6963 inter=0.9085
+[swap] c26(math) local=0.6934 intra=0.7006 inter=0.8548
+[swap] c27(math) local=0.6983 intra=0.6981 inter=0.8907
+[swap] c28(math) local=0.7117 intra=0.6949 inter=0.9257
+[swap] c29(math) local=0.6982 intra=0.6925 inter=0.8734
+[swap] c30(medical) local=0.9739 intra=0.9577 inter=1.2105
+[swap] c31(medical) local=0.9715 intra=0.9612 inter=1.2124
+[swap] c32(medical) local=0.9896 intra=0.9636 inter=1.1512
+[swap] c33(medical) local=0.9585 intra=0.9647 inter=1.1993
+[swap] c34(medical) local=0.9928 intra=0.9610 inter=1.1871
+
+============ 同域 B 互换诊断结果 ============
+loss  local=1.2978  swap_intra=1.2754  swap_inter=1.4999
+acc   local=0.6922  swap_intra=0.6970  swap_inter=0.6727
+Δloss 同域互换=-0.0224 (-1.7% of local)  跨域互换=+0.2021
+intra/inter 比值=-0.111
+--------------------------------------------
+[判读] 同域 B 互换几乎无损(<5%)且远小于跨域 -> 域内 B 可共享/去噪 -> 新方法成立(域内B共识、跨域隔离)。
+
+[diag] 已保存: artifacts_35c/diag/diag_b_swap_seed42.json

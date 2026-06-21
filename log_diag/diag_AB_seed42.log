@@ -1,0 +1,52 @@
+nohup: ignoring input
+Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards: 100%|██████████| 4/4 [00:00<00:00, 52.88it/s]
+[diag] clients=35 layers=224 target_modules=q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj max_steps=0
+[diag] captured 0 (code) [1/35]
+[diag] captured 1 (code) [2/35]
+[diag] captured 2 (code) [3/35]
+[diag] captured 3 (code) [4/35]
+[diag] captured 4 (code) [5/35]
+[diag] captured 5 (education) [6/35]
+[diag] captured 6 (education) [7/35]
+[diag] captured 7 (education) [8/35]
+[diag] captured 8 (education) [9/35]
+[diag] captured 9 (education) [10/35]
+[diag] captured 10 (finance) [11/35]
+[diag] captured 11 (finance) [12/35]
+[diag] captured 12 (finance) [13/35]
+[diag] captured 13 (finance) [14/35]
+[diag] captured 14 (finance) [15/35]
+[diag] captured 15 (general) [16/35]
+[diag] captured 16 (general) [17/35]
+[diag] captured 17 (general) [18/35]
+[diag] captured 18 (general) [19/35]
+[diag] captured 19 (general) [20/35]
+[diag] captured 20 (legal) [21/35]
+[diag] captured 21 (legal) [22/35]
+[diag] captured 22 (legal) [23/35]
+[diag] captured 23 (legal) [24/35]
+[diag] captured 24 (legal) [25/35]
+[diag] captured 25 (math) [26/35]
+[diag] captured 26 (math) [27/35]
+[diag] captured 27 (math) [28/35]
+[diag] captured 28 (math) [29/35]
+[diag] captured 29 (math) [30/35]
+[diag] captured 30 (medical) [31/35]
+[diag] captured 31 (medical) [32/35]
+[diag] captured 32 (medical) [33/35]
+[diag] captured 33 (medical) [34/35]
+[diag] captured 34 (medical) [35/35]
+
+========= A vs B 域信号诊断 (主夹角中位数，度) =========
+                域内      域间    随机null       域信号占比
+A 行空间        41.59   39.62     87.90       -4.3%
+B 列空间        84.11   85.94     87.89       48.5%
+--------------------------------------------------------
+[判读] B 域信号占比(48%) ≫ A(-4%) -> 域特异信号主要在 B。
+       含义：朴素平均 B 会抹掉域信息；'共享 B' 需谨慎设计，不能直接 FedAvg。
+       但这也说明：方法重心应转向 B 侧（你的真实卖点：跨域冲突在 B）。
+
+[diag] 已保存: artifacts_35c/diag/diag_AB_seed42.json
+[diag][warn] 画图失败: ModuleNotFoundError("No module named 'matplotlib'")
+son
+[diag][warn] 画图失败: ModuleNotFoundError("No module named 'matplotlib'")

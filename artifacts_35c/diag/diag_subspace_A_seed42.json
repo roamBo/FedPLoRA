@@ -1,0 +1,65 @@
+{
+  "config": {
+    "model": "/data/yaominghao/gb/models/Meta-Llama-3.1-8B",
+    "benchmark_dir": "/data/yaominghao/gb/FedPLoRA/data/domain_benchmark_35c/seed_42",
+    "lora_r": 8,
+    "target_modules": "q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj",
+    "max_steps": 0,
+    "local_epochs": 1,
+    "anchor_lambda": 0.0,
+    "max_clients": 0,
+    "max_layers": 0
+  },
+  "num_clients": 35,
+  "per_domain_clients": {
+    "code": 5,
+    "education": 5,
+    "finance": 5,
+    "general": 5,
+    "legal": 5,
+    "math": 5,
+    "medical": 5
+  },
+  "D2_update_magnitude_rel": {
+    "mean": 0.6135662791091112,
+    "median": 0.6203736960887909,
+    "p10": 0.23484116941690447,
+    "p90": 0.989780974388123,
+    "n": 7840
+  },
+  "D1_same_domain_elementwise_reldiff": {
+    "mean": 0.6977859124873897,
+    "median": 0.7414084076881409,
+    "p10": 0.29773220121860505,
+    "p90": 0.992230522632599,
+    "n": 15680
+  },
+  "D1_same_domain_subspace_meanangle_deg": {
+    "mean": 37.1599906982816,
+    "median": 39.48081016540527,
+    "p10": 15.891630077362061,
+    "p90": 49.2604648590088,
+    "n": 15680
+  },
+  "D3_intra_domain_meanangle_deg": {
+    "mean": 37.1599906982816,
+    "median": 41.45036628842354,
+    "p10": 16.16261834204197,
+    "p90": 44.91029294729233,
+    "n": 70
+  },
+  "D3_inter_domain_meanangle_deg": {
+    "mean": 38.68986104363487,
+    "median": 39.558506046022686,
+    "p10": 32.04269763571875,
+    "p90": 44.16419669219426,
+    "n": 525
+  },
+  "D3_random_null_meanangle_deg": {
+    "mean": 87.90477817535401,
+    "median": 87.90438842773438,
+    "p10": 87.69273681640625,
+    "p90": 88.13280334472657,
+    "n": 200
+  }
+}
