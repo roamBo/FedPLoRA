@@ -1,0 +1,21 @@
+{
+  "config": {
+    "model": "/data/yaominghao/gb/models/Meta-Llama-3.1-8B",
+    "benchmark_dir": "/data/yaominghao/gb/FedPLoRA/data/domain_benchmark_35c/seed_42",
+    "target_modules": "q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj",
+    "max_steps": 0,
+    "local_epochs": 1
+  },
+  "A_rowspace": {
+    "intra": 41.590828793389456,
+    "inter": 39.62022066967828,
+    "null": 87.90438842773438,
+    "domain_signal_ratio": -0.042549269355876114
+  },
+  "B_colspace": {
+    "intra": 84.11364441258567,
+    "inter": 85.94244190624782,
+    "null": 87.88505554199219,
+    "domain_signal_ratio": 0.4849106689542854
+  }
+}

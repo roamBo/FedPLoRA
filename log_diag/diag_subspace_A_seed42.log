@@ -1,0 +1,51 @@
+nohup: ignoring input
+[diag] model=/data/yaominghao/gb/models/Meta-Llama-3.1-8B clients=35 target_modules=q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj max_steps=0 anchor_lambda=0.0
+Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:  75%|███████▌  | 3/4 [00:00<00:00, 25.44it/s]Loading checkpoint shards: 100%|██████████| 4/4 [00:00<00:00, 31.50it/s]
+[diag] analyzing 224 lora_A layers
+[diag] captured client 0 (code) [1/35]
+[diag] captured client 1 (code) [2/35]
+[diag] captured client 2 (code) [3/35]
+[diag] captured client 3 (code) [4/35]
+[diag] captured client 4 (code) [5/35]
+[diag] captured client 5 (education) [6/35]
+[diag] captured client 6 (education) [7/35]
+[diag] captured client 7 (education) [8/35]
+[diag] captured client 8 (education) [9/35]
+[diag] captured client 9 (education) [10/35]
+[diag] captured client 10 (finance) [11/35]
+[diag] captured client 11 (finance) [12/35]
+[diag] captured client 12 (finance) [13/35]
+[diag] captured client 13 (finance) [14/35]
+[diag] captured client 14 (finance) [15/35]
+[diag] captured client 15 (general) [16/35]
+[diag] captured client 16 (general) [17/35]
+[diag] captured client 17 (general) [18/35]
+[diag] captured client 18 (general) [19/35]
+[diag] captured client 19 (general) [20/35]
+[diag] captured client 20 (legal) [21/35]
+[diag] captured client 21 (legal) [22/35]
+[diag] captured client 22 (legal) [23/35]
+[diag] captured client 23 (legal) [24/35]
+[diag] captured client 24 (legal) [25/35]
+[diag] captured client 25 (math) [26/35]
+[diag] captured client 26 (math) [27/35]
+[diag] captured client 27 (math) [28/35]
+[diag] captured client 28 (math) [29/35]
+[diag] captured client 29 (math) [30/35]
+[diag] captured client 30 (medical) [31/35]
+[diag] captured client 31 (medical) [32/35]
+[diag] captured client 32 (medical) [33/35]
+[diag] captured client 33 (medical) [34/35]
+[diag] captured client 34 (medical) [35/35]
+
+================ DCR 前提诊断结果 ================
+[D2] 更新幅度 ‖A_i-A0‖/‖A0‖: median=0.6204 (p10=0.2348, p90=0.9898)
+[D1] 同域 逐元素差异:   median=0.7414
+[D1] 同域 子空间主夹角: median=39.48°
+[D3] 域内主夹角 median=41.45°  域间=39.56°  随机null=87.90°
+-------------------------------------------------
+[判读] D3 域内/域间/随机区分不明显(gap=-1.9°) -> 跨域几何信号弱，DCR 机制存疑。
+[判读] D1 同域 逐元素=0.741 vs 子空间夹角=39.5° —— 若逐元素明显大而子空间夹角小，说明 gauge 在搅局(DCR 有理)；若都很小则 A_i 近乎相同(动机弱)。
+
+[diag] 详细结果已保存: artifacts_35c/diag/diag_subspace_A_seed42.json
+[diag] 图已保存: artifacts_35c/diag/diag_subspace_A_seed42.png
