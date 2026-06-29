@@ -100,6 +100,9 @@ python tasks/fed_train_standard_sft.py \
 
 ```bash
 bash scripts/RunScripts/run_standard_sft_baselines.sh 0
+
+ CUDA_VISIBLE_DEVICES=1 python tasks/fed_train_standard_sft.py   --model /data/yaominghao/gb/models/Meta-Llama-3.1-8B   --benchmark_dir data/standard_benchmark_alpaca_noniid_a0.5/seed_42   --agg_type yoco   --gradient_checkpointing   --eval_max_batches 50   --trained_models_root ../trained_models_standard
+
 ```
 
 8 个方法：`normal`, `flora`, `flexlora`, `feddat`, `fedalt`, `yoco`, `fedsa_lora`, `ffa`
