@@ -33,9 +33,21 @@ DEFAULT_AGGS = [
     "fedplora_v3_lite",
     "fedplora_v3_cluster",
     "fedplora_v3_rpca",
+    "v6_dcr_global",
+    "v6_dcr_domain",
     "yoco",
     "fedsa_lora",
     "fedalt",
+    "fedplora_v7",
+    "fedplora_v7_bonly",
+    "fedplora_v8",
+    "fedplora_v8_ab",
+    "fedplora_v8_warma",
+    "fedplora_v8_periodic",
+    "fedlease",
+    "hilora",
+    "ecolora",
+    "hydralora",
 ]
 
 
@@ -54,6 +66,21 @@ def main():
     )
     p.add_argument("--trust_remote_code", action="store_true")
     p.add_argument("--gradient_checkpointing", action="store_true")
+    p.add_argument(
+        "--ecolora_keep_ratio",
+        type=float,
+        default=0.25,
+        help="EcoLoRA sparse/segment upload keep ratio used for communication estimates.",
+    )
+    p.add_argument("--rounds", type=int, default=10)
+    p.add_argument("--v8_a_warmup_rounds", type=int, default=1)
+    p.add_argument("--v8_a_refresh_interval", type=int, default=5)
+    p.add_argument(
+        "--v8_cache_shared_a_downlink",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="If true, v8 effective downlink assumes cached shared A and routed B-only non-refresh rounds.",
+    )
     p.add_argument(
         "--agg_types",
         type=str,
@@ -85,13 +112,28 @@ def main():
     rows = []
     for agg in aggs:
         info = estimate_round_communication_bytes(
-            sd, agg, trainable_param_names=trainable
+            sd,
+            agg,
+            trainable_param_names=trainable,
+            ecolora_keep_ratio=args_ns.ecolora_keep_ratio,
+            rounds=args_ns.rounds,
+            v8_a_warmup_rounds=args_ns.v8_a_warmup_rounds,
+            v8_a_refresh_interval=args_ns.v8_a_refresh_interval,
+            v8_cache_shared_a_downlink=args_ns.v8_cache_shared_a_downlink,
         )
         rows.append(
             {
                 "agg_type": agg,
                 "down_bytes_per_client": int(info["down_bytes_per_client"]),
                 "up_bytes_per_client": int(info["up_bytes_per_client"]),
+                "effective_down_bytes_per_client": int(
+                    info["effective_down_bytes_per_client"]
+                ),
+                "effective_up_bytes_per_client": int(
+                    info["effective_up_bytes_per_client"]
+                ),
+                "downlink_policy": str(info.get("downlink_policy", "raw")),
+                "v8_a_refresh_rounds": int(info.get("v8_a_refresh_rounds", 0)),
             }
         )
 
@@ -101,18 +143,26 @@ def main():
 
     print(f"[comm_profile] model={args_ns.model}")
     print(
-        f"{'agg_type':<20} {'down_B':>14} {'up_B':>14} {'down_MB':>10} {'up_MB':>10}"
+        f"{'agg_type':<24} {'down_B':>14} {'up_B':>14} "
+        f"{'eff_down_B':>14} {'eff_up_B':>14} {'refresh':>8}"
     )
     for r in rows:
         d = r["down_bytes_per_client"]
         u = r["up_bytes_per_client"]
+        ed = r["effective_down_bytes_per_client"]
+        eu = r["effective_up_bytes_per_client"]
         print(
-            f"{r['agg_type']:<20} {d:>14} {u:>14} {d/1048576:>10.2f} {u/1048576:>10.2f}"
+            f"{r['agg_type']:<24} {d:>14} {u:>14} {ed:>14} {eu:>14} "
+            f"{r['v8_a_refresh_rounds']:>8}"
         )
     print(
         "[note] All methods count LoRA (+ heads) only; frozen backbone is never in link budget. "
-        "FedPLoRA / oneshot / fedsa: A+heads (+ row stats uplink); fedalt: personalized A+B; "
-        "ffa: B+heads only; normal/flora/flexlora/feddat/yoco: A+B+heads."
+        "FedPLoRA / oneshot / DCR / fedsa: A+heads (+ row stats uplink); fedalt: personalized A+B; "
+        "ffa, fedplora_v7_bonly, and fedplora_v8: B+heads uplink; "
+        "fedplora_v8_ab uses A+B+heads as the A+B ablation; "
+        "fedplora_v8_warma/periodic amortize A refreshes in effective_* columns; "
+        "ecolora: keep_ratio*(A+B)+heads uplink; "
+        "normal/flora/flexlora/feddat/yoco/fedlease/hilora/hydralora/fedplora_v7: A+B+heads."
     )
 
 
