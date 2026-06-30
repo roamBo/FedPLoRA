@@ -30,7 +30,7 @@ cuda_resolve_devices "${GPU_CLI}"
 
 MODEL_PATH="${MODEL_PATH:-/data/yaominghao/gb/models/Meta-Llama-3.1-8B}"
 COMM_CLIENTS_TAG="${COMM_CLIENTS_TAG:-35}"
-DEFAULT_AGG_LIST="fedplora-oneshot,fedalt,yoco,fedsa_lora,normal,flora,flexlora,ffa,feddat,fedplora_v3_lite,fedplora_v3_cluster,fedplora_v3_rpca"
+DEFAULT_AGG_LIST="fedplora-oneshot,fedalt,yoco,fedsa_lora,normal,flora,flexlora,ffa,feddat,fedplora_v3_lite,fedplora_v3_cluster,fedplora_v3_rpca,v6_dcr_global,v6_dcr_domain"
 AGG_LIST="${AGG_LIST:-${DEFAULT_AGG_LIST}}"
 COMM_JSON_OUT="${COMM_JSON_OUT:-artifacts_${COMM_CLIENTS_TAG}c/comm_profile/sft_comm_${COMM_CLIENTS_TAG}c.json}"
 

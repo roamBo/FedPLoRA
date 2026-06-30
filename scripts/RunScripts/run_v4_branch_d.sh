@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Branch D — FedPLoRA-Mix runs
 # D1: fixed eta=0.5
-# D2: per-domain eta grid search (TODO: wire up domain val loaders)
-# D3: per-input MoE gate (TODO: wire up hidden-state hook)
+# D2: per-domain eta grid search on validation rows
+# D3: per-input MoE placeholder (currently falls back to fixed/static mixer)
 #
 # Usage: bash scripts/RunScripts/run_v4_branch_d.sh [gpu]
 set -euo pipefail
@@ -37,7 +37,7 @@ python tasks/fed_train_sft_v4.py \
   --v4_mix_save_dir "artifacts/v4_mix_a_local_d1" \
   --oneshot_anchor_lambda "$ONESHOT_ANCHOR_LAMBDA"
 
-# D2 — per-domain eta (grid search on val; stub uses fixed eta until wired)
+# D2 — per-domain eta grid search on val
 CUDA_VISIBLE_DEVICES="${CUDA_DEVICES}" \
 python tasks/fed_train_sft_v4.py \
   --model "$MODEL_PATH" \
@@ -52,6 +52,9 @@ python tasks/fed_train_sft_v4.py \
   --metrics_output_dir "$METRICS_OUTPUT_DIR" \
   --eval_max_batches "$EVAL_MAX_BATCHES" --eval_seeds "$EVAL_SEEDS" \
   --v4_mix_mode per_domain --v4_mix_eta 0.5 \
+  --v4_mix_val_scope local \
+  --v4_mix_search_grid "0.0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1.0" \
+  --v4_mix_search_max_batches 4 \
   --v4_mix_save_dir "artifacts/v4_mix_a_local_d2" \
   --oneshot_anchor_lambda "$ONESHOT_ANCHOR_LAMBDA"
 

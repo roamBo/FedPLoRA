@@ -53,6 +53,18 @@ domain_sft_append_agg_cli_extras() {
         --v3_sparse_quantile "${V3_SPARSE_QUANTILE:-0.8}"
       )
       ;;
+    v6_dcr|v6_dcr_global|v6_dcr_domain|fedplora_dcr|fedplora_dcr_global|fedplora_dcr_domain)
+      _cmd+=(
+        --yoco_sparse_lambda "${YOCO_SPARSE_LAMBDA:-1e-4}"
+        --oneshot_anchor_lambda "${ONESHOT_ANCHOR_LAMBDA:-1e-4}"
+        --oneshot_prox_lambda "${ONESHOT_PROX_LAMBDA:-0.0}"
+        --v6_dcr_rc_policy "${V6_DCR_RC_POLICY:-auto}"
+        --v6_dcr_energy_tau "${V6_DCR_ENERGY_TAU:-0.80}"
+        --v6_dcr_conflict_strength "${V6_DCR_CONFLICT_STRENGTH:-1.0}"
+        --v6_dcr_importance_power "${V6_DCR_IMPORTANCE_POWER:-0.0}"
+        --v6_dcr_importance_clip "${V6_DCR_IMPORTANCE_CLIP:-5.0}"
+      )
+      ;;
     feddat)
       _cmd+=(--feddat_teacher_lambda "${FEDDAT_TEACHER_LAMBDA:-0.01}")
       ;;
