@@ -46,6 +46,27 @@ from methods.fedplora_oneshot import (
 )
 from methods.fedalt import aggregate_models_fedalt, build_fedalt_upload_package
 from methods.yoco import aggregate_models_yoco
+from methods.v5.fedplora_v5_merge import aggregate_models_v5_merge
+from methods.v6.dcr import aggregate_models_fedplora_dcr
+from methods.lora_expert_baselines import (
+    aggregate_models_lora_expert_baseline,
+    build_lora_expert_upload_package,
+)
+from methods.v8 import (
+    aggregate_models_fedplora_v8,
+    build_fedplora_v8_upload_package,
+    is_fedplora_v8_agg,
+)
+from methods.v9 import (
+    aggregate_models_fedplora_v9,
+    build_fedplora_v9_upload_package,
+    is_fedplora_v9_agg,
+)
+from methods.v10 import (
+    aggregate_models_fedplora_v10,
+    build_fedplora_v10_upload_package,
+    is_fedplora_v10_agg,
+)
 from utilities.models import (
     create_peft_causal_lm_model,
     create_peft_causal_lm_ffa_model,
@@ -65,6 +86,11 @@ from utilities.sft_checkpoint_paths import default_save_run_checkpoint_dir, run_
 from utilities.train_eval import train_client
 from utilities.utils import (
     estimate_round_communication_bytes,
+    is_fedplora_v8_family_agg,
+    is_fedplora_v8_scheduled_a_agg,
+    is_fedplora_v9_family_agg,
+    is_fedplora_v10_family_agg,
+    v8_train_a_this_round,
     get_fedplora_shared_param_names,
     get_trainable_param_names,
     is_flexlora_agg,
@@ -75,15 +101,20 @@ from utilities.utils import (
     is_fedsa_lora_agg,
     is_fedplora_oneshot_agg,
     is_fedplora_oneshot_family_agg,
+    is_fedplora_v6_dcr_agg,
     is_fedplora_v3_agg,
     is_fedplora_shared_param_name,
     is_fedplora_multiround_agg,
     is_lora_a_disk_agg,
     is_lora_a_param_name,
+    is_lora_expert_agg,
+    is_lora_expert_b_only_agg,
     is_memory_global_agg_agg,
+    is_v5_merge_agg,
     is_yoco_agg,
     restore_logging,
     setup_run_logging,
+    tensor_to_list,
 )
 
 
@@ -319,10 +350,256 @@ parser.add_argument(
     help="Optional domain:cluster pairs, e.g. math:capability,code:capability",
 )
 parser.add_argument(
+    "--v6_dcr_mode",
+    type=str,
+    default="",
+    choices=["", "global", "domain", "personalized", "per_domain"],
+    help="FedPLoRA-DCR mode. Empty infers from agg_type: v6_dcr_global or v6_dcr_domain.",
+)
+parser.add_argument(
+    "--v6_dcr_rc_policy",
+    type=str,
+    default="auto",
+    choices=["auto", "fixed", "energy"],
+    help="FedPLoRA-DCR shared-rank policy for domain mode.",
+)
+parser.add_argument(
+    "--v6_dcr_shared_rank",
+    type=int,
+    default=0,
+    help="FedPLoRA-DCR fixed shared rank when --v6_dcr_rc_policy fixed. 0 uses lora_r//2.",
+)
+parser.add_argument(
+    "--v6_dcr_min_shared_rank",
+    type=int,
+    default=1,
+    help="FedPLoRA-DCR minimum shared directions in domain mode.",
+)
+parser.add_argument(
+    "--v6_dcr_max_shared_rank",
+    type=int,
+    default=0,
+    help="FedPLoRA-DCR maximum shared directions in domain mode. 0 means lora_r.",
+)
+parser.add_argument(
+    "--v6_dcr_energy_tau",
+    type=float,
+    default=0.80,
+    help="FedPLoRA-DCR global-spectrum energy threshold for auto/energy shared-rank policy.",
+)
+parser.add_argument(
+    "--v6_dcr_conflict_strength",
+    type=float,
+    default=1.0,
+    help="FedPLoRA-DCR auto policy: how strongly domain/global subspace conflict reduces shared rank.",
+)
+parser.add_argument(
+    "--v6_dcr_importance_power",
+    type=float,
+    default=0.0,
+    help="FedPLoRA-DCR row-importance weighting before subspace SVD. 0 disables weighting.",
+)
+parser.add_argument(
+    "--v6_dcr_importance_clip",
+    type=float,
+    default=5.0,
+    help="FedPLoRA-DCR cap for row-importance weights when importance_power > 0.",
+)
+parser.add_argument(
+    "--v7_b_mode",
+    type=str,
+    default="mean",
+    choices=["mean", "rep", "svd"],
+    help="FedPLoRA-v7/v8 / expert baselines: how to consolidate B inside each pool.",
+)
+parser.add_argument(
+    "--expert_cluster_mode",
+    type=str,
+    default="auto",
+    choices=["auto", "b_subspace", "domain", "global", "singleton"],
+    help="FedLEASE/HiLoRA/HydraLoRA/FedPLoRA-v7/v8: B-pool assignment mode. "
+    "auto/b_subspace uses LoRA-B principal-angle clustering; domain is an oracle upper bound.",
+)
+parser.add_argument(
+    "--expert_cluster_k",
+    type=int,
+    default=0,
+    help="Number of B experts/clusters. 0 chooses k by distance-matrix silhouette.",
+)
+parser.add_argument(
+    "--expert_max_clusters",
+    type=int,
+    default=0,
+    help="Max k tried by silhouette when --expert_cluster_k 0. 0 uses min(8, num_clients-1).",
+)
+parser.add_argument(
+    "--expert_b_mode",
+    type=str,
+    default="",
+    choices=["", "mean", "rep", "svd"],
+    help="B expert consolidation mode. Empty reuses --v7_b_mode.",
+)
+parser.add_argument(
+    "--expert_top_m",
+    type=int,
+    default=0,
+    help="FedLEASE/HydraLoRA proxy: blend top-M nearest B experts. 0 uses method defaults.",
+)
+parser.add_argument(
+    "--expert_router_temperature",
+    type=float,
+    default=0.2,
+    help="Softmax temperature for top-M expert blending in FedLEASE/HydraLoRA proxies.",
+)
+parser.add_argument(
+    "--expert_freeze_a",
+    action="store_true",
+    help="Expert/v7/v8 variants: freeze LoRA A locally and upload B-only. "
+    "Automatically enabled by agg_type fedplora_v7_bonly/v7_bonly/fedplora_v8/v8_bsim.",
+)
+parser.add_argument(
+    "--v8_a_warmup_rounds",
+    type=int,
+    default=1,
+    help="fedplora_v8_warma: train/upload A+B for the first k rounds, then freeze A and upload B-only.",
+)
+parser.add_argument(
+    "--v8_a_refresh_interval",
+    type=int,
+    default=5,
+    help="fedplora_v8_periodic: train/upload A+B every T rounds; non-refresh rounds are B-only.",
+)
+parser.add_argument(
+    "--v8_cache_shared_a_downlink",
+    action=argparse.BooleanOptionalAction,
+    default=True,
+    help="Communication accounting for v8: assume clients cache shared A and non-refresh downlink sends routed B only.",
+)
+parser.add_argument(
+    "--v9_mix_lambda",
+    type=float,
+    default=0.5,
+    help="FedPLoRA-v9: global B branch weight in B_mix=lambda*B_global+(1-lambda)*B_routed.",
+)
+parser.add_argument(
+    "--v10_a_correction_alpha",
+    type=float,
+    default=0.35,
+    help="FedPLoRA-v10: server blend strength for shared-A correction against round-start A.",
+)
+parser.add_argument(
+    "--v10_a_anchor_lambda",
+    type=float,
+    default=1e-3,
+    help="FedPLoRA-v10 local training: sign-invariant row-direction anchor for LoRA A.",
+)
+parser.add_argument(
+    "--v10_a_prox_lambda",
+    type=float,
+    default=5e-4,
+    help="FedPLoRA-v10 local training: MSE proximity from LoRA A to round-start shared A.",
+)
+parser.add_argument(
+    "--v10_b_prox_lambda",
+    type=float,
+    default=1e-4,
+    help="FedPLoRA-v10 local training: weak B proximity to the client's round-start routed B.",
+)
+parser.add_argument(
+    "--v10_a_sketch_rank",
+    type=int,
+    default=2,
+    help="FedPLoRA-v10 sketch variant: rank of transmitted/reconstructed A-delta sketch.",
+)
+parser.add_argument(
+    "--v10_a_norm_clip_ratio",
+    type=float,
+    default=1.5,
+    help="FedPLoRA-v10 server: clip corrected A row norms to [ref/ratio, ref*ratio]. <=1 disables.",
+)
+parser.add_argument(
+    "--hilora_leaf_blend",
+    type=float,
+    default=0.25,
+    help="HiLoRA proxy: fraction of the client local-B leaf residual folded into the downlinked B.",
+)
+parser.add_argument(
+    "--ecolora_keep_ratio",
+    type=float,
+    default=0.25,
+    help="EcoLoRA proxy: fraction of LoRA A/B entries communicated per client.",
+)
+parser.add_argument(
+    "--ecolora_mask_mode",
+    type=str,
+    default="round_robin",
+    choices=["round_robin", "topk"],
+    help="EcoLoRA proxy sparse upload mask: complementary segments or local top-|value| entries.",
+)
+parser.add_argument(
     "--feddat_teacher_lambda",
     type=float,
     default=0.01,
     help="FedDAT: MSE proximal to round-start global LoRA (teacher).",
+)
+# ---- v5-merge (agg_type v5m_mean | v5m_ties | v5m_dare_ties | v5m_knots_ties) ----
+parser.add_argument(
+    "--v5m_keep_ratio",
+    type=float,
+    default=0.2,
+    help="v5-merge TIES trim: keep top-k fraction of |ΔW| (or |C|) entries per client.",
+)
+parser.add_argument(
+    "--v5m_dare_p",
+    type=float,
+    default=0.3,
+    help="v5m_dare_ties: DARE drop probability before TIES (rescale 1/(1-p)).",
+)
+parser.add_argument(
+    "--v5m_rank_policy",
+    type=str,
+    default="fixed",
+    choices=["fixed", "energy"],
+    help="Downlink rank: fixed = lora_r (comm-matched to flora); "
+    "energy = per-layer spectral-energy rank, capped by --v5m_rank_cap.",
+)
+parser.add_argument(
+    "--v5m_rank_cap",
+    type=int,
+    default=64,
+    help="v5-merge: max downlink rank when --v5m_rank_policy energy.",
+)
+parser.add_argument(
+    "--v5m_energy_tau",
+    type=float,
+    default=0.95,
+    help="v5-merge energy rank policy: keep smallest r with ≥ tau spectral energy.",
+)
+parser.add_argument(
+    "--v5m_knots_normalize",
+    type=int,
+    default=1,
+    help="v5m_knots_ties: 1 = Frobenius-normalize per-client aligned coefficients "
+    "before sign election, rescale merged result to weighted mean client norm.",
+)
+parser.add_argument(
+    "--v5m_basis_energy_tau",
+    type=float,
+    default=0.9999,
+    help="v5m_knots_ties: eigen-energy kept when truncating the shared right basis.",
+)
+parser.add_argument(
+    "--v5m_chunk_rows",
+    type=int,
+    default=2048,
+    help="v5-merge entry-wise operators: row-chunk size for ΔW processing.",
+)
+parser.add_argument(
+    "--v5m_device",
+    type=str,
+    default="auto",
+    choices=["auto", "cpu"],
+    help="v5-merge: device for merge math (auto = model GPU when available).",
 )
 parser.add_argument(
     "--eval_max_batches",
@@ -335,6 +612,17 @@ parser.add_argument(
     type=int,
     default=0,
     help="Eval DataLoader batch size; 0 uses --batch_size. Use a larger value when GPU memory allows to speed eval.",
+)
+parser.add_argument(
+    "--eval_interval",
+    type=int,
+    default=1,
+    help="Evaluate every N rounds. 1 preserves legacy every-round eval. Ignored for final round.",
+)
+parser.add_argument(
+    "--eval_final_only",
+    action="store_true",
+    help="Skip intermediate evaluation and evaluate only after the final training round.",
 )
 parser.add_argument(
     "--train_max_steps_per_client",
@@ -405,6 +693,8 @@ parser.add_argument(
 )
 
 args = parser.parse_args()
+if is_lora_expert_b_only_agg(args.agg_type):
+    args.expert_freeze_a = True
 
 
 def set_seed(seed):
@@ -442,6 +732,7 @@ def compute_lm_eval_stats(model, dataloader, device, max_batches=0):
     model.eval()
     total_loss = 0.0
     steps = 0
+    loss_steps = 0
     total_correct = 0
     total_valid = 0
     try:
@@ -457,13 +748,19 @@ def compute_lm_eval_stats(model, dataloader, device, max_batches=0):
                 batch = {k: v.to(device) for k, v in batch.items()}
                 labels = batch["labels"]
                 outputs = model(**batch)
-                total_loss += float(outputs.loss.detach().cpu().item())
                 logits = outputs.logits
                 shift_logits = logits[..., :-1, :].contiguous()
                 shift_labels = labels[..., 1:].contiguous()
                 preds = shift_logits.argmax(dim=-1)
                 mask = shift_labels.ne(-100)
                 if mask.any():
+                    # Only accumulate finite losses on batches with valid label tokens;
+                    # a fully-masked batch makes HF's masked-mean loss NaN, which would
+                    # otherwise poison the whole domain's mean_loss / perplexity.
+                    lv = float(outputs.loss.detach().cpu().item())
+                    if math.isfinite(lv):
+                        total_loss += lv
+                        loss_steps += 1
                     total_correct += int((preds[mask] == shift_labels[mask]).sum().cpu())
                     total_valid += int(mask.sum().cpu())
                 steps += 1
@@ -471,12 +768,15 @@ def compute_lm_eval_stats(model, dataloader, device, max_batches=0):
         # num_workers>0: tear down workers after each eval pass (full or early) to avoid FD leaks.
         if int(getattr(dataloader, "num_workers", 0) or 0) > 0:
             shutdown_dataloader_workers(dataloader)
-    mean_loss = total_loss / max(steps, 1)
+    mean_loss = (total_loss / loss_steps) if loss_steps > 0 else float("nan")
     tok_acc = total_correct / max(total_valid, 1)
-    try:
-        ppl = float(math.exp(min(mean_loss, 80.0)))
-    except OverflowError:
-        ppl = float("inf")
+    if math.isfinite(mean_loss):
+        try:
+            ppl = float(math.exp(min(mean_loss, 80.0)))
+        except OverflowError:
+            ppl = float("inf")
+    else:
+        ppl = float("nan")
     return {
         "loss": mean_loss,
         "token_accuracy": float(tok_acc),
@@ -667,6 +967,7 @@ def _evaluate_domain_macro_sequential(global_model, client_ids, client_store, do
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     by_domain = group_rows_by_domain(domain_rows)
     eval_cap = int(getattr(args, "eval_max_batches", 0) or 0)
+    personalized = getattr(args, "_fedplora_personalized_shared_states", {}) or {}
     shared_state = {
         k: v.detach().cpu().clone()
         for k, v in global_model.state_dict().items()
@@ -693,7 +994,9 @@ def _evaluate_domain_macro_sequential(global_model, client_ids, client_store, do
             if is_fedalt_sequential_agg(args.agg_type):
                 load_fedalt_local_state(global_model, local_state)
             else:
-                broadcast_fedplora_shared_state(global_model, shared_state)
+                client_shared = dict(shared_state)
+                client_shared.update(personalized.get(int(client_id), {}))
+                broadcast_fedplora_shared_state(global_model, client_shared)
                 load_fedplora_local_state(global_model, local_state)
             stats_per_client.append(
                 compute_lm_eval_stats(global_model, dl, device, max_batches=eval_cap)
@@ -741,7 +1044,10 @@ def _load_client_eval_state(global_model, client_store, client_id, shared_state,
     if is_fedalt_sequential_agg(args.agg_type):
         load_fedalt_local_state(global_model, local_state)
     else:
-        broadcast_fedplora_shared_state(global_model, shared_state)
+        personalized = getattr(args, "_fedplora_personalized_shared_states", {}) or {}
+        client_shared = dict(shared_state)
+        client_shared.update(personalized.get(int(client_id), {}))
+        broadcast_fedplora_shared_state(global_model, client_shared)
         load_fedplora_local_state(global_model, local_state)
 
 
@@ -937,6 +1243,139 @@ def _maybe_apply_default_save_run_checkpoint_dir(args, split_dir):
     print(f"[setup] auto save_run_checkpoint_dir={args.save_run_checkpoint_dir}", flush=True)
 
 
+def _set_lora_a_trainable(model, trainable: bool) -> None:
+    for name, param in model.named_parameters():
+        if "lora_A" in name:
+            param.requires_grad = bool(trainable)
+
+
+def _configure_v8_round_a_schedule(args, model, round_idx: int) -> bool:
+    """Apply per-round v8 A train/upload schedule and return whether A is trainable."""
+    if not (
+        is_fedplora_v8_family_agg(args.agg_type)
+        or is_fedplora_v9_family_agg(args.agg_type)
+        or is_fedplora_v10_family_agg(args.agg_type)
+    ):
+        args._v8_current_train_a = None
+        args._v8_current_b_only_upload = None
+        return True
+    if is_fedplora_v9_family_agg(args.agg_type):
+        train_a = (args.agg_type or "").strip().lower().replace("-", "_") in {
+            "fedplora_v9_mix_ab",
+            "v9_mix_ab",
+        }
+        _set_lora_a_trainable(model, train_a)
+        args._v8_current_train_a = bool(train_a)
+        args._v8_current_b_only_upload = not bool(train_a)
+        return bool(train_a)
+    if is_fedplora_v10_family_agg(args.agg_type):
+        _set_lora_a_trainable(model, True)
+        args._v8_current_train_a = True
+        args._v8_current_b_only_upload = False
+        print(
+            f"[v10-schedule] round={round_idx + 1} train_upload_A=yes "
+            f"upload_scope=A-correction+B",
+            flush=True,
+        )
+        return True
+    train_a = v8_train_a_this_round(
+        args.agg_type,
+        round_idx,
+        warmup_rounds=getattr(args, "v8_a_warmup_rounds", 1),
+        refresh_interval=getattr(args, "v8_a_refresh_interval", 5),
+    )
+    if not is_fedplora_v8_scheduled_a_agg(args.agg_type):
+        train_a = not bool(getattr(args, "expert_freeze_a", False))
+    _set_lora_a_trainable(model, train_a)
+    args._v8_current_train_a = bool(train_a)
+    args._v8_current_b_only_upload = not bool(train_a)
+    if is_fedplora_v8_scheduled_a_agg(args.agg_type):
+        print(
+            f"[v8-schedule] round={round_idx + 1} "
+            f"train_upload_A={'yes' if train_a else 'no'} "
+            f"upload_scope={'A+B' if train_a else 'B-only'}",
+            flush=True,
+        )
+    return bool(train_a)
+
+
+def _comm_info_for_args(model, args):
+    return estimate_round_communication_bytes(
+        model.state_dict(),
+        args.agg_type,
+        trainable_param_names=get_trainable_param_names(model),
+        ecolora_keep_ratio=getattr(args, "ecolora_keep_ratio", 0.25),
+        rounds=getattr(args, "rounds", 1),
+        v8_a_warmup_rounds=getattr(args, "v8_a_warmup_rounds", 1),
+        v8_a_refresh_interval=getattr(args, "v8_a_refresh_interval", 5),
+        v8_cache_shared_a_downlink=getattr(args, "v8_cache_shared_a_downlink", True),
+        v10_a_sketch_rank=getattr(args, "v10_a_sketch_rank", 2),
+    )
+
+
+def _should_eval_round(args, round_idx: int) -> bool:
+    """Return whether to run evaluation after zero-based round_idx."""
+    if int(round_idx) >= int(args.rounds) - 1:
+        return True
+    if bool(getattr(args, "eval_final_only", False)):
+        return False
+    interval = max(1, int(getattr(args, "eval_interval", 1) or 1))
+    return (int(round_idx) + 1) % interval == 0
+
+
+def _communication_metrics_payload(args, comm_info):
+    payload = {
+        "agg_type": args.agg_type,
+        "down_bytes_per_client": int(comm_info["down_bytes_per_client"]),
+        "up_bytes_per_client": int(comm_info["up_bytes_per_client"]),
+    }
+    for key in (
+        "effective_down_bytes_per_client",
+        "effective_up_bytes_per_client",
+        "downlink_policy",
+        "v8_a_refresh_rounds",
+        "v8_a_refresh_fraction",
+    ):
+        if key in comm_info:
+            payload[key] = comm_info[key]
+    if is_fedplora_v8_family_agg(args.agg_type) or is_fedplora_v9_family_agg(
+        args.agg_type
+    ) or is_fedplora_v10_family_agg(args.agg_type):
+        payload["v8_a_warmup_rounds"] = int(getattr(args, "v8_a_warmup_rounds", 1) or 0)
+        payload["v8_a_refresh_interval"] = int(
+            getattr(args, "v8_a_refresh_interval", 5) or 0
+        )
+        payload["v8_cache_shared_a_downlink"] = bool(
+            getattr(args, "v8_cache_shared_a_downlink", True)
+        )
+    if is_fedplora_v9_family_agg(args.agg_type):
+        payload["v9_mix_lambda"] = float(getattr(args, "v9_mix_lambda", 0.5) or 0.0)
+    if is_fedplora_v10_family_agg(args.agg_type):
+        payload["v10_a_correction_alpha"] = float(
+            getattr(args, "v10_a_correction_alpha", 0.35) or 0.0
+        )
+        payload["v10_a_anchor_lambda"] = float(
+            getattr(args, "v10_a_anchor_lambda", 1e-3) or 0.0
+        )
+        payload["v10_a_prox_lambda"] = float(
+            getattr(args, "v10_a_prox_lambda", 5e-4) or 0.0
+        )
+        payload["v10_b_prox_lambda"] = float(
+            getattr(args, "v10_b_prox_lambda", 1e-4) or 0.0
+        )
+        payload["v10_a_sketch_rank"] = int(getattr(args, "v10_a_sketch_rank", 2) or 0)
+        payload["v10_a_norm_clip_ratio"] = float(
+            getattr(args, "v10_a_norm_clip_ratio", 1.5) or 0.0
+        )
+        for key in (
+            "v10_a_correction_bytes_per_client",
+            "v10_a_correction_mode",
+        ):
+            if key in comm_info:
+                payload[key] = comm_info[key]
+    return payload
+
+
 def _load_checkpoint_ok(bundle_dir: str):
     p = os.path.join(bundle_dir, "checkpoint_ok.json")
     if not os.path.isfile(p):
@@ -987,6 +1426,66 @@ def _resume_meta_matches(meta: dict, args, split_dir: str, client_ids) -> bool:
         is_lora_a_disk_agg(args.agg_type) or is_fedalt_sequential_agg(args.agg_type)
     ):
         return _bad("disk_sequential_protocol")
+    if is_lora_expert_agg(args.agg_type):
+        cfg = meta.get("lora_expert_config")
+        if not isinstance(cfg, dict):
+            return _bad("lora_expert_config")
+        str_fields = [
+            "v7_b_mode",
+            "expert_cluster_mode",
+            "expert_b_mode",
+            "ecolora_mask_mode",
+        ]
+        bool_fields = ["expert_freeze_a"]
+        int_fields = ["expert_cluster_k", "expert_max_clusters", "expert_top_m"]
+        float_fields = [
+            "expert_router_temperature",
+            "hilora_leaf_blend",
+            "ecolora_keep_ratio",
+        ]
+        for name in str_fields:
+            if str(cfg.get(name, "")) != str(getattr(args, name, "")):
+                return _bad(name)
+        for name in bool_fields:
+            if bool(cfg.get(name, False)) != bool(getattr(args, name, False)):
+                return _bad(name)
+        for name in int_fields:
+            if int(cfg.get(name, 0) or 0) != int(getattr(args, name, 0) or 0):
+                return _bad(name)
+        for name in float_fields:
+            if float(cfg.get(name, 0.0) or 0.0) != float(getattr(args, name, 0.0) or 0.0):
+                return _bad(name)
+        if is_fedplora_v8_scheduled_a_agg(args.agg_type):
+            v8_int_fields = ["v8_a_warmup_rounds", "v8_a_refresh_interval"]
+            v8_bool_fields = ["v8_cache_shared_a_downlink"]
+            for name in v8_int_fields:
+                if int(cfg.get(name, 0) or 0) != int(getattr(args, name, 0) or 0):
+                    return _bad(name)
+            for name in v8_bool_fields:
+                if bool(cfg.get(name, False)) != bool(getattr(args, name, False)):
+                    return _bad(name)
+        if is_fedplora_v9_family_agg(args.agg_type):
+            if float(cfg.get("v9_mix_lambda", 0.5) or 0.0) != float(
+                getattr(args, "v9_mix_lambda", 0.5) or 0.0
+            ):
+                return _bad("v9_mix_lambda")
+        if is_fedplora_v10_family_agg(args.agg_type):
+            v10_float_fields = [
+                "v10_a_correction_alpha",
+                "v10_a_anchor_lambda",
+                "v10_a_prox_lambda",
+                "v10_b_prox_lambda",
+                "v10_a_norm_clip_ratio",
+            ]
+            for name in v10_float_fields:
+                if float(cfg.get(name, 0.0) or 0.0) != float(
+                    getattr(args, name, 0.0) or 0.0
+                ):
+                    return _bad(name)
+            if int(cfg.get("v10_a_sketch_rank", 0) or 0) != int(
+                getattr(args, "v10_a_sketch_rank", 0) or 0
+            ):
+                return _bad("v10_a_sketch_rank")
     return True
 
 
@@ -1093,7 +1592,7 @@ def _metrics_path(args, split_dir):
 
 def _write_metrics_file(path, payload):
     with open(path, "w", encoding="utf-8") as f:
-        json.dump(payload, f, indent=2, ensure_ascii=False)
+        json.dump(tensor_to_list(payload), f, indent=2, ensure_ascii=False)
 
 
 def _metrics_recommended_kpis(include_personalization: bool) -> dict:
@@ -1168,6 +1667,8 @@ def _reaggregate_memory_global_model(global_model, client_states_for_agg, args):
         return aggregate_models_flexlora(global_model, client_states_for_agg, args)
     if is_feddat_agg(agg):
         return aggregate_models_feddat(global_model, client_states_for_agg, args)
+    if is_v5_merge_agg(agg):
+        return aggregate_models_v5_merge(global_model, client_states_for_agg, args)
     raise ValueError(f"No memory-global re-aggregate handler for agg_type={agg!r}")
 
 
@@ -1395,6 +1896,31 @@ def _sft_eval_phase(
         round_payload["fedplora_v3_client_clusters"] = getattr(
             args, "_fedplora_v3_client_clusters", {}
         )
+    if is_fedplora_v6_dcr_agg(args.agg_type):
+        round_payload["fedplora_v6_dcr_stats"] = getattr(
+            args, "_fedplora_v6_dcr_stats", {}
+        ).get("_summary", {})
+        round_payload["fedplora_v6_client_domains"] = getattr(
+            args, "_fedplora_v6_client_domains", {}
+        )
+    if is_lora_expert_agg(args.agg_type):
+        expert_stats = getattr(args, "_lora_expert_stats", {}) or {}
+        if expert_stats:
+            round_payload["lora_expert_stats"] = expert_stats.get(
+                "_summary", expert_stats
+            )
+            if "client_clusters" in expert_stats:
+                round_payload["lora_expert_client_clusters"] = expert_stats[
+                    "client_clusters"
+                ]
+            if "cluster_domain_hist" in expert_stats:
+                round_payload["lora_expert_cluster_domain_hist"] = expert_stats[
+                    "cluster_domain_hist"
+                ]
+            if "client_routes" in expert_stats:
+                round_payload["lora_expert_client_routes"] = expert_stats[
+                    "client_routes"
+                ]
     round_payload.update(pfl_block)
     return round_payload
 
@@ -1521,6 +2047,73 @@ def _save_run_checkpoint(
             "gradient_checkpointing": bool(args.gradient_checkpointing),
             "metrics_path": os.path.abspath(metrics_path) if metrics_path else "",
         }
+        if is_lora_expert_agg(args.agg_type):
+            meta["lora_expert_config"] = {
+                "v7_b_mode": str(getattr(args, "v7_b_mode", "mean")),
+                "expert_cluster_mode": str(
+                    getattr(args, "expert_cluster_mode", "auto")
+                ),
+                "expert_cluster_k": int(getattr(args, "expert_cluster_k", 0) or 0),
+                "expert_max_clusters": int(
+                    getattr(args, "expert_max_clusters", 0) or 0
+                ),
+                "expert_b_mode": str(getattr(args, "expert_b_mode", "")),
+                "expert_top_m": int(getattr(args, "expert_top_m", 0) or 0),
+                "expert_freeze_a": bool(getattr(args, "expert_freeze_a", False)),
+                "expert_router_temperature": float(
+                    getattr(args, "expert_router_temperature", 0.2) or 0.2
+                ),
+                "hilora_leaf_blend": float(
+                    getattr(args, "hilora_leaf_blend", 0.25) or 0.25
+                ),
+                "ecolora_keep_ratio": float(
+                    getattr(args, "ecolora_keep_ratio", 0.25) or 0.25
+                ),
+                "ecolora_mask_mode": str(
+                    getattr(args, "ecolora_mask_mode", "round_robin")
+                ),
+            }
+            if is_fedplora_v8_family_agg(args.agg_type):
+                meta["lora_expert_config"].update(
+                    {
+                        "v8_a_warmup_rounds": int(
+                            getattr(args, "v8_a_warmup_rounds", 1) or 0
+                        ),
+                        "v8_a_refresh_interval": int(
+                            getattr(args, "v8_a_refresh_interval", 5) or 0
+                        ),
+                        "v8_cache_shared_a_downlink": bool(
+                            getattr(args, "v8_cache_shared_a_downlink", True)
+                        ),
+                    }
+                )
+            if is_fedplora_v9_family_agg(args.agg_type):
+                meta["lora_expert_config"]["v9_mix_lambda"] = float(
+                    getattr(args, "v9_mix_lambda", 0.5) or 0.0
+                )
+            if is_fedplora_v10_family_agg(args.agg_type):
+                meta["lora_expert_config"].update(
+                    {
+                        "v10_a_correction_alpha": float(
+                            getattr(args, "v10_a_correction_alpha", 0.35) or 0.0
+                        ),
+                        "v10_a_anchor_lambda": float(
+                            getattr(args, "v10_a_anchor_lambda", 1e-3) or 0.0
+                        ),
+                        "v10_a_prox_lambda": float(
+                            getattr(args, "v10_a_prox_lambda", 5e-4) or 0.0
+                        ),
+                        "v10_b_prox_lambda": float(
+                            getattr(args, "v10_b_prox_lambda", 1e-4) or 0.0
+                        ),
+                        "v10_a_sketch_rank": int(
+                            getattr(args, "v10_a_sketch_rank", 2) or 0
+                        ),
+                        "v10_a_norm_clip_ratio": float(
+                            getattr(args, "v10_a_norm_clip_ratio", 1.5) or 0.0
+                        ),
+                    }
+                )
         if round_saved_1based is not None:
             meta["round_saved_1based"] = int(round_saved_1based)
         if not (
@@ -1531,6 +2124,17 @@ def _save_run_checkpoint(
             summ = getattr(args, "_fedplora_oneshot_conflict_stats", {}).get("_summary", {})
             if summ:
                 meta["fedplora_oneshot_conflict_summary"] = summ
+        if is_fedplora_v6_dcr_agg(args.agg_type):
+            summ = getattr(args, "_fedplora_v6_dcr_stats", {}).get("_summary", {})
+            if summ:
+                meta["fedplora_v6_dcr_summary"] = summ
+        if is_lora_expert_agg(args.agg_type):
+            expert_stats = getattr(args, "_lora_expert_stats", {}) or {}
+            if expert_stats:
+                meta["lora_expert_stats"] = tensor_to_list(expert_stats)
+                summ = expert_stats.get("_summary", {})
+                if summ:
+                    meta["lora_expert_summary"] = tensor_to_list(summ)
         if is_lora_a_disk_agg(args.agg_type) or is_fedalt_sequential_agg(args.agg_type):
             shared_names = get_fedplora_shared_param_names(global_model)
             sd = {
@@ -1539,6 +2143,9 @@ def _save_run_checkpoint(
                 if k in shared_names
             }
             torch.save(sd, os.path.join(root, "global_shared.pt"))
+            personalized = getattr(args, "_fedplora_personalized_shared_states", None) or {}
+            if personalized:
+                torch.save(personalized, os.path.join(root, "personalized_shared.pt"))
             if client_store["mode"] == "disk":
                 src_dir = client_store["state_dir"]
                 for cid in client_ids:
@@ -1643,6 +2250,11 @@ def eval_only_from_checkpoint(args):
         args.rslora = bool(meta["rslora"])
     args.target_modules = meta.get("target_modules", args.target_modules)
     args.torch_dtype = meta.get("torch_dtype", args.torch_dtype)
+    if is_lora_expert_agg(args.agg_type):
+        if isinstance(meta.get("lora_expert_stats"), dict):
+            args._lora_expert_stats = meta["lora_expert_stats"]
+        elif isinstance(meta.get("lora_expert_summary"), dict):
+            args._lora_expert_stats = {"_summary": meta["lora_expert_summary"]}
 
     if meta.get("use_ffa_peft"):
         global_model = create_peft_causal_lm_ffa_model(args)
@@ -1656,6 +2268,11 @@ def eval_only_from_checkpoint(args):
             raise FileNotFoundError(f"missing {shared_path}")
         shared_sd = torch.load(shared_path, map_location="cpu")
         broadcast_fedplora_shared_state(global_model, shared_sd)
+        personalized_path = os.path.join(ckpt, "personalized_shared.pt")
+        if os.path.isfile(personalized_path):
+            args._fedplora_personalized_shared_states = torch.load(
+                personalized_path, map_location="cpu"
+            )
         clients_dir = os.path.join(ckpt, "clients")
         client_store = {"mode": "disk", "state_dir": clients_dir}
         _disk_assert_all_client_states(client_store, client_ids, context="eval-only load")
@@ -1695,11 +2312,7 @@ def eval_only_from_checkpoint(args):
                 global_model, client_states_for_agg, args
             )
 
-    comm_info = estimate_round_communication_bytes(
-        global_model.state_dict(),
-        args.agg_type,
-        trainable_param_names=get_trainable_param_names(global_model),
-    )
+    comm_info = _comm_info_for_args(global_model, args)
     metrics_history = {
         "args": vars(args).copy(),
         "benchmark_dir": split_dir,
@@ -1711,11 +2324,7 @@ def eval_only_from_checkpoint(args):
             "worst_domain_token_accuracy",
             "worst_domain_perplexity",
         ],
-        "communication": {
-            "agg_type": args.agg_type,
-            "down_bytes_per_client": int(comm_info["down_bytes_per_client"]),
-            "up_bytes_per_client": int(comm_info["up_bytes_per_client"]),
-        },
+        "communication": _communication_metrics_payload(args, comm_info),
         "rounds": [],
     }
     metrics_history["recommended_kpis"] = _metrics_recommended_kpis(
@@ -1764,13 +2373,6 @@ def eval_only_from_checkpoint(args):
 
 
 def federated_sft(args):
-    if int(args.rounds) != 1:
-        print(
-            f"[setup] one-round comparison: forcing --rounds 1 (CLI had {args.rounds})",
-            flush=True,
-        )
-        args.rounds = 1
-
     benchmark, split_dir = build_or_load_benchmark(args)
     print(f"[benchmark] loaded from {split_dir}")
     print(f"[benchmark] domains={sorted(benchmark['domain_stats'].keys())}")
@@ -1821,17 +2423,62 @@ def federated_sft(args):
         global_model = create_peft_causal_lm_ffa_model(args)
     else:
         global_model = create_peft_causal_lm_model(args)
+    if is_lora_expert_b_only_agg(args.agg_type):
+        args.expert_freeze_a = True
+    if (
+        is_lora_expert_agg(args.agg_type)
+        and getattr(args, "expert_freeze_a", False)
+        and not is_fedplora_v8_scheduled_a_agg(args.agg_type)
+    ):
+        _set_lora_a_trainable(global_model, False)
+        print(
+            f"[setup] {args.agg_type}: freezing LoRA A; clients train/upload B-only.",
+            flush=True,
+        )
 
-    comm_info = estimate_round_communication_bytes(
-        global_model.state_dict(),
-        args.agg_type,
-        trainable_param_names=get_trainable_param_names(global_model),
-    )
+    comm_info = _comm_info_for_args(global_model, args)
     print(
         f"[setup] agg_type={args.agg_type} num_clients={args.num_clients} "
         f"comm_down_bytes_per_client={comm_info['down_bytes_per_client']} "
         f"comm_up_bytes_per_client={comm_info['up_bytes_per_client']}"
     )
+    if (
+        is_fedplora_v8_family_agg(args.agg_type)
+        or is_fedplora_v9_family_agg(args.agg_type)
+        or is_fedplora_v10_family_agg(args.agg_type)
+    ):
+        label = (
+            "v10"
+            if is_fedplora_v10_family_agg(args.agg_type)
+            else ("v9" if is_fedplora_v9_family_agg(args.agg_type) else "v8")
+        )
+        print(
+            f"[setup] {label} effective_comm_down_bytes_per_client="
+            f"{comm_info['effective_down_bytes_per_client']} "
+            f"effective_comm_up_bytes_per_client={comm_info['effective_up_bytes_per_client']} "
+            f"a_refresh_rounds={comm_info['v8_a_refresh_rounds']}/{int(args.rounds)} "
+            f"downlink_policy={comm_info['downlink_policy']}",
+            flush=True,
+        )
+        if is_fedplora_v9_family_agg(args.agg_type):
+            print(
+                f"[setup] v9_mix_lambda={float(getattr(args, 'v9_mix_lambda', 0.5) or 0.0):.3f}",
+                flush=True,
+            )
+        if is_fedplora_v10_family_agg(args.agg_type):
+            print(
+                f"[setup] v10_a_correction_alpha="
+                f"{float(getattr(args, 'v10_a_correction_alpha', 0.35) or 0.0):.3f} "
+                f"v10_a_anchor_lambda="
+                f"{float(getattr(args, 'v10_a_anchor_lambda', 1e-3) or 0.0):.2e} "
+                f"v10_a_prox_lambda="
+                f"{float(getattr(args, 'v10_a_prox_lambda', 5e-4) or 0.0):.2e} "
+                f"v10_b_prox_lambda="
+                f"{float(getattr(args, 'v10_b_prox_lambda', 1e-4) or 0.0):.2e} "
+                f"v10_a_sketch_rank={int(getattr(args, 'v10_a_sketch_rank', 2) or 0)} "
+                f"v10_a_correction_mode={comm_info.get('v10_a_correction_mode', '')}",
+                flush=True,
+            )
 
     if is_lora_a_disk_agg(args.agg_type):
         init_fedplora_adapters(global_model)
@@ -1870,11 +2517,7 @@ def federated_sft(args):
             "worst_domain_token_accuracy",
             "worst_domain_perplexity",
         ],
-        "communication": {
-            "agg_type": args.agg_type,
-            "down_bytes_per_client": int(comm_info["down_bytes_per_client"]),
-            "up_bytes_per_client": int(comm_info["up_bytes_per_client"]),
-        },
+        "communication": _communication_metrics_payload(args, comm_info),
         "rounds": [],
     }
     metrics_history["recommended_kpis"] = _metrics_recommended_kpis(
@@ -1897,6 +2540,7 @@ def federated_sft(args):
     client_states_for_agg = []
     for round_idx in range(args.rounds):
         print(f"Round {round_idx + 1}/{args.rounds}")
+        _configure_v8_round_a_schedule(args, global_model, round_idx)
 
         if (
             (is_lora_a_disk_agg(args.agg_type) or is_fedalt_sequential_agg(args.agg_type))
@@ -1934,12 +2578,19 @@ def federated_sft(args):
         client_states_for_agg = []
         fedplora_uploads = []
         fedalt_uploads = []
+        lora_expert_uploads = []
         for i, client_id in enumerate(client_ids):
             args._tqdm_desc = f"R{round_idx + 1}/{args.rounds} client{i + 1}/{args.num_clients}"
             if is_lora_a_disk_agg(args.agg_type):
                 broadcast_fedplora_shared_state(global_model, gp_global_state)
                 local_state = _get_client_local_state(client_store, client_id)
                 load_fedplora_local_state(global_model, local_state)
+                if is_fedplora_v10_family_agg(args.agg_type):
+                    args._fedplora_round_start_B = {
+                        k: v.detach().cpu().clone()
+                        for k, v in local_state.items()
+                        if "lora_B" in k and k.endswith("default.weight")
+                    }
             elif is_fedalt_sequential_agg(args.agg_type):
                 local_state = _get_client_local_state(client_store, client_id)
                 load_fedalt_local_state(global_model, local_state)
@@ -1953,14 +2604,35 @@ def federated_sft(args):
             if is_lora_a_disk_agg(args.agg_type):
                 cid = int(client_ids[i])
                 dom = (getattr(args, "_fedplora_client_domains", {}) or {}).get(cid, "unknown")
-                fedplora_uploads.append(
-                    build_fedplora_upload_package(
-                        global_model,
-                        client_sizes[i],
-                        client_id=cid,
-                        domain=dom,
+                if is_lora_expert_agg(args.agg_type):
+                    if is_fedplora_v10_agg(args.agg_type):
+                        build_expert_payload = build_fedplora_v10_upload_package
+                    elif is_fedplora_v9_agg(args.agg_type):
+                        build_expert_payload = build_fedplora_v9_upload_package
+                    elif is_fedplora_v8_agg(args.agg_type):
+                        build_expert_payload = build_fedplora_v8_upload_package
+                    else:
+                        build_expert_payload = build_lora_expert_upload_package
+                    lora_expert_uploads.append(
+                        build_expert_payload(
+                            global_model,
+                            client_sizes[i],
+                            client_id=cid,
+                            domain=dom,
+                            args=args,
+                            client_index=i,
+                            round_index=round_idx,
+                        )
                     )
-                )
+                else:
+                    fedplora_uploads.append(
+                        build_fedplora_upload_package(
+                            global_model,
+                            client_sizes[i],
+                            client_id=cid,
+                            domain=dom,
+                        )
+                    )
             elif is_fedalt_sequential_agg(args.agg_type):
                 fedalt_uploads.append(
                     build_fedalt_upload_package(global_model, client_sizes[i])
@@ -2000,6 +2672,7 @@ def federated_sft(args):
                     "pre_aggregation_uploads.pt",
                 )
                 try:
+                    os.makedirs(os.path.dirname(pre_path), exist_ok=True)
                     torch.save(client_states_for_agg, pre_path)
                     print(
                         f"[checkpoint] saved client uploads before aggregation -> {pre_path}",
@@ -2014,6 +2687,66 @@ def federated_sft(args):
             global_model = aggregate_models_normal(global_model, client_states_for_agg)
         elif args.agg_type == "ffa":
             global_model = aggregate_models_ffa(global_model, client_states_for_agg)
+        elif is_lora_expert_agg(args.agg_type):
+            args._aggregate_client_sizes = client_sizes
+            if is_fedplora_v10_agg(args.agg_type):
+                global_model = aggregate_models_fedplora_v10(
+                    global_model, lora_expert_uploads, args
+                )
+            elif is_fedplora_v9_agg(args.agg_type):
+                global_model = aggregate_models_fedplora_v9(
+                    global_model, lora_expert_uploads, args
+                )
+            elif is_fedplora_v8_agg(args.agg_type):
+                global_model = aggregate_models_fedplora_v8(
+                    global_model, lora_expert_uploads, args
+                )
+            else:
+                global_model = aggregate_models_lora_expert_baseline(
+                    global_model, lora_expert_uploads, args
+                )
+            personalized_b = getattr(
+                args, "_lora_expert_personalized_local_states", {}
+            ) or {}
+            for client_id in client_ids:
+                state = personalized_b.get(int(client_id))
+                if state:
+                    _set_client_local_state(client_store, client_id, state)
+            expert_summ = getattr(args, "_lora_expert_stats", {}).get("_summary", {})
+            if expert_summ:
+                print(
+                    f"[lora-expert] algorithm={getattr(args, 'agg_type', '')} "
+                    f"cluster_mode={expert_summ.get('cluster_mode', 'na')} "
+                    f"selected_k={expert_summ.get('selected_k', 'na')} "
+                    f"b_mode={expert_summ.get('b_mode', 'na')} "
+                    f"pair_angle={expert_summ.get('mean_pair_angle_deg', float('nan')):.2f} "
+                    f"pair_cos={expert_summ.get('mean_pair_cos', float('nan')):.4f} "
+                    f"domain_nmi={expert_summ.get('domain_nmi', float('nan')):.4f} "
+                    f"domain_ari={expert_summ.get('domain_ari', float('nan')):.4f}",
+                    flush=True,
+                )
+                if is_fedplora_v9_agg(args.agg_type):
+                    print(
+                        f"[fedplora-v9] mix_lambda="
+                        f"{expert_summ.get('v9_mix_lambda', float('nan')):.3f} "
+                        f"mean_mix_delta_norm_ratio="
+                        f"{expert_summ.get('v9_mean_mix_delta_norm_ratio', float('nan')):.4f}",
+                        flush=True,
+                    )
+                if is_fedplora_v10_agg(args.agg_type):
+                    print(
+                        f"[fedplora-v10] a_mode="
+                        f"{expert_summ.get('v10_a_correction_mode', 'na')} "
+                        f"a_alpha="
+                        f"{expert_summ.get('v10_a_correction_alpha', float('nan')):.3f} "
+                        f"a_rel_update="
+                        f"{expert_summ.get('v10_a_mean_rel_update_norm', float('nan')):.4f} "
+                        f"a_row_cos="
+                        f"{expert_summ.get('v10_a_mean_row_cos_to_ref', float('nan')):.4f} "
+                        f"a_clipped_row_frac="
+                        f"{expert_summ.get('v10_a_clipped_row_frac', float('nan')):.4f}",
+                        flush=True,
+                    )
         elif is_fedplora_multiround_agg(args.agg_type):
             global_model = aggregate_models_fedplora(global_model, fedplora_uploads, args)
         elif is_fedplora_oneshot_agg(args.agg_type):
@@ -2052,6 +2785,24 @@ def federated_sft(args):
                     f"num_clusters={v3_summ.get('num_clusters', 0)}",
                     flush=True,
                 )
+        elif is_fedplora_v6_dcr_agg(args.agg_type):
+            norm = (args.agg_type or "").strip().lower().replace("-", "_")
+            if norm in {"v6_dcr_domain", "fedplora_dcr_domain"}:
+                args.v6_dcr_mode = "domain"
+            elif norm in {"v6_dcr_global", "fedplora_dcr_global", "v6_dcr", "fedplora_dcr"}:
+                args.v6_dcr_mode = "global"
+            global_model = aggregate_models_fedplora_dcr(
+                global_model, fedplora_uploads, args
+            )
+            dcr_summ = getattr(args, "_fedplora_v6_dcr_stats", {}).get("_summary", {})
+            if dcr_summ:
+                print(
+                    f"[fedplora-v6-dcr] mode={dcr_summ.get('mode', args.v6_dcr_mode)} "
+                    f"pair_angle={dcr_summ.get('mean_domain_pair_angle_deg', float('nan')):.2f} "
+                    f"pair_cos={dcr_summ.get('mean_domain_pair_cos', float('nan')):.4f} "
+                    f"shared_rank={dcr_summ.get('mean_shared_rank', float('nan')):.2f}",
+                    flush=True,
+                )
         elif is_yoco_agg(args.agg_type):
             args._aggregate_client_sizes = client_sizes
             global_model = aggregate_models_yoco(global_model, client_states_for_agg, args)
@@ -2075,10 +2826,36 @@ def federated_sft(args):
             global_model = aggregate_models_feddat(
                 global_model, client_states_for_agg, args
             )
+        elif is_v5_merge_agg(args.agg_type):
+            args._aggregate_client_sizes = client_sizes
+            global_model = aggregate_models_v5_merge(
+                global_model, client_states_for_agg, args
+            )
+            v5_summ = getattr(args, "_v5m_merge_stats", {}).get("_summary", {})
+            if v5_summ:
+                print(
+                    f"[v5m] summary mode={v5_summ.get('mode')} "
+                    f"mean_r_down={v5_summ.get('mean_r_down', float('nan')):.1f} "
+                    f"mean_energy={v5_summ.get('mean_energy_kept', float('nan')):.4f} "
+                    f"active_frac={v5_summ.get('mean_active_frac')}",
+                    flush=True,
+                )
         else:
             raise ValueError(f"Unknown agg_type: {args.agg_type}")
 
-        print(f"[round {round_idx + 1}] aggregation done; running evaluation ...", flush=True)
+        do_eval = _should_eval_round(args, round_idx)
+        if do_eval:
+            print(
+                f"[round {round_idx + 1}] aggregation done; running evaluation ...",
+                flush=True,
+            )
+        else:
+            print(
+                f"[round {round_idx + 1}] aggregation done; skipping evaluation "
+                f"(eval_final_only={bool(getattr(args, 'eval_final_only', False))}, "
+                f"eval_interval={int(getattr(args, 'eval_interval', 1) or 1)})",
+                flush=True,
+            )
         save_ckpt = getattr(args, "save_run_checkpoint_dir", None) or ""
         if (
             str(save_ckpt).strip()
@@ -2097,17 +2874,71 @@ def federated_sft(args):
                 checkpoint_phase="post_aggregation",
                 round_saved_1based=round_idx + 1,
             )
-        round_payload = _sft_eval_phase(
-            global_model,
-            client_ids,
-            client_store,
-            client_states_for_agg,
-            benchmark,
-            tokenizer,
-            args,
-            round_idx,
-            bests,
-        )
+        if do_eval:
+            round_payload = _sft_eval_phase(
+                global_model,
+                client_ids,
+                client_store,
+                client_states_for_agg,
+                benchmark,
+                tokenizer,
+                args,
+                round_idx,
+                bests,
+            )
+        else:
+            round_payload = {
+                "round": round_idx + 1,
+                "eval_skipped": True,
+                "eval_skip_reason": (
+                    "eval_final_only"
+                    if bool(getattr(args, "eval_final_only", False))
+                    else f"eval_interval_{int(getattr(args, 'eval_interval', 1) or 1)}"
+                ),
+            }
+        if is_fedplora_v8_family_agg(args.agg_type):
+            round_payload["v8_round_a_schedule"] = {
+                "train_upload_a": bool(getattr(args, "_v8_current_train_a", False)),
+                "upload_scope": (
+                    "a_b"
+                    if bool(getattr(args, "_v8_current_train_a", False))
+                    else "b_only"
+                ),
+                "warmup_rounds": int(getattr(args, "v8_a_warmup_rounds", 1) or 0),
+                "refresh_interval": int(
+                    getattr(args, "v8_a_refresh_interval", 5) or 0
+                ),
+            }
+        if is_fedplora_v9_family_agg(args.agg_type):
+            round_payload["v9_mix"] = {
+                "lambda": float(getattr(args, "v9_mix_lambda", 0.5) or 0.0),
+                "train_upload_a": bool(getattr(args, "_v8_current_train_a", False)),
+                "upload_scope": (
+                    "a_b"
+                    if bool(getattr(args, "_v8_current_train_a", False))
+                    else "b_only"
+                ),
+            }
+        if is_fedplora_v10_family_agg(args.agg_type):
+            round_payload["v10_geom_a"] = {
+                "a_correction_alpha": float(
+                    getattr(args, "v10_a_correction_alpha", 0.35) or 0.0
+                ),
+                "a_anchor_lambda": float(
+                    getattr(args, "v10_a_anchor_lambda", 1e-3) or 0.0
+                ),
+                "a_prox_lambda": float(
+                    getattr(args, "v10_a_prox_lambda", 5e-4) or 0.0
+                ),
+                "b_prox_lambda": float(
+                    getattr(args, "v10_b_prox_lambda", 1e-4) or 0.0
+                ),
+                "a_sketch_rank": int(getattr(args, "v10_a_sketch_rank", 2) or 0),
+                "a_norm_clip_ratio": float(
+                    getattr(args, "v10_a_norm_clip_ratio", 1.5) or 0.0
+                ),
+                "upload_scope": "a_correction_b",
+            }
         metrics_history["rounds"].append(round_payload)
 
     metrics_path = _metrics_path(args, split_dir)

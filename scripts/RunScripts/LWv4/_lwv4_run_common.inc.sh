@@ -19,19 +19,6 @@ _lwv4_source_env() {
   fi
 }
 
-_lw_standard_source_env() {
-  local repo_root="${1:?}"
-  if [[ -f "${repo_root}/configs/lw_standard_noniid.env" ]]; then
-    set -a
-    # shellcheck disable=SC1091
-    source "${repo_root}/configs/lw_standard_noniid.env"
-    set +a
-  else
-    echo "[lw][standard][error] missing configs/lw_standard_noniid.env" >&2
-    return 1
-  fi
-}
-
 _lwv4_resolve_gpu() {
   local repo_root="${1:?}"
   local gpu_arg="${2:-}"
@@ -64,6 +51,7 @@ lwv4_train() {
   local agg_type="${1:?}"
   local state_suffix="${2:?}"
   shift 2
+  local metrics_dir="${LWV4_METRICS_OUTPUT_DIR_OVERRIDE:-$METRICS_OUTPUT_DIR}"
   local gc_flag
   gc_flag="$(_lwv4_gc_flag)"
   # shellcheck disable=SC2086
@@ -79,37 +67,7 @@ lwv4_train() {
     ${gc_flag} \
     $(_lwv4_trust_flag) \
     --client_state_dir "${CLIENT_STATE_DIR}_${state_suffix}" --save_client_state_to_disk \
-    --metrics_output_dir "$METRICS_OUTPUT_DIR" \
-    --log_dir "$LOG_DIR" \
-    --log_filename_prefix "$LOG_FILENAME_PREFIX" \
-    --trained_models_root "$TRAINED_MODELS_ROOT" \
-    --eval_max_batches "$EVAL_MAX_BATCHES" --eval_seeds "$EVAL_SEEDS" \
-    --oneshot_anchor_lambda "$ONESHOT_ANCHOR_LAMBDA" \
-    "$@"
-}
-
-# FedPLoRA v2/v4 on Stanford Alpaca LW benchmark (SmolLM2-135M).
-# Requires configs/lw_standard_noniid.env via _lw_standard_source_env.
-lw_standard_train() {
-  local agg_type="${1:?}"
-  local state_suffix="${2:?}"
-  shift 2
-  local gc_flag
-  gc_flag="$(_lwv4_gc_flag)"
-  # shellcheck disable=SC2086
-  CUDA_VISIBLE_DEVICES="${CUDA_DEVICES}" \
-  python tasks/fed_train_sft_v4.py \
-    --model "$MODEL_PATH" \
-    --benchmark_dir "$BENCHMARK_DIR" \
-    --agg_type "$agg_type" \
-    --rounds "$ROUNDS" --local_epochs "$LOCAL_EPOCHS" --lr "$LR" \
-    --lora_r "$LORA_R" --lora_alpha "$LORA_ALPHA" --lora_dropout "$LORA_DROPOUT" \
-    --batch_size "$BATCH_SIZE" --max_seq_length "$MAX_SEQ_LENGTH" \
-    --torch_dtype "$TORCH_DTYPE" --target_modules "$TARGET_MODULES" \
-    ${gc_flag} \
-    $(_lwv4_trust_flag) \
-    --client_state_dir "${CLIENT_STATE_DIR}_${state_suffix}" --save_client_state_to_disk \
-    --metrics_output_dir "$METRICS_OUTPUT_DIR" \
+    --metrics_output_dir "$metrics_dir" \
     --log_dir "$LOG_DIR" \
     --log_filename_prefix "$LOG_FILENAME_PREFIX" \
     --trained_models_root "$TRAINED_MODELS_ROOT" \
@@ -190,73 +148,5 @@ lwv4_train_baseline() {
   fed_train_append_speed_flags cmd
 
   echo "[lwv4][baseline] agg_type=${agg_type} metrics=${metrics_dir}" >&2
-  CUDA_VISIBLE_DEVICES="${CUDA_DEVICES}" "${cmd[@]}"
-}
-
-# Standard Alpaca non-IID baselines via tasks/fed_train_standard_sft.py (LW env).
-# Source configs/lw_standard_noniid.env before calling.
-lwv4_train_standard_baseline() {
-  local agg_type="${1:?}"
-  local rs_dir="${_LWv4_RUNSCRIPTS_DIR:?missing _LWv4_RUNSCRIPTS_DIR}"
-  local metrics_dir="${METRICS_BASELINE_OUTPUT_DIR:-artifacts_LW_standard/sft_metrics}"
-  local seed="${SEED:-42}"
-  local gc_flag
-  gc_flag="$(_lwv4_gc_flag)"
-
-  # shellcheck disable=SC1091
-  source "${rs_dir}/_fed_train_speed.inc.sh"
-
-  local -a cmd=(
-    python tasks/fed_train_standard_sft.py
-    --model "${MODEL_PATH}"
-    --benchmark_dir "${BENCHMARK_DIR}"
-    --agg_type "${agg_type}"
-    --rounds "${ROUNDS}"
-    --local_epochs "${LOCAL_EPOCHS}"
-    --lr "${LR}"
-    --lora_r "${LORA_R}"
-    --lora_alpha "${LORA_ALPHA}"
-    --lora_dropout "${LORA_DROPOUT}"
-    --batch_size "${BATCH_SIZE}"
-    --max_seq_length "${MAX_SEQ_LENGTH}"
-    --torch_dtype "${TORCH_DTYPE}"
-    --target_modules "${TARGET_MODULES}"
-    --client_state_dir "${CLIENT_STATE_DIR}_baseline"
-    --metrics_output_dir "${metrics_dir}"
-    --seed "${seed}"
-  )
-
-  if [[ -n "${TRAINED_MODELS_ROOT:-}" ]]; then
-    cmd+=("--trained_models_root" "${TRAINED_MODELS_ROOT}")
-  fi
-  # shellcheck disable=SC2086
-  cmd+=(${gc_flag})
-  if [[ "${TRUST_REMOTE_CODE:-0}" == "1" ]]; then
-    cmd+=(--trust_remote_code)
-  fi
-  if [[ -n "${EVAL_MAX_BATCHES:-}" && "${EVAL_MAX_BATCHES}" != "0" ]]; then
-    cmd+=(--eval_max_batches "${EVAL_MAX_BATCHES}")
-  fi
-
-  case "${agg_type}" in
-    fedalt|fedsa_lora|fedsa|yoco)
-      cmd+=(--save_client_state_to_disk)
-      ;;
-  esac
-
-  if [[ "${agg_type}" == "yoco" ]]; then
-    cmd+=(
-      --yoco_sparse_lambda "${YOCO_SPARSE_LAMBDA:-1e-4}"
-      --yoco_pcwa_components "${YOCO_PCWA_COMPONENTS:-3}"
-    )
-  fi
-
-  if [[ "${agg_type}" == "feddat" ]]; then
-    cmd+=(--feddat_teacher_lambda "${FEDDAT_TEACHER_LAMBDA:-0.01}")
-  fi
-
-  fed_train_append_speed_flags cmd
-
-  echo "[lw][standard][noniid] agg_type=${agg_type} benchmark=${BENCHMARK_DIR} metrics=${metrics_dir}" >&2
   CUDA_VISIBLE_DEVICES="${CUDA_DEVICES}" "${cmd[@]}"
 }
