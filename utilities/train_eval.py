@@ -52,6 +52,7 @@ from utilities.utils import (
     is_fedplora_multiround_agg,
     is_fedplora_oneshot_agg,
     is_fedplora_oneshot_family_agg,
+    is_fedplora_v10_family_agg,
     is_yoco_agg,
 )
 
@@ -254,6 +255,52 @@ def _add_fedplora_oneshot_anchor(loss, model, args):
     return loss
 
 
+def _add_fedplora_v10_geometry_regularizer(loss, model, args):
+    if not is_fedplora_v10_family_agg(getattr(args, "agg_type", None)):
+        return loss
+
+    a_ref = getattr(args, "_fedplora_v10_global_A_gpu", None)
+    if not isinstance(a_ref, dict):
+        a_ref = {}
+    b_ref = getattr(args, "_fedplora_v10_round_start_B_gpu", None)
+    if not isinstance(b_ref, dict):
+        b_ref = {}
+
+    anchor_lam = float(getattr(args, "v10_a_anchor_lambda", 1e-3) or 0.0)
+    prox_lam = float(getattr(args, "v10_a_prox_lambda", 5e-4) or 0.0)
+    b_prox_lam = float(getattr(args, "v10_b_prox_lambda", 1e-4) or 0.0)
+    if anchor_lam <= 0 and prox_lam <= 0 and b_prox_lam <= 0:
+        return loss
+
+    eps = 1e-8
+    a_anchor_terms = []
+    a_prox_terms = []
+    b_prox_terms = []
+    for key, param in model.named_parameters():
+        if "lora_A" in key and key.endswith("default.weight") and param.requires_grad:
+            ref = a_ref.get(key)
+            if ref is not None and tuple(ref.shape) == tuple(param.shape):
+                if anchor_lam > 0:
+                    p_dir = param.float() / param.float().norm(dim=1, keepdim=True).clamp_min(eps)
+                    r_dir = ref.float() / ref.float().norm(dim=1, keepdim=True).clamp_min(eps)
+                    row_cos = (p_dir * r_dir).sum(dim=1).abs().clamp(max=1.0)
+                    a_anchor_terms.append((1.0 - row_cos).mean())
+                if prox_lam > 0:
+                    a_prox_terms.append(torch.mean((param.float() - ref.float()) ** 2))
+        elif "lora_B" in key and key.endswith("default.weight") and param.requires_grad:
+            ref = b_ref.get(key)
+            if ref is not None and tuple(ref.shape) == tuple(param.shape) and b_prox_lam > 0:
+                b_prox_terms.append(torch.mean((param.float() - ref.float()) ** 2))
+
+    if a_anchor_terms:
+        loss = loss + anchor_lam * torch.stack(a_anchor_terms).mean()
+    if a_prox_terms:
+        loss = loss + prox_lam * torch.stack(a_prox_terms).mean()
+    if b_prox_terms:
+        loss = loss + b_prox_lam * torch.stack(b_prox_terms).mean()
+    return loss
+
+
 def _fedplora_refresh_reg_tensor_gpu_cache(model, args):
     """
     `_fedplora_initial_A` / `_fedplora_global_A` live on CPU for checkpointing;
@@ -262,6 +309,8 @@ def _fedplora_refresh_reg_tensor_gpu_cache(model, args):
     """
     args._fedplora_initial_A_gpu = None
     args._fedplora_global_A_gpu = None
+    args._fedplora_v10_global_A_gpu = None
+    args._fedplora_v10_round_start_B_gpu = None
 
     if is_fedplora_oneshot_family_agg(getattr(args, "agg_type", None)):
         init = getattr(args, "_fedplora_initial_A", None)
@@ -288,6 +337,25 @@ def _fedplora_refresh_reg_tensor_gpu_cache(model, args):
                 gpu_map[kA_local] = A_cpu.to(device=A_local.device, dtype=A_local.dtype)
             if gpu_map:
                 args._fedplora_global_A_gpu = gpu_map
+
+    if is_fedplora_v10_family_agg(getattr(args, "agg_type", None)):
+        sd = model.state_dict()
+        Ag = getattr(args, "_fedplora_global_A", None)
+        if isinstance(Ag, dict) and Ag:
+            gpu_map = {}
+            for key, tensor in Ag.items():
+                if key in sd and "lora_A" in key and key.endswith("default.weight"):
+                    gpu_map[key] = tensor.to(device=sd[key].device, dtype=sd[key].dtype)
+            if gpu_map:
+                args._fedplora_v10_global_A_gpu = gpu_map
+        Bg = getattr(args, "_fedplora_round_start_B", None)
+        if isinstance(Bg, dict) and Bg:
+            gpu_map = {}
+            for key, tensor in Bg.items():
+                if key in sd and "lora_B" in key and key.endswith("default.weight"):
+                    gpu_map[key] = tensor.to(device=sd[key].device, dtype=sd[key].dtype)
+            if gpu_map:
+                args._fedplora_v10_round_start_B_gpu = gpu_map
 
 
 def train_client(model, dataloader, args, client_idx=0):
@@ -335,6 +403,7 @@ def train_client(model, dataloader, args, client_idx=0):
                     loss = _add_fedplora_regularization(loss, model, args)
                     loss = _add_yoco_sparse(loss, model, args)
                     loss = _add_fedplora_oneshot_anchor(loss, model, args)
+                    loss = _add_fedplora_v10_geometry_regularizer(loss, model, args)
                     loss = _add_yoco_sign_regularizer(loss, model, args)
                     loss = _add_feddat_teacher_regularizer(loss, model, args)
 
@@ -351,6 +420,8 @@ def train_client(model, dataloader, args, client_idx=0):
     finally:
         args._fedplora_initial_A_gpu = None
         args._fedplora_global_A_gpu = None
+        args._fedplora_v10_global_A_gpu = None
+        args._fedplora_v10_round_start_B_gpu = None
 
 
 def compute_accuracy(model, dataloader):

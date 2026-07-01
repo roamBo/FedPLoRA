@@ -11,6 +11,139 @@ def _norm_agg_type(agg_type):
     return (agg_type or "").strip().lower().replace("-", "_")
 
 
+FEDPLORA_V8_B_ONLY_AGGS = {
+    "fedplora_v8",
+    "v8_bsim",
+}
+
+FEDPLORA_V8_AB_AGGS = {
+    "fedplora_v8_ab",
+    "v8_bsim_ab",
+}
+
+FEDPLORA_V8_WARMA_AGGS = {
+    "fedplora_v8_warma",
+    "fedplora_v8_warm_a",
+    "fedplora_v8_warma_then_freeze",
+    "v8_warma",
+    "v8_warm_a",
+    "v8_warma_then_freeze",
+}
+
+FEDPLORA_V8_PERIODIC_A_AGGS = {
+    "fedplora_v8_periodic",
+    "fedplora_v8_periodica",
+    "fedplora_v8_periodica_t",
+    "v8_periodic",
+    "v8_periodica",
+    "v8_periodica_t",
+}
+
+FEDPLORA_V8_FAMILY_AGGS = (
+    FEDPLORA_V8_B_ONLY_AGGS
+    | FEDPLORA_V8_AB_AGGS
+    | FEDPLORA_V8_WARMA_AGGS
+    | FEDPLORA_V8_PERIODIC_A_AGGS
+)
+
+FEDPLORA_V9_B_ONLY_AGGS = {
+    "fedplora_v9_mix",
+    "v9_mix",
+}
+
+FEDPLORA_V9_AB_AGGS = {
+    "fedplora_v9_mix_ab",
+    "v9_mix_ab",
+}
+
+FEDPLORA_V9_FAMILY_AGGS = FEDPLORA_V9_B_ONLY_AGGS | FEDPLORA_V9_AB_AGGS
+
+FEDPLORA_V10_GEOM_A_AGGS = {
+    "fedplora_v10_geom_a",
+    "v10_geom_a",
+}
+
+FEDPLORA_V10_SKETCH_A_AGGS = {
+    "fedplora_v10_sketch_a",
+    "v10_sketch_a",
+}
+
+FEDPLORA_V10_FAMILY_AGGS = FEDPLORA_V10_GEOM_A_AGGS | FEDPLORA_V10_SKETCH_A_AGGS
+
+
+def is_fedplora_v8_family_agg(agg_type):
+    return _norm_agg_type(agg_type) in FEDPLORA_V8_FAMILY_AGGS
+
+
+def is_fedplora_v9_family_agg(agg_type):
+    return _norm_agg_type(agg_type) in FEDPLORA_V9_FAMILY_AGGS
+
+
+def is_fedplora_v10_family_agg(agg_type):
+    return _norm_agg_type(agg_type) in FEDPLORA_V10_FAMILY_AGGS
+
+
+def is_fedplora_v10_sketch_a_agg(agg_type):
+    return _norm_agg_type(agg_type) in FEDPLORA_V10_SKETCH_A_AGGS
+
+
+def is_fedplora_v8_warma_agg(agg_type):
+    return _norm_agg_type(agg_type) in FEDPLORA_V8_WARMA_AGGS
+
+
+def is_fedplora_v8_periodic_a_agg(agg_type):
+    return _norm_agg_type(agg_type) in FEDPLORA_V8_PERIODIC_A_AGGS
+
+
+def is_fedplora_v8_scheduled_a_agg(agg_type):
+    t = _norm_agg_type(agg_type)
+    return t in FEDPLORA_V8_WARMA_AGGS or t in FEDPLORA_V8_PERIODIC_A_AGGS
+
+
+def v8_train_a_this_round(
+    agg_type,
+    round_idx,
+    *,
+    warmup_rounds=1,
+    refresh_interval=5,
+):
+    """Whether a v8 variant should train/upload LoRA A in zero-based round_idx."""
+    t = _norm_agg_type(agg_type)
+    if t in FEDPLORA_V8_AB_AGGS:
+        return True
+    if t in FEDPLORA_V8_B_ONLY_AGGS:
+        return False
+    if t in FEDPLORA_V8_WARMA_AGGS:
+        return int(round_idx) < max(0, int(warmup_rounds or 0))
+    if t in FEDPLORA_V8_PERIODIC_A_AGGS:
+        interval = max(1, int(refresh_interval or 1))
+        return int(round_idx) % interval == 0
+    return False
+
+
+def v8_a_refresh_round_count(
+    agg_type,
+    rounds,
+    *,
+    warmup_rounds=1,
+    refresh_interval=5,
+):
+    """Number of rounds whose v8 uplink/downlink includes A under the schedule."""
+    rounds = max(1, int(rounds or 1))
+    if not is_fedplora_v8_family_agg(agg_type):
+        return 0
+    return sum(
+        1
+        for r in range(rounds)
+        if v8_train_a_this_round(
+            agg_type,
+            r,
+            warmup_rounds=warmup_rounds,
+            refresh_interval=refresh_interval,
+        )
+    )
+
+
 def is_fedplora_agg(agg_type):
     """Multi-round FedP-LoRA: sign-aligned A agg + local FedP regularizers."""
     return _norm_agg_type(agg_type) == "fedplora"
@@ -20,8 +153,54 @@ def is_v4_agg(agg_type):
     return _norm_agg_type(agg_type).startswith("v4_")
 
 
+def is_v5_agg(agg_type):
+    return _norm_agg_type(agg_type).startswith("v5_")
+
+
+def is_v5_merge_agg(agg_type):
+    """v5-merge family: clients upload trainable LoRA A+B; server merges ΔW = B·A
+    with an interference-aware operator (mean / ties / dare_ties / knots_ties)."""
+    return _norm_agg_type(agg_type).startswith("v5m_")
+
+
+def is_fedplora_v6_dcr_agg(agg_type):
+    """FedPLoRA v6 / DCR: A-only one-shot Grassmann subspace consensus."""
+    return _norm_agg_type(agg_type) in {
+        "v6_dcr",
+        "v6_dcr_global",
+        "v6_dcr_domain",
+        "fedplora_dcr",
+        "fedplora_dcr_global",
+        "fedplora_dcr_domain",
+    }
+
+
+def is_lora_expert_agg(agg_type):
+    """Shared-A / B-expert baselines: v7/v8/v9/v10, FedLEASE, HiLoRA, EcoLoRA, HydraLoRA."""
+    return _norm_agg_type(agg_type) in {
+        "fedplora_v7",
+        "fedplora_v7_bonly",
+        "v7_bsim",
+        "v7_bonly",
+        "fedlease",
+        "hilora",
+        "ecolora",
+        "hydralora",
+    } or is_fedplora_v8_family_agg(agg_type) or is_fedplora_v9_family_agg(agg_type) or is_fedplora_v10_family_agg(agg_type)
+
+
+def is_lora_expert_b_only_agg(agg_type):
+    """FedPLoRA variants that freeze shared A and upload B-only each round."""
+    return _norm_agg_type(agg_type) in {
+        "fedplora_v7_bonly",
+        "v7_bonly",
+    } or _norm_agg_type(agg_type) in (
+        FEDPLORA_V8_B_ONLY_AGGS | FEDPLORA_V9_B_ONLY_AGGS
+    )
+
+
 def uses_fedplora_oneshot_server_agg(agg_type):
-    """Server-side conflict-gated oneshot (v2 + v4 sign/mix branches)."""
+    """Server-side conflict-gated oneshot (v2 + v4/v5 local-personalized branches)."""
     t = _norm_agg_type(agg_type)
     if t == "fedplora_oneshot":
         return True
@@ -31,6 +210,10 @@ def uses_fedplora_oneshot_server_agg(agg_type):
         "v4_mix_fixed05",
         "v4_mix_per_domain",
         "v4_mix_moe",
+        "v5_route_mix_align",
+        "v5_route_mix_align_domain",
+        "v5_route_mix_align_local",
+        "v5_rpca_route_mix_align",
     }
 
 
@@ -56,8 +239,13 @@ def is_fedplora_v3_agg(agg_type):
 
 
 def is_fedplora_oneshot_family_agg(agg_type):
-    """v2 oneshot + v3 variants: one-round A-only disk protocol and anchor/sparse local terms."""
-    return is_fedplora_oneshot_agg(agg_type) or is_fedplora_v3_agg(agg_type)
+    """One-round A-only FedPLoRA family: v2/v3/v4/v5 plus v6 DCR."""
+    return (
+        is_fedplora_oneshot_agg(agg_type)
+        or is_fedplora_v3_agg(agg_type)
+        or is_fedplora_v6_dcr_agg(agg_type)
+        or uses_fedplora_oneshot_server_agg(agg_type)
+    )
 
 
 def is_lora_a_disk_agg(agg_type):
@@ -67,7 +255,7 @@ def is_lora_a_disk_agg(agg_type):
         "fedplora_oneshot",
         "fedsa_lora",
         "fedsa",
-    } or is_fedplora_v3_agg(agg_type) or is_v4_agg(agg_type)
+    } or is_fedplora_v3_agg(agg_type) or is_fedplora_v6_dcr_agg(agg_type) or is_lora_expert_agg(agg_type) or is_v4_agg(agg_type) or is_v5_agg(agg_type)
 
 
 def is_fedalt_sequential_agg(agg_type):
@@ -120,7 +308,7 @@ def is_memory_global_agg_agg(agg_type):
         "flexlora",
         "feddat",
         "yoco",
-    }
+    } or is_v5_merge_agg(agg_type)
 
 
 def is_lora_param_name(key):
@@ -217,7 +405,16 @@ def _sum_bytes_state_dict(state_dict, key_pred):
 
 
 def estimate_round_communication_bytes(
-    state_dict, agg_type, trainable_param_names=None
+    state_dict,
+    agg_type,
+    trainable_param_names=None,
+    *,
+    ecolora_keep_ratio=0.25,
+    rounds=1,
+    v8_a_warmup_rounds=1,
+    v8_a_refresh_interval=5,
+    v8_cache_shared_a_downlink=True,
+    v10_a_sketch_rank=2,
 ):
     """
     Per client, per round:
@@ -244,10 +441,50 @@ def estimate_round_communication_bytes(
     lora_b = _sum_bytes_state_dict(sd, is_lora_b_param_name)
     task_head = _sum_bytes_state_dict(sd, is_trainable_task_head)
     gp_stats = gp_row_importance_bytes()
+    has_trainable_lora_a = True
+    if trainable_param_names is not None:
+        has_trainable_lora_a = any(
+            is_lora_a_param_name(k) for k in trainable_param_names
+        )
 
     agg_type = _norm_agg_type(agg_type) or "normal"
 
-    if is_fedplora_multiround_agg(agg_type) or is_fedplora_oneshot_family_agg(agg_type):
+    v8_refresh_rounds = v8_a_refresh_round_count(
+        agg_type,
+        rounds,
+        warmup_rounds=v8_a_warmup_rounds,
+        refresh_interval=v8_a_refresh_interval,
+    )
+    if is_fedplora_v9_family_agg(agg_type) and agg_type in FEDPLORA_V9_AB_AGGS:
+        v8_refresh_rounds = max(1, int(rounds or 1))
+    if is_fedplora_v10_family_agg(agg_type):
+        v8_refresh_rounds = max(1, int(rounds or 1))
+
+    if is_fedplora_v8_scheduled_a_agg(agg_type):
+        # Raw per-refresh-round protocol: A+B are available when A is refreshed;
+        # effective_* below amortizes A across the full run and optionally caches
+        # shared A on clients for B-only rounds.
+        down = lora_all + task_head
+        up = lora_all + task_head
+    elif is_lora_expert_b_only_agg(agg_type) or (
+        is_lora_expert_agg(agg_type) and not has_trainable_lora_a
+    ):
+        # A is broadcast as the shared coordinate system, but only B is uploaded.
+        down = lora_all + task_head
+        up = lora_b + task_head
+    elif is_fedplora_v10_family_agg(agg_type):
+        down = lora_all + task_head
+        up = lora_all + task_head
+    elif is_lora_expert_agg(agg_type):
+        down = lora_all + task_head
+        if _norm_agg_type(agg_type) == "ecolora":
+            # EcoLoRA-style sparse/segmented upload; use the actual CLI keep ratio
+            # when the caller provides it.
+            ratio = min(1.0, max(0.0, float(ecolora_keep_ratio)))
+            up = int(round(ratio * lora_all)) + task_head
+        else:
+            up = lora_all + task_head
+    elif is_fedplora_multiround_agg(agg_type) or is_fedplora_oneshot_family_agg(agg_type):
         down = lora_a + task_head
         up = lora_a + task_head + gp_stats
     elif is_lora_a_disk_agg(agg_type):
@@ -270,7 +507,66 @@ def estimate_round_communication_bytes(
         down = lora_all + task_head
         up = lora_all + task_head
 
-    return {"down_bytes_per_client": down, "up_bytes_per_client": up}
+    effective_down = down
+    effective_up = up
+    v10_a_correction_bytes = 0
+    if is_fedplora_v10_sketch_a_agg(agg_type):
+        rank = max(1, int(v10_a_sketch_rank or 1))
+        for k, v in sd.items():
+            if not is_lora_a_param_name(k) or v.ndim != 2:
+                continue
+            r_dim = int(v.shape[0])
+            in_dim = int(v.shape[1])
+            elem = int(v.element_size())
+            # U(r x k) + S(k) + V(k x in_dim), matching the rank-k delta sketch.
+            v10_a_correction_bytes += int((r_dim * rank + rank + rank * in_dim) * elem)
+    elif is_fedplora_v10_family_agg(agg_type):
+        v10_a_correction_bytes = lora_a
+
+    if is_fedplora_v8_family_agg(agg_type) or is_fedplora_v9_family_agg(agg_type):
+        run_rounds = max(1, int(rounds or 1))
+        a_share = float(v8_refresh_rounds) / float(run_rounds)
+        if is_fedplora_v9_family_agg(agg_type) and agg_type in FEDPLORA_V9_AB_AGGS:
+            effective_up = int(round(lora_all + task_head))
+            a_share = 1.0
+        else:
+            effective_up = int(round(lora_b + task_head + a_share * lora_a))
+        if bool(v8_cache_shared_a_downlink):
+            effective_down = int(round(lora_b + task_head + a_share * lora_a))
+            downlink_policy = "cache_shared_a_routed_b"
+        else:
+            effective_down = int(round(lora_all + task_head))
+            downlink_policy = "raw_full_lora"
+    elif is_fedplora_v10_family_agg(agg_type):
+        effective_up = int(round(lora_b + task_head + v10_a_correction_bytes))
+        if bool(v8_cache_shared_a_downlink):
+            effective_down = int(round(lora_b + task_head + v10_a_correction_bytes))
+            downlink_policy = "cache_shared_a_plus_v10_a_correction"
+        else:
+            effective_down = int(round(lora_all + task_head))
+            downlink_policy = "raw_full_lora"
+    else:
+        downlink_policy = "raw"
+
+    return {
+        "down_bytes_per_client": down,
+        "up_bytes_per_client": up,
+        "effective_down_bytes_per_client": effective_down,
+        "effective_up_bytes_per_client": effective_up,
+        "downlink_policy": downlink_policy,
+        "v8_a_refresh_rounds": int(v8_refresh_rounds),
+        "v8_a_refresh_fraction": (
+            float(v8_refresh_rounds) / float(max(1, int(rounds or 1)))
+            if is_fedplora_v8_family_agg(agg_type) or is_fedplora_v9_family_agg(agg_type) or is_fedplora_v10_family_agg(agg_type)
+            else 0.0
+        ),
+        "v10_a_correction_bytes_per_client": int(v10_a_correction_bytes),
+        "v10_a_correction_mode": (
+            "lowrank_delta"
+            if is_fedplora_v10_sketch_a_agg(agg_type)
+            else ("anchored_full_delta" if is_fedplora_v10_family_agg(agg_type) else "")
+        ),
+    }
 
 
 class Tee:

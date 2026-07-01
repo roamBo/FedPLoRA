@@ -13,11 +13,16 @@ source "${_REPO_ROOT}/configs/lwv4_baseline.env"
 
 # ModelScope: https://www.modelscope.cn/models/HuggingFaceTB/SmolLM2-135M
 MODELSCOPE_ID="${MODELSCOPE_ID:-HuggingFaceTB/SmolLM2-135M}"
-MODEL_PATH="${MODEL_PATH:-/data/yaominghao/gb/models/SmolLM2-135M}"
+MODEL_ROOT="${MODEL_ROOT:-/data2/minghao/model}"
+MODEL_PATH="${MODEL_PATH:-$MODEL_ROOT/SmolLM2-135M}"
 MODEL_PARENT="$(dirname "${MODEL_PATH}")"
 mkdir -p "${MODEL_PARENT}"
 
-if [[ -f "${MODEL_PATH}/config.json" ]]; then
+if [[ -f "${MODEL_PATH}/config.json" ]] && compgen -G "${MODEL_PATH}/*.safetensors" >/dev/null; then
+  echo "[lwv4][model] already exists: ${MODEL_PATH}"
+  exit 0
+fi
+if [[ -f "${MODEL_PATH}/config.json" ]] && compgen -G "${MODEL_PATH}/pytorch_model*.bin" >/dev/null; then
   echo "[lwv4][model] already exists: ${MODEL_PATH}"
   exit 0
 fi
