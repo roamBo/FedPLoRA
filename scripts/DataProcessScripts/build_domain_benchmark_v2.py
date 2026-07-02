@@ -256,6 +256,26 @@ def build_domain_benchmark_v2(
                 chunks = np.split(np.array(idx_t, dtype=object), cuts)
                 for c in range(num_clients_per_domain):
                     client_keys[c].extend(list(chunks[c]))
+            # --- floor rebalance: guarantee each client >= min_samples_per_client,
+            #     never drop, so the client set is IDENTICAL across alpha levels
+            #     (removes the confound of a shrinking federation under stronger non-IID).
+            #     alpha still controls the skew of the surplus beyond the floor.
+            #     Only runs when the domain pool can support K full clients. ---
+            def _ck_rows(ck):
+                return sum(len(pool_groups[k]) for k in ck)
+            if sum(_ck_rows(ck) for ck in client_keys) >= num_clients_per_domain * min_samples_per_client:
+                _guard = 0
+                while _guard < 1_000_000:
+                    poor = [c for c in range(num_clients_per_domain)
+                            if _ck_rows(client_keys[c]) < min_samples_per_client]
+                    if not poor:
+                        break
+                    rich = max(range(num_clients_per_domain),
+                               key=lambda c: _ck_rows(client_keys[c]))
+                    if not client_keys[rich] or _ck_rows(client_keys[rich]) <= min_samples_per_client:
+                        break  # cannot rob the richest without creating a new poor client
+                    client_keys[poor[0]].append(client_keys[rich].pop())
+                    _guard += 1
         else:
             raise ValueError(f"unknown partition: {partition}")
 
