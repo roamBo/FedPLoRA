@@ -179,6 +179,16 @@ export EVAL_MAX_BATCHES=0
 # 默认物理 GPU 1；并行多任务时可 GPU=2 run_sft_full ...
 export GPU=1
 
+use_domain_cross () {
+  local bench_seed="${1:-${SEED:-42}}"
+  export BENCHMARK_DIR="$DATA_ROOT/domain_benchmark_35c/seed_${bench_seed}"
+  export RUN_ID="v10_20260630_35c_r10_finaleval_seed${bench_seed}"
+  export RUN_ROOT="/data/yaominghao/gb/result/FedPLoRA/$RUN_ID"
+  export TRAINED_MODELS_ROOT="$MODEL_ROOT/trained_models_LW/$RUN_ID"
+  mkdir -p "$RUN_ROOT/run_logs" "$RUN_ROOT/result_logs" "$RUN_ROOT/result_files/client_states" "$TRAINED_MODELS_ROOT"
+  echo "[benchmark] cross-domain task-shift BENCHMARK_DIR=${BENCHMARK_DIR} RUN_ID=${RUN_ID}"
+}
+
 # 切换到域内 Dirichlet 某套数据（α=0.1|0.5|1.0），并重设 RUN_ID 防 checkpoint 覆盖
 use_domain_dirichlet () {
   local alpha="$1"
@@ -433,9 +443,12 @@ GPU=1 run_sft_full fedplora_v8_ab fedplora_v8_ab --v8_cache_shared_a_downlink
 
 说明：本节覆盖当前表格中最强的全局 baseline、低通信 baseline、LoRA expert baseline 与之前缺结果的 YOCO/FedDAT。
 
+
 ### 4.1 Normal FedAvg-LoRA
 
 ```bash
+use_domain_cross        # 回到原版 35c
+
 GPU=1 run_sft_full baseline_normal normal
 ```
 
