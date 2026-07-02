@@ -1,6 +1,6 @@
 {
   "benchmark_tag": "LW7c",
-  "derived_from": "F:\\Knowledge\\XJTU_knowledge_technology\\GraduationProject\\LoRA-XJTU\\exps\\LoRA-Lab\\FedPLoRA\\data\\domain_benchmark_35c\\seed_42",
+  "derived_from": "/data/yaominghao/gb/FedPLoRA/data/domain_benchmark_35c/seed_42",
   "num_clients": 7,
   "per_client_data": "one 35c client shard per domain (~1/5 of domain train pool)",
   "seed": 42

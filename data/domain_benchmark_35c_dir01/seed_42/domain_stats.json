@@ -1,0 +1,44 @@
+{
+  "code": {
+    "n_total": 2000,
+    "n_domain_test": 200,
+    "n_clients": 5,
+    "partition": "dirichlet"
+  },
+  "education": {
+    "n_total": 473,
+    "n_domain_test": 47,
+    "n_clients": 3,
+    "partition": "dirichlet"
+  },
+  "finance": {
+    "n_total": 2000,
+    "n_domain_test": 200,
+    "n_clients": 5,
+    "partition": "dirichlet"
+  },
+  "general": {
+    "n_total": 2000,
+    "n_domain_test": 200,
+    "n_clients": 5,
+    "partition": "dirichlet"
+  },
+  "legal": {
+    "n_total": 2000,
+    "n_domain_test": 200,
+    "n_clients": 4,
+    "partition": "dirichlet"
+  },
+  "math": {
+    "n_total": 2000,
+    "n_domain_test": 200,
+    "n_clients": 5,
+    "partition": "dirichlet"
+  },
+  "medical": {
+    "n_total": 2000,
+    "n_domain_test": 200,
+    "n_clients": 5,
+    "partition": "dirichlet"
+  }
+}
