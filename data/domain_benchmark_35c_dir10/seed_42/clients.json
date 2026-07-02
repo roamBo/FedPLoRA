@@ -1,0 +1,240 @@
+[
+  {
+    "client_id": 0,
+    "domain": "code",
+    "n_train": 313,
+    "n_val": 39,
+    "n_local_test": 39
+  },
+  {
+    "client_id": 1,
+    "domain": "code",
+    "n_train": 324,
+    "n_val": 40,
+    "n_local_test": 40
+  },
+  {
+    "client_id": 2,
+    "domain": "code",
+    "n_train": 220,
+    "n_val": 27,
+    "n_local_test": 27
+  },
+  {
+    "client_id": 3,
+    "domain": "code",
+    "n_train": 184,
+    "n_val": 22,
+    "n_local_test": 22
+  },
+  {
+    "client_id": 4,
+    "domain": "code",
+    "n_train": 403,
+    "n_val": 50,
+    "n_local_test": 50
+  },
+  {
+    "client_id": 5,
+    "domain": "education",
+    "n_train": 80,
+    "n_val": 10,
+    "n_local_test": 10
+  },
+  {
+    "client_id": 6,
+    "domain": "education",
+    "n_train": 76,
+    "n_val": 9,
+    "n_local_test": 9
+  },
+  {
+    "client_id": 7,
+    "domain": "education",
+    "n_train": 103,
+    "n_val": 12,
+    "n_local_test": 12
+  },
+  {
+    "client_id": 8,
+    "domain": "education",
+    "n_train": 49,
+    "n_val": 5,
+    "n_local_test": 5
+  },
+  {
+    "client_id": 9,
+    "domain": "finance",
+    "n_train": 206,
+    "n_val": 25,
+    "n_local_test": 25
+  },
+  {
+    "client_id": 10,
+    "domain": "finance",
+    "n_train": 192,
+    "n_val": 24,
+    "n_local_test": 24
+  },
+  {
+    "client_id": 11,
+    "domain": "finance",
+    "n_train": 281,
+    "n_val": 34,
+    "n_local_test": 34
+  },
+  {
+    "client_id": 12,
+    "domain": "finance",
+    "n_train": 346,
+    "n_val": 43,
+    "n_local_test": 43
+  },
+  {
+    "client_id": 13,
+    "domain": "finance",
+    "n_train": 419,
+    "n_val": 52,
+    "n_local_test": 52
+  },
+  {
+    "client_id": 14,
+    "domain": "general",
+    "n_train": 269,
+    "n_val": 33,
+    "n_local_test": 33
+  },
+  {
+    "client_id": 15,
+    "domain": "general",
+    "n_train": 236,
+    "n_val": 29,
+    "n_local_test": 29
+  },
+  {
+    "client_id": 16,
+    "domain": "general",
+    "n_train": 183,
+    "n_val": 22,
+    "n_local_test": 22
+  },
+  {
+    "client_id": 17,
+    "domain": "general",
+    "n_train": 417,
+    "n_val": 52,
+    "n_local_test": 52
+  },
+  {
+    "client_id": 18,
+    "domain": "general",
+    "n_train": 339,
+    "n_val": 42,
+    "n_local_test": 42
+  },
+  {
+    "client_id": 19,
+    "domain": "legal",
+    "n_train": 377,
+    "n_val": 46,
+    "n_local_test": 46
+  },
+  {
+    "client_id": 20,
+    "domain": "legal",
+    "n_train": 210,
+    "n_val": 26,
+    "n_local_test": 26
+  },
+  {
+    "client_id": 21,
+    "domain": "legal",
+    "n_train": 611,
+    "n_val": 76,
+    "n_local_test": 76
+  },
+  {
+    "client_id": 22,
+    "domain": "legal",
+    "n_train": 183,
+    "n_val": 22,
+    "n_local_test": 22
+  },
+  {
+    "client_id": 23,
+    "domain": "legal",
+    "n_train": 65,
+    "n_val": 7,
+    "n_local_test": 7
+  },
+  {
+    "client_id": 24,
+    "domain": "math",
+    "n_train": 543,
+    "n_val": 67,
+    "n_local_test": 67
+  },
+  {
+    "client_id": 25,
+    "domain": "math",
+    "n_train": 175,
+    "n_val": 21,
+    "n_local_test": 21
+  },
+  {
+    "client_id": 26,
+    "domain": "math",
+    "n_train": 241,
+    "n_val": 30,
+    "n_local_test": 30
+  },
+  {
+    "client_id": 27,
+    "domain": "math",
+    "n_train": 274,
+    "n_val": 34,
+    "n_local_test": 34
+  },
+  {
+    "client_id": 28,
+    "domain": "math",
+    "n_train": 211,
+    "n_val": 26,
+    "n_local_test": 26
+  },
+  {
+    "client_id": 29,
+    "domain": "medical",
+    "n_train": 159,
+    "n_val": 19,
+    "n_local_test": 19
+  },
+  {
+    "client_id": 30,
+    "domain": "medical",
+    "n_train": 472,
+    "n_val": 59,
+    "n_local_test": 59
+  },
+  {
+    "client_id": 31,
+    "domain": "medical",
+    "n_train": 193,
+    "n_val": 24,
+    "n_local_test": 24
+  },
+  {
+    "client_id": 32,
+    "domain": "medical",
+    "n_train": 303,
+    "n_val": 37,
+    "n_local_test": 37
+  },
+  {
+    "client_id": 33,
+    "domain": "medical",
+    "n_train": 317,
+    "n_val": 39,
+    "n_local_test": 39
+  }
+]

@@ -1,0 +1,240 @@
+[
+  {
+    "client_id": 0,
+    "domain": "code",
+    "n_train": 225,
+    "n_val": 27,
+    "n_local_test": 27
+  },
+  {
+    "client_id": 1,
+    "domain": "code",
+    "n_train": 175,
+    "n_val": 21,
+    "n_local_test": 21
+  },
+  {
+    "client_id": 2,
+    "domain": "code",
+    "n_train": 368,
+    "n_val": 45,
+    "n_local_test": 45
+  },
+  {
+    "client_id": 3,
+    "domain": "code",
+    "n_train": 392,
+    "n_val": 49,
+    "n_local_test": 49
+  },
+  {
+    "client_id": 4,
+    "domain": "code",
+    "n_train": 286,
+    "n_val": 35,
+    "n_local_test": 35
+  },
+  {
+    "client_id": 5,
+    "domain": "education",
+    "n_train": 59,
+    "n_val": 7,
+    "n_local_test": 7
+  },
+  {
+    "client_id": 6,
+    "domain": "education",
+    "n_train": 64,
+    "n_val": 8,
+    "n_local_test": 8
+  },
+  {
+    "client_id": 7,
+    "domain": "education",
+    "n_train": 77,
+    "n_val": 9,
+    "n_local_test": 9
+  },
+  {
+    "client_id": 8,
+    "domain": "education",
+    "n_train": 104,
+    "n_val": 13,
+    "n_local_test": 13
+  },
+  {
+    "client_id": 9,
+    "domain": "finance",
+    "n_train": 203,
+    "n_val": 25,
+    "n_local_test": 25
+  },
+  {
+    "client_id": 10,
+    "domain": "finance",
+    "n_train": 296,
+    "n_val": 36,
+    "n_local_test": 36
+  },
+  {
+    "client_id": 11,
+    "domain": "finance",
+    "n_train": 258,
+    "n_val": 32,
+    "n_local_test": 32
+  },
+  {
+    "client_id": 12,
+    "domain": "finance",
+    "n_train": 295,
+    "n_val": 36,
+    "n_local_test": 36
+  },
+  {
+    "client_id": 13,
+    "domain": "finance",
+    "n_train": 392,
+    "n_val": 49,
+    "n_local_test": 49
+  },
+  {
+    "client_id": 14,
+    "domain": "general",
+    "n_train": 305,
+    "n_val": 38,
+    "n_local_test": 38
+  },
+  {
+    "client_id": 15,
+    "domain": "general",
+    "n_train": 504,
+    "n_val": 62,
+    "n_local_test": 62
+  },
+  {
+    "client_id": 16,
+    "domain": "general",
+    "n_train": 201,
+    "n_val": 25,
+    "n_local_test": 25
+  },
+  {
+    "client_id": 17,
+    "domain": "general",
+    "n_train": 273,
+    "n_val": 33,
+    "n_local_test": 33
+  },
+  {
+    "client_id": 18,
+    "domain": "general",
+    "n_train": 161,
+    "n_val": 20,
+    "n_local_test": 20
+  },
+  {
+    "client_id": 19,
+    "domain": "legal",
+    "n_train": 145,
+    "n_val": 17,
+    "n_local_test": 17
+  },
+  {
+    "client_id": 20,
+    "domain": "legal",
+    "n_train": 352,
+    "n_val": 44,
+    "n_local_test": 44
+  },
+  {
+    "client_id": 21,
+    "domain": "legal",
+    "n_train": 77,
+    "n_val": 9,
+    "n_local_test": 9
+  },
+  {
+    "client_id": 22,
+    "domain": "legal",
+    "n_train": 240,
+    "n_val": 29,
+    "n_local_test": 29
+  },
+  {
+    "client_id": 23,
+    "domain": "legal",
+    "n_train": 632,
+    "n_val": 78,
+    "n_local_test": 78
+  },
+  {
+    "client_id": 24,
+    "domain": "math",
+    "n_train": 674,
+    "n_val": 84,
+    "n_local_test": 84
+  },
+  {
+    "client_id": 25,
+    "domain": "math",
+    "n_train": 126,
+    "n_val": 15,
+    "n_local_test": 15
+  },
+  {
+    "client_id": 26,
+    "domain": "math",
+    "n_train": 243,
+    "n_val": 30,
+    "n_local_test": 30
+  },
+  {
+    "client_id": 27,
+    "domain": "math",
+    "n_train": 268,
+    "n_val": 33,
+    "n_local_test": 33
+  },
+  {
+    "client_id": 28,
+    "domain": "math",
+    "n_train": 133,
+    "n_val": 16,
+    "n_local_test": 16
+  },
+  {
+    "client_id": 29,
+    "domain": "medical",
+    "n_train": 305,
+    "n_val": 38,
+    "n_local_test": 38
+  },
+  {
+    "client_id": 30,
+    "domain": "medical",
+    "n_train": 276,
+    "n_val": 34,
+    "n_local_test": 34
+  },
+  {
+    "client_id": 31,
+    "domain": "medical",
+    "n_train": 256,
+    "n_val": 32,
+    "n_local_test": 32
+  },
+  {
+    "client_id": 32,
+    "domain": "medical",
+    "n_train": 393,
+    "n_val": 48,
+    "n_local_test": 48
+  },
+  {
+    "client_id": 33,
+    "domain": "medical",
+    "n_train": 214,
+    "n_val": 26,
+    "n_local_test": 26
+  }
+]

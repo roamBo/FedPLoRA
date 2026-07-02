@@ -1,0 +1,226 @@
+[
+  {
+    "client_id": 0,
+    "domain": "code",
+    "n_train": 280,
+    "n_val": 34,
+    "n_local_test": 34
+  },
+  {
+    "client_id": 1,
+    "domain": "code",
+    "n_train": 126,
+    "n_val": 15,
+    "n_local_test": 15
+  },
+  {
+    "client_id": 2,
+    "domain": "code",
+    "n_train": 504,
+    "n_val": 62,
+    "n_local_test": 62
+  },
+  {
+    "client_id": 3,
+    "domain": "code",
+    "n_train": 120,
+    "n_val": 15,
+    "n_local_test": 15
+  },
+  {
+    "client_id": 4,
+    "domain": "code",
+    "n_train": 416,
+    "n_val": 51,
+    "n_local_test": 51
+  },
+  {
+    "client_id": 5,
+    "domain": "education",
+    "n_train": 112,
+    "n_val": 14,
+    "n_local_test": 14
+  },
+  {
+    "client_id": 6,
+    "domain": "education",
+    "n_train": 93,
+    "n_val": 11,
+    "n_local_test": 11
+  },
+  {
+    "client_id": 7,
+    "domain": "education",
+    "n_train": 85,
+    "n_val": 10,
+    "n_local_test": 10
+  },
+  {
+    "client_id": 8,
+    "domain": "finance",
+    "n_train": 323,
+    "n_val": 40,
+    "n_local_test": 40
+  },
+  {
+    "client_id": 9,
+    "domain": "finance",
+    "n_train": 120,
+    "n_val": 14,
+    "n_local_test": 14
+  },
+  {
+    "client_id": 10,
+    "domain": "finance",
+    "n_train": 193,
+    "n_val": 23,
+    "n_local_test": 23
+  },
+  {
+    "client_id": 11,
+    "domain": "finance",
+    "n_train": 416,
+    "n_val": 51,
+    "n_local_test": 51
+  },
+  {
+    "client_id": 12,
+    "domain": "finance",
+    "n_train": 394,
+    "n_val": 49,
+    "n_local_test": 49
+  },
+  {
+    "client_id": 13,
+    "domain": "general",
+    "n_train": 193,
+    "n_val": 24,
+    "n_local_test": 24
+  },
+  {
+    "client_id": 14,
+    "domain": "general",
+    "n_train": 471,
+    "n_val": 58,
+    "n_local_test": 58
+  },
+  {
+    "client_id": 15,
+    "domain": "general",
+    "n_train": 192,
+    "n_val": 23,
+    "n_local_test": 23
+  },
+  {
+    "client_id": 16,
+    "domain": "general",
+    "n_train": 420,
+    "n_val": 52,
+    "n_local_test": 52
+  },
+  {
+    "client_id": 17,
+    "domain": "general",
+    "n_train": 168,
+    "n_val": 21,
+    "n_local_test": 21
+  },
+  {
+    "client_id": 18,
+    "domain": "legal",
+    "n_train": 40,
+    "n_val": 5,
+    "n_local_test": 5
+  },
+  {
+    "client_id": 19,
+    "domain": "legal",
+    "n_train": 241,
+    "n_val": 30,
+    "n_local_test": 30
+  },
+  {
+    "client_id": 20,
+    "domain": "legal",
+    "n_train": 92,
+    "n_val": 11,
+    "n_local_test": 11
+  },
+  {
+    "client_id": 21,
+    "domain": "legal",
+    "n_train": 1049,
+    "n_val": 131,
+    "n_local_test": 131
+  },
+  {
+    "client_id": 22,
+    "domain": "math",
+    "n_train": 204,
+    "n_val": 25,
+    "n_local_test": 25
+  },
+  {
+    "client_id": 23,
+    "domain": "math",
+    "n_train": 447,
+    "n_val": 55,
+    "n_local_test": 55
+  },
+  {
+    "client_id": 24,
+    "domain": "math",
+    "n_train": 132,
+    "n_val": 16,
+    "n_local_test": 16
+  },
+  {
+    "client_id": 25,
+    "domain": "math",
+    "n_train": 337,
+    "n_val": 41,
+    "n_local_test": 41
+  },
+  {
+    "client_id": 26,
+    "domain": "math",
+    "n_train": 326,
+    "n_val": 40,
+    "n_local_test": 40
+  },
+  {
+    "client_id": 27,
+    "domain": "medical",
+    "n_train": 163,
+    "n_val": 20,
+    "n_local_test": 20
+  },
+  {
+    "client_id": 28,
+    "domain": "medical",
+    "n_train": 401,
+    "n_val": 49,
+    "n_local_test": 49
+  },
+  {
+    "client_id": 29,
+    "domain": "medical",
+    "n_train": 106,
+    "n_val": 13,
+    "n_local_test": 13
+  },
+  {
+    "client_id": 30,
+    "domain": "medical",
+    "n_train": 374,
+    "n_val": 46,
+    "n_local_test": 46
+  },
+  {
+    "client_id": 31,
+    "domain": "medical",
+    "n_train": 400,
+    "n_val": 50,
+    "n_local_test": 50
+  }
+]
