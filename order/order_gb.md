@@ -43,10 +43,12 @@ GPU: 默认物理 1 号卡（CUDA_VISIBLE_DEVICES=1）
 
 【两套 35c 数据说明】
 
-| 类型 | 目录示例 | 有无 Dirichlet α |
-|------|----------|------------------|
-| **跨域 task-shift**（原版 order） | `domain_benchmark_35c/seed_42` | **无**（异质性来自 7 个 domain） |
+
+| 类型                          | 目录示例                                 | 有无 Dirichlet α                      |
+| --------------------------- | ------------------------------------ | ----------------------------------- |
+| **跨域 task-shift**（原版 order） | `domain_benchmark_35c/seed_42`       | **无**（异质性来自 7 个 domain）             |
 | **域内 feature-skew**（v2 构建器） | `domain_benchmark_35c_dir05/seed_42` | **有** α=0.1 / 0.5 / 1.0（域内客户端子主题偏斜） |
+
 
 域内 non-IID 用 `build_domain_benchmark_v2.py`；**α 越小越 non-IID**（不用 α=0，用 **0.1** 表示强偏斜）。
 
@@ -103,6 +105,20 @@ python -u scripts/DataProcessScripts/build_domain_benchmark_v2.py \
 多 seed（42 / 43 / 44）：**同一 `output_dir`，只改 `--seed`**，产物在 `.../seed_43`、`.../seed_44`：
 
 ```bash
+for SEED in 42 43 44; do
+  for A in 0.1 0.5 1.0; do
+    TAG=$(echo "$A" | tr -d '.')   # 0.1→01, 0.5→05, 1.0→10
+    python -u scripts/DataProcessScripts/build_domain_benchmark_v2.py \
+      --input_jsonl "$RAW_JSONL" \
+      --output_dir "$DATA_ROOT/domain_benchmark_35c_dir${TAG}" \
+      --num_clients_per_domain 5 --seed "$SEED" \
+      --dedup prompt --target_per_domain 2000 \
+      --partition dirichlet --dirichlet_alpha "$A" \
+      --subtopic kmeans --n_subtopics 10 \
+      2>&1 | tee "log_build/build_dir${TAG}_seed${SEED}.log"
+  done
+done
+
 for S in 42 43 44; do
   python -u scripts/DataProcessScripts/build_domain_benchmark_v2.py \
     --input_jsonl "$RAW_JSONL" \
@@ -393,7 +409,18 @@ GPU=1 run_sft_full fedplora_v10_sketch_a_rank2_alpha050 fedplora_v10_sketch_a --
 GPU=1 run_sft_full fedplora_v10_geom_a_alpha035 fedplora_v10_geom_a --v10_a_correction_alpha 0.35 --v10_a_anchor_lambda 0.001 --v10_a_prox_lambda 0.0005 --v10_b_prox_lambda 0.0001 --v10_a_norm_clip_ratio 1.5 --v8_cache_shared_a_downlink
 ```
 
-## 3. v8/v9 关键对照
+### 2.7 全部 v10 命令（跨域 seed=42）
+
+```bash
+GPU=1 run_sft_full fedplora_v10_sketch_a_rank1 fedplora_v10_sketch_a --v10_a_sketch_rank 1 --v10_a_correction_alpha 0.35 --v10_a_anchor_lambda 0.001 --v10_a_prox_lambda 0.0005 --v10_b_prox_lambda 0.0001 --v10_a_norm_clip_ratio 1.5 --v8_cache_shared_a_downlink
+GPU=1 run_sft_full fedplora_v10_sketch_a_rank2 fedplora_v10_sketch_a --v10_a_sketch_rank 2 --v10_a_correction_alpha 0.35 --v10_a_anchor_lambda 0.001 --v10_a_prox_lambda 0.0005 --v10_b_prox_lambda 0.0001 --v10_a_norm_clip_ratio 1.5 --v8_cache_shared_a_downlink
+GPU=1 run_sft_full fedplora_v10_sketch_a_rank4 fedplora_v10_sketch_a --v10_a_sketch_rank 4 --v10_a_correction_alpha 0.35 --v10_a_anchor_lambda 0.001 --v10_a_prox_lambda 0.0005 --v10_b_prox_lambda 0.0001 --v10_a_norm_clip_ratio 1.5 --v8_cache_shared_a_downlink
+GPU=1 run_sft_full fedplora_v10_sketch_a_rank2_alpha020 fedplora_v10_sketch_a --v10_a_sketch_rank 2 --v10_a_correction_alpha 0.20 --v10_a_anchor_lambda 0.001 --v10_a_prox_lambda 0.0005 --v10_b_prox_lambda 0.0001 --v10_a_norm_clip_ratio 1.5 --v8_cache_shared_a_downlink
+GPU=1 run_sft_full fedplora_v10_sketch_a_rank2_alpha050 fedplora_v10_sketch_a --v10_a_sketch_rank 2 --v10_a_correction_alpha 0.50 --v10_a_anchor_lambda 0.001 --v10_a_prox_lambda 0.0005 --v10_b_prox_lambda 0.0001 --v10_a_norm_clip_ratio 1.5 --v8_cache_shared_a_downlink
+GPU=1 run_sft_full fedplora_v10_geom_a_alpha035 fedplora_v10_geom_a --v10_a_correction_alpha 0.35 --v10_a_anchor_lambda 0.001 --v10_a_prox_lambda 0.0005 --v10_b_prox_lambda 0.0001 --v10_a_norm_clip_ratio 1.5 --v8_cache_shared_a_downlink
+```
+
+换 seed：`use_domain_cross 43`。域内 Dirichlet：首行改为 `use_domain_dirichlet 0.5 42`，method 名加 `_dir05` 等后缀。
 
 说明：这些命令用于确认 v10 是否真的突破 v9 被支配的插值线，而不是只在旧 trade-off 上移动。
 
@@ -439,10 +466,23 @@ GPU=1 run_sft_full fedplora_v8_periodic_T5 fedplora_v8_periodic --v8_a_refresh_i
 GPU=1 run_sft_full fedplora_v8_ab fedplora_v8_ab --v8_cache_shared_a_downlink
 ```
 
+### 3.8 全部 v8/v9 命令（跨域 seed=42）
+
+```bash
+GPU=1 run_sft_full fedplora_v9_mix_lam07 fedplora_v9_mix --v9_mix_lambda 0.7 --v8_cache_shared_a_downlink
+GPU=1 run_sft_full fedplora_v9_mix_ab_lam05 fedplora_v9_mix_ab --v9_mix_lambda 0.5 --v8_cache_shared_a_downlink
+GPU=1 run_sft_full fedplora_v8 fedplora_v8 --v8_cache_shared_a_downlink
+GPU=1 run_sft_full fedplora_v8_global fedplora_v8 --expert_cluster_mode global --v8_cache_shared_a_downlink
+GPU=1 run_sft_full fedplora_v8_warma fedplora_v8_warma --v8_a_warmup_rounds 1 --v8_cache_shared_a_downlink
+GPU=1 run_sft_full fedplora_v8_periodic_T5 fedplora_v8_periodic --v8_a_refresh_interval 5 --v8_cache_shared_a_downlink
+GPU=1 run_sft_full fedplora_v8_ab fedplora_v8_ab --v8_cache_shared_a_downlink
+```
+
+换 seed：`use_domain_cross 43`。域内 Dirichlet：首行改为 `use_domain_dirichlet 0.5 42`。
+
 ## 4. baseline 正式 10 轮
 
 说明：本节覆盖当前表格中最强的全局 baseline、低通信 baseline、LoRA expert baseline 与之前缺结果的 YOCO/FedDAT。
-
 
 ### 4.1 Normal FedAvg-LoRA
 
@@ -524,6 +564,26 @@ GPU=1 run_sft_full baseline_yoco yoco
 GPU=1 run_sft_full baseline_feddat feddat
 ```
 
+### 4.14 全部 baseline（跨域 seed=42）
+
+```bash
+GPU=1 run_sft_full baseline_normal normal
+GPU=1 run_sft_full baseline_ffa ffa
+GPU=1 run_sft_full baseline_flora flora
+GPU=1 run_sft_full baseline_flexlora flexlora
+GPU=1 run_sft_full baseline_ecolora ecolora --ecolora_keep_ratio 0.25
+GPU=1 run_sft_full baseline_fedlease fedlease
+GPU=1 run_sft_full baseline_hilora hilora
+GPU=1 run_sft_full baseline_hydralora hydralora
+GPU=1 run_sft_full baseline_fedalt fedalt
+GPU=1 run_sft_full baseline_fedsa_lora fedsa_lora
+GPU=1 run_sft_full baseline_fedplora_oneshot fedplora_oneshot
+GPU=1 run_sft_full baseline_yoco yoco
+GPU=1 run_sft_full baseline_feddat feddat
+```
+
+换 seed：`use_domain_cross 43`。域内 Dirichlet 见 §5.1。
+
 > 每条 `run_sft_full` 会 **立即返回** 并打印 `pid=...` 与 `log=...`（`nohup` 后台，不占当前终端）。并行示例：`GPU=1 run_sft_full ...` 与 `GPU=2 run_sft_full ...` 各开一条。
 
 ---
@@ -593,16 +653,18 @@ ps -p <pid> -o pid,cmd
 
 ---
 
-| 项 | order_20260630.md | order_gb.md |
-|----|-------------------|-------------|
-| conda | `FedRepo2` | `fedplora` |
-| 代码 | `/home/minghao/code/FedPLoRA-main` | `/data/yaominghao/gb/FedPLoRA` |
-| 模型 | `/data2/minghao/model/SmolLM2-135M` | `/data/yaominghao/gb/models/SmolLM2-135M` |
-| 数据（跨域） | `.../domain_benchmark_35c/seed_42` | `.../domain_benchmark_35c/seed_42` |
-| 数据（域内 Dirichlet） | — | `.../domain_benchmark_35c_dir{01,05,10}/seed_42` |
-| 结果 | `/data2/minghao/result/FedPLoRA/` | `/data/yaominghao/gb/result/FedPLoRA/` |
-| checkpoint | `/data2/minghao/model/trained_models_LW/` | `/data/yaominghao/gb/models/trained_models_LW/` |
-| GPU 默认 | `0` | `1` |
+
+| 项                | order_20260630.md                         | order_gb.md                                      |
+| ---------------- | ----------------------------------------- | ------------------------------------------------ |
+| conda            | `FedRepo2`                                | `fedplora`                                       |
+| 代码               | `/home/minghao/code/FedPLoRA-main`        | `/data/yaominghao/gb/FedPLoRA`                   |
+| 模型               | `/data2/minghao/model/SmolLM2-135M`       | `/data/yaominghao/gb/models/SmolLM2-135M`        |
+| 数据（跨域）           | `.../domain_benchmark_35c/seed_42`        | `.../domain_benchmark_35c/seed_42`               |
+| 数据（域内 Dirichlet） | —                                         | `.../domain_benchmark_35c_dir{01,05,10}/seed_42` |
+| 结果               | `/data2/minghao/result/FedPLoRA/`         | `/data/yaominghao/gb/result/FedPLoRA/`           |
+| checkpoint       | `/data2/minghao/model/trained_models_LW/` | `/data/yaominghao/gb/models/trained_models_LW/`  |
+| GPU 默认           | `0`                                       | `1`                                              |
+
 
 【注意事项】
 
@@ -612,3 +674,4 @@ ps -p <pid> -o pid,cmd
 4. v10 是否成立不能只看 Macro。必须同时检查 run log 中 `[lora-expert] domain_nmi/domain_ari` 和 `[fedplora-v10] a_rel_update/a_row_cos/a_clipped_row_frac`，否则无法证明“追回 A 的 macro 且不塌 B 几何”。
 5. 并行多任务时把 `GPU=1` 改成 `GPU=2`、`GPU=3` 等；前置块里 `export GPU=1` 为默认值。`run_sft_full` / `run_sft_smoke` 已 `nohup ... &` 并 **echo pid**，可连续敲多条 baseline。
 6. 域内 Dirichlet 实验勿与 §2–§4 默认 `BENCHMARK_DIR=domain_benchmark_35c` 混用；先 `use_domain_dirichlet` 再跑。FedDAT **一条命令只跑一个 α**，不会自动扫三分布。
+
