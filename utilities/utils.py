@@ -70,6 +70,22 @@ FEDPLORA_V10_SKETCH_A_AGGS = {
 
 FEDPLORA_V10_FAMILY_AGGS = FEDPLORA_V10_GEOM_A_AGGS | FEDPLORA_V10_SKETCH_A_AGGS
 
+FEDPLORA_V11A_RELAXED_A_AGGS = {
+    "fedplora_v11a_relaxed_a",
+    "fedplora_v11a",
+    "v11a_relaxed_a",
+    "v11a",
+}
+
+FEDPLORA_V11C_GMIX_AGGS = {
+    "fedplora_v11c_gmix",
+    "fedplora_v11_gmix",
+    "v11c_gmix",
+    "v11_gmix",
+}
+
+FEDPLORA_V11_FAMILY_AGGS = FEDPLORA_V11A_RELAXED_A_AGGS | FEDPLORA_V11C_GMIX_AGGS
+
 
 def is_fedplora_v8_family_agg(agg_type):
     return _norm_agg_type(agg_type) in FEDPLORA_V8_FAMILY_AGGS
@@ -85,6 +101,14 @@ def is_fedplora_v10_family_agg(agg_type):
 
 def is_fedplora_v10_sketch_a_agg(agg_type):
     return _norm_agg_type(agg_type) in FEDPLORA_V10_SKETCH_A_AGGS
+
+
+def is_fedplora_v11_family_agg(agg_type):
+    return _norm_agg_type(agg_type) in FEDPLORA_V11_FAMILY_AGGS
+
+
+def is_fedplora_v11_gmix_agg(agg_type):
+    return _norm_agg_type(agg_type) in FEDPLORA_V11C_GMIX_AGGS
 
 
 def is_fedplora_v8_warma_agg(agg_type):
@@ -176,7 +200,7 @@ def is_fedplora_v6_dcr_agg(agg_type):
 
 
 def is_lora_expert_agg(agg_type):
-    """Shared-A / B-expert baselines: v7/v8/v9/v10, FedLEASE, HiLoRA, EcoLoRA, HydraLoRA."""
+    """Shared-A / B-expert baselines: v7/v8/v9/v10/v11, FedLEASE, HiLoRA, EcoLoRA, HydraLoRA."""
     return _norm_agg_type(agg_type) in {
         "fedplora_v7",
         "fedplora_v7_bonly",
@@ -186,7 +210,7 @@ def is_lora_expert_agg(agg_type):
         "hilora",
         "ecolora",
         "hydralora",
-    } or is_fedplora_v8_family_agg(agg_type) or is_fedplora_v9_family_agg(agg_type) or is_fedplora_v10_family_agg(agg_type)
+    } or is_fedplora_v8_family_agg(agg_type) or is_fedplora_v9_family_agg(agg_type) or is_fedplora_v10_family_agg(agg_type) or is_fedplora_v11_family_agg(agg_type)
 
 
 def is_lora_expert_b_only_agg(agg_type):
@@ -415,6 +439,7 @@ def estimate_round_communication_bytes(
     v8_a_refresh_interval=5,
     v8_cache_shared_a_downlink=True,
     v10_a_sketch_rank=2,
+    v11_global_b_mix_mu=0.4,
 ):
     """
     Per client, per round:
@@ -459,6 +484,8 @@ def estimate_round_communication_bytes(
         v8_refresh_rounds = max(1, int(rounds or 1))
     if is_fedplora_v10_family_agg(agg_type):
         v8_refresh_rounds = max(1, int(rounds or 1))
+    if is_fedplora_v11_family_agg(agg_type):
+        v8_refresh_rounds = max(1, int(rounds or 1))
 
     if is_fedplora_v8_scheduled_a_agg(agg_type):
         # Raw per-refresh-round protocol: A+B are available when A is refreshed;
@@ -475,6 +502,21 @@ def estimate_round_communication_bytes(
     elif is_fedplora_v10_family_agg(agg_type):
         down = lora_all + task_head
         up = lora_all + task_head
+    elif is_fedplora_v11_family_agg(agg_type):
+        # v11 uses the real sketch payload: B + task head + rank-k A-delta
+        # sketch.  Unlike v10, raw and effective uplink are intentionally the
+        # same accounting object for the A-correction branch.
+        rank = max(1, int(v10_a_sketch_rank or 1))
+        a_sketch_bytes = 0
+        for k, v in sd.items():
+            if not is_lora_a_param_name(k) or v.ndim != 2:
+                continue
+            r_dim = int(v.shape[0])
+            in_dim = int(v.shape[1])
+            elem = int(v.element_size())
+            a_sketch_bytes += int((r_dim * rank + rank + rank * in_dim) * elem)
+        down = lora_b + task_head + a_sketch_bytes
+        up = lora_b + task_head + a_sketch_bytes
     elif is_lora_expert_agg(agg_type):
         down = lora_all + task_head
         if _norm_agg_type(agg_type) == "ecolora":
@@ -510,6 +552,7 @@ def estimate_round_communication_bytes(
     effective_down = down
     effective_up = up
     v10_a_correction_bytes = 0
+    v11_a_correction_bytes = 0
     if is_fedplora_v10_sketch_a_agg(agg_type):
         rank = max(1, int(v10_a_sketch_rank or 1))
         for k, v in sd.items():
@@ -522,6 +565,15 @@ def estimate_round_communication_bytes(
             v10_a_correction_bytes += int((r_dim * rank + rank + rank * in_dim) * elem)
     elif is_fedplora_v10_family_agg(agg_type):
         v10_a_correction_bytes = lora_a
+    elif is_fedplora_v11_family_agg(agg_type):
+        rank = max(1, int(v10_a_sketch_rank or 1))
+        for k, v in sd.items():
+            if not is_lora_a_param_name(k) or v.ndim != 2:
+                continue
+            r_dim = int(v.shape[0])
+            in_dim = int(v.shape[1])
+            elem = int(v.element_size())
+            v11_a_correction_bytes += int((r_dim * rank + rank + rank * in_dim) * elem)
 
     if is_fedplora_v8_family_agg(agg_type) or is_fedplora_v9_family_agg(agg_type):
         run_rounds = max(1, int(rounds or 1))
@@ -545,6 +597,14 @@ def estimate_round_communication_bytes(
         else:
             effective_down = int(round(lora_all + task_head))
             downlink_policy = "raw_full_lora"
+    elif is_fedplora_v11_family_agg(agg_type):
+        effective_up = int(round(lora_b + task_head + v11_a_correction_bytes))
+        if bool(v8_cache_shared_a_downlink):
+            effective_down = int(round(lora_b + task_head + v11_a_correction_bytes))
+            downlink_policy = "cache_shared_a_plus_true_v11_a_sketch"
+        else:
+            effective_down = int(round(lora_all + task_head))
+            downlink_policy = "raw_full_lora"
     else:
         downlink_policy = "raw"
 
@@ -557,14 +617,21 @@ def estimate_round_communication_bytes(
         "v8_a_refresh_rounds": int(v8_refresh_rounds),
         "v8_a_refresh_fraction": (
             float(v8_refresh_rounds) / float(max(1, int(rounds or 1)))
-            if is_fedplora_v8_family_agg(agg_type) or is_fedplora_v9_family_agg(agg_type) or is_fedplora_v10_family_agg(agg_type)
+            if is_fedplora_v8_family_agg(agg_type) or is_fedplora_v9_family_agg(agg_type) or is_fedplora_v10_family_agg(agg_type) or is_fedplora_v11_family_agg(agg_type)
             else 0.0
         ),
         "v10_a_correction_bytes_per_client": int(v10_a_correction_bytes),
+        "v11_a_correction_bytes_per_client": int(v11_a_correction_bytes),
         "v10_a_correction_mode": (
             "lowrank_delta"
             if is_fedplora_v10_sketch_a_agg(agg_type)
             else ("anchored_full_delta" if is_fedplora_v10_family_agg(agg_type) else "")
+        ),
+        "v11_a_correction_mode": (
+            "true_lowrank_delta" if is_fedplora_v11_family_agg(agg_type) else ""
+        ),
+        "v11_global_b_mix_mu": (
+            float(v11_global_b_mix_mu) if is_fedplora_v11_gmix_agg(agg_type) else 0.0
         ),
     }
 
