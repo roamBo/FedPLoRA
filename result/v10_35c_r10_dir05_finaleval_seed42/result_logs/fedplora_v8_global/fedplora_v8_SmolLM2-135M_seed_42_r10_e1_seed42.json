@@ -1,0 +1,747 @@
+{
+  "args": {
+    "model": "/data/yaominghao/gb/models/SmolLM2-135M",
+    "benchmark_dir": "/data/yaominghao/gb/FedPLoRA/data/domain_benchmark_35c_dir05/seed_42",
+    "benchmark_jsonl": "",
+    "build_benchmark": false,
+    "benchmark_output_dir": "data/domain_benchmark",
+    "num_clients_per_domain": 5,
+    "min_samples_per_client": 50,
+    "agg_type": "fedplora_v8",
+    "rounds": 10,
+    "num_clients": 35,
+    "local_epochs": 1,
+    "lr": 0.0002,
+    "lora_r": 8,
+    "lora_alpha": 16,
+    "lora_dropout": 0.05,
+    "rslora": false,
+    "batch_size": 2,
+    "warmup_ratio": 0.03,
+    "max_seq_length": 256,
+    "seed": 42,
+    "gradient_checkpointing": true,
+    "trust_remote_code": false,
+    "torch_dtype": "bfloat16",
+    "target_modules": "q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj",
+    "client_state_dir": "/data/yaominghao/gb/result/FedPLoRA/v10_35c_r10_dir05_finaleval_seed42/result_files/client_states/fedplora_v8_global",
+    "save_client_state_to_disk": true,
+    "metrics_output_dir": "/data/yaominghao/gb/result/FedPLoRA/v10_35c_r10_dir05_finaleval_seed42/result_logs/fedplora_v8_global",
+    "save_run_checkpoint_dir": "/data/yaominghao/gb/models/trained_models_LW/v10_35c_r10_dir05_finaleval_seed42/fedplora_v8_global_SmolLM2-135M_35c_r10_e1_lr0.0002_seed42",
+    "skip_post_agg_snapshots": true,
+    "trained_models_root": "/data/yaominghao/gb/models/trained_models_LW/v10_35c_r10_dir05_finaleval_seed42",
+    "no_auto_save_run_checkpoint": false,
+    "force_retrain": false,
+    "eval_only_from_checkpoint": "",
+    "gp_align_lambda": 0.01,
+    "gp_prox_lambda": 0.001,
+    "gp_orth_lambda": 0.0001,
+    "gp_consensus_power": 2.0,
+    "gp_agg_momentum": 0.5,
+    "yoco_sparse_lambda": 0.0001,
+    "yoco_pcwa_components": 3,
+    "yoco_aggregate_mode": "conflict",
+    "yoco_conflict_method": "avgm",
+    "yoco_sign_lambda": 0.01,
+    "yoco_eval_use_local_clients": false,
+    "memory_agg_eval_use_local_clients": false,
+    "flora_svd_device": "auto",
+    "oneshot_consensus_power": 2.0,
+    "oneshot_importance_power": 1.0,
+    "oneshot_importance_clip": 5.0,
+    "oneshot_conflict_threshold": 0.35,
+    "oneshot_conflict_blend": 1.0,
+    "oneshot_scale_clip_ratio": 0.0,
+    "oneshot_anchor_lambda": 0.0001,
+    "oneshot_prox_lambda": 0.0,
+    "oneshot_no_keep_init_on_conflict": false,
+    "oneshot_orthogonalize": false,
+    "oneshot_ablation_plain_fedavg": false,
+    "v3_conflict_quantile": 0.8,
+    "v3_gate_temperature": 0.05,
+    "v3_conflict_blend": 1.0,
+    "v3_residual_norm_power": 1.0,
+    "v3_residual_eps": 1e-07,
+    "v3_cluster_mode": "domain_prior",
+    "v3_cluster_lambda_min": 0.2,
+    "v3_cluster_lambda_max": 1.0,
+    "v3_rpca_rank": 1,
+    "v3_sparse_quantile": 0.8,
+    "v3_domain_cluster_map": "",
+    "v6_dcr_mode": "",
+    "v6_dcr_rc_policy": "auto",
+    "v6_dcr_shared_rank": 0,
+    "v6_dcr_min_shared_rank": 1,
+    "v6_dcr_max_shared_rank": 0,
+    "v6_dcr_energy_tau": 0.8,
+    "v6_dcr_conflict_strength": 1.0,
+    "v6_dcr_importance_power": 0.0,
+    "v6_dcr_importance_clip": 5.0,
+    "v7_b_mode": "mean",
+    "expert_cluster_mode": "global",
+    "expert_cluster_k": 0,
+    "expert_max_clusters": 0,
+    "expert_b_mode": "",
+    "expert_top_m": 0,
+    "expert_router_temperature": 0.2,
+    "expert_freeze_a": true,
+    "v8_a_warmup_rounds": 1,
+    "v8_a_refresh_interval": 5,
+    "v8_cache_shared_a_downlink": true,
+    "v9_mix_lambda": 0.5,
+    "v10_a_correction_alpha": 0.35,
+    "v10_a_anchor_lambda": 0.001,
+    "v10_a_prox_lambda": 0.0005,
+    "v10_b_prox_lambda": 0.0001,
+    "v10_a_sketch_rank": 2,
+    "v10_a_norm_clip_ratio": 1.5,
+    "hilora_leaf_blend": 0.25,
+    "ecolora_keep_ratio": 0.25,
+    "ecolora_mask_mode": "round_robin",
+    "feddat_teacher_lambda": 0.01,
+    "v5m_keep_ratio": 0.2,
+    "v5m_dare_p": 0.3,
+    "v5m_rank_policy": "fixed",
+    "v5m_rank_cap": 64,
+    "v5m_energy_tau": 0.95,
+    "v5m_knots_normalize": 1,
+    "v5m_basis_energy_tau": 0.9999,
+    "v5m_chunk_rows": 2048,
+    "v5m_device": "auto",
+    "eval_max_batches": 0,
+    "eval_batch_size": 0,
+    "eval_interval": 1,
+    "eval_final_only": true,
+    "train_max_steps_per_client": 0,
+    "max_train_samples_per_client": 0,
+    "dataloader_num_workers": 0,
+    "eval_dataloader_num_workers": 0,
+    "dataloader_pin_memory": true,
+    "dataloader_persistent_workers": false,
+    "attn_implementation": "",
+    "tokenizer_use_fast": true,
+    "eval_personalization_metrics": true,
+    "fedplora_ablation_no_consensus": false,
+    "fedplora_ablation_no_momentum": false,
+    "_runtime_client_sizes": [
+      225,
+      175,
+      368,
+      392,
+      286,
+      40,
+      59,
+      64,
+      77,
+      104,
+      203,
+      296,
+      258,
+      295,
+      392,
+      305,
+      504,
+      201,
+      273,
+      161,
+      145,
+      352,
+      77,
+      240,
+      632,
+      674,
+      126,
+      243,
+      268,
+      133,
+      305,
+      276,
+      256,
+      393,
+      214
+    ],
+    "_fedplora_client_domains": {
+      "0": "code",
+      "1": "code",
+      "2": "code",
+      "3": "code",
+      "4": "code",
+      "5": "education",
+      "6": "education",
+      "7": "education",
+      "8": "education",
+      "9": "education",
+      "10": "finance",
+      "11": "finance",
+      "12": "finance",
+      "13": "finance",
+      "14": "finance",
+      "15": "general",
+      "16": "general",
+      "17": "general",
+      "18": "general",
+      "19": "general",
+      "20": "legal",
+      "21": "legal",
+      "22": "legal",
+      "23": "legal",
+      "24": "legal",
+      "25": "math",
+      "26": "math",
+      "27": "math",
+      "28": "math",
+      "29": "math",
+      "30": "medical",
+      "31": "medical",
+      "32": "medical",
+      "33": "medical",
+      "34": "medical"
+    },
+    "_fedplora_round_client_ids": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      30,
+      31,
+      32,
+      33,
+      34
+    ]
+  },
+  "benchmark_dir": "/data/yaominghao/gb/FedPLoRA/data/domain_benchmark_35c_dir05/seed_42",
+  "recommended_primary_metrics": [
+    "domain_macro_token_accuracy",
+    "domain_macro_perplexity",
+    "worst_domain_token_accuracy",
+    "worst_domain_perplexity"
+  ],
+  "communication": {
+    "agg_type": "fedplora_v8",
+    "down_bytes_per_client": 9768960,
+    "up_bytes_per_client": 4976640,
+    "effective_down_bytes_per_client": 4976640,
+    "effective_up_bytes_per_client": 4976640,
+    "downlink_policy": "cache_shared_a_routed_b",
+    "v8_a_refresh_rounds": 0,
+    "v8_a_refresh_fraction": 0.0,
+    "v8_a_warmup_rounds": 1,
+    "v8_a_refresh_interval": 5,
+    "v8_cache_shared_a_downlink": true
+  },
+  "rounds": [
+    {
+      "round": 1,
+      "eval_skipped": true,
+      "eval_skip_reason": "eval_final_only",
+      "v8_round_a_schedule": {
+        "train_upload_a": false,
+        "upload_scope": "b_only",
+        "warmup_rounds": 1,
+        "refresh_interval": 5
+      }
+    },
+    {
+      "round": 2,
+      "eval_skipped": true,
+      "eval_skip_reason": "eval_final_only",
+      "v8_round_a_schedule": {
+        "train_upload_a": false,
+        "upload_scope": "b_only",
+        "warmup_rounds": 1,
+        "refresh_interval": 5
+      }
+    },
+    {
+      "round": 3,
+      "eval_skipped": true,
+      "eval_skip_reason": "eval_final_only",
+      "v8_round_a_schedule": {
+        "train_upload_a": false,
+        "upload_scope": "b_only",
+        "warmup_rounds": 1,
+        "refresh_interval": 5
+      }
+    },
+    {
+      "round": 4,
+      "eval_skipped": true,
+      "eval_skip_reason": "eval_final_only",
+      "v8_round_a_schedule": {
+        "train_upload_a": false,
+        "upload_scope": "b_only",
+        "warmup_rounds": 1,
+        "refresh_interval": 5
+      }
+    },
+    {
+      "round": 5,
+      "eval_skipped": true,
+      "eval_skip_reason": "eval_final_only",
+      "v8_round_a_schedule": {
+        "train_upload_a": false,
+        "upload_scope": "b_only",
+        "warmup_rounds": 1,
+        "refresh_interval": 5
+      }
+    },
+    {
+      "round": 6,
+      "eval_skipped": true,
+      "eval_skip_reason": "eval_final_only",
+      "v8_round_a_schedule": {
+        "train_upload_a": false,
+        "upload_scope": "b_only",
+        "warmup_rounds": 1,
+        "refresh_interval": 5
+      }
+    },
+    {
+      "round": 7,
+      "eval_skipped": true,
+      "eval_skip_reason": "eval_final_only",
+      "v8_round_a_schedule": {
+        "train_upload_a": false,
+        "upload_scope": "b_only",
+        "warmup_rounds": 1,
+        "refresh_interval": 5
+      }
+    },
+    {
+      "round": 8,
+      "eval_skipped": true,
+      "eval_skip_reason": "eval_final_only",
+      "v8_round_a_schedule": {
+        "train_upload_a": false,
+        "upload_scope": "b_only",
+        "warmup_rounds": 1,
+        "refresh_interval": 5
+      }
+    },
+    {
+      "round": 9,
+      "eval_skipped": true,
+      "eval_skip_reason": "eval_final_only",
+      "v8_round_a_schedule": {
+        "train_upload_a": false,
+        "upload_scope": "b_only",
+        "warmup_rounds": 1,
+        "refresh_interval": 5
+      }
+    },
+    {
+      "round": 10,
+      "domain_macro_token_accuracy": 0.6009576790896792,
+      "best_domain_macro_token_accuracy": 0.6009576790896792,
+      "worst_domain_token_accuracy": 0.46699994681699736,
+      "best_worst_domain_token_accuracy": 0.46699994681699736,
+      "domain_macro_perplexity": 6.013241866876781,
+      "best_domain_macro_perplexity": 6.013241866876781,
+      "worst_domain_perplexity": 9.85934865759057,
+      "best_worst_domain_perplexity": 9.85934865759057,
+      "domain_macro_loss": 1.7337678445892963,
+      "best_domain_macro_loss": 1.7337678445892963,
+      "worst_domain_loss": 2.288420107364655,
+      "best_worst_domain_loss": 2.288420107364655,
+      "domain_metrics": {
+        "code": {
+          "loss": 1.2879837058028394,
+          "token_accuracy": 0.69174053182917,
+          "perplexity": 3.6254691687824003
+        },
+        "education": {
+          "loss": 1.8383609553178153,
+          "token_accuracy": 0.5921946941460206,
+          "perplexity": 6.286226406577385
+        },
+        "finance": {
+          "loss": 2.288420107364655,
+          "token_accuracy": 0.46699994681699736,
+          "perplexity": 9.85934865759057
+        },
+        "general": {
+          "loss": 1.756582317771492,
+          "token_accuracy": 0.6112793963760532,
+          "perplexity": 5.792606238014038
+        },
+        "legal": {
+          "loss": 1.8664880186678419,
+          "token_accuracy": 0.5731141455654251,
+          "perplexity": 6.46554959001961
+        },
+        "math": {
+          "loss": 1.1805309623479845,
+          "token_accuracy": 0.7040580776822454,
+          "perplexity": 3.2561026118770973
+        },
+        "medical": {
+          "loss": 1.9180088448524475,
+          "token_accuracy": 0.5673169612118432,
+          "perplexity": 6.807390395276365
+        }
+      },
+      "lora_expert_stats": {
+        "cluster_mode": "global",
+        "selected_k": 1,
+        "mean_pair_angle_deg": 23.49213434743625,
+        "mean_pair_cos": 0.9155832731389867,
+        "cluster_sizes": {
+          "0": 35
+        },
+        "domain_nmi": 0.0,
+        "domain_ari": 0.0,
+        "b_mode": "mean",
+        "expert_top_m": 1,
+        "expert_router_temperature": 0.2,
+        "hilora_leaf_blend": 0.0,
+        "num_b_layers": 210,
+        "upload_scope": "b_only",
+        "freeze_a": true
+      },
+      "lora_expert_client_clusters": {
+        "0": 0,
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "4": 0,
+        "5": 0,
+        "6": 0,
+        "7": 0,
+        "8": 0,
+        "9": 0,
+        "10": 0,
+        "11": 0,
+        "12": 0,
+        "13": 0,
+        "14": 0,
+        "15": 0,
+        "16": 0,
+        "17": 0,
+        "18": 0,
+        "19": 0,
+        "20": 0,
+        "21": 0,
+        "22": 0,
+        "23": 0,
+        "24": 0,
+        "25": 0,
+        "26": 0,
+        "27": 0,
+        "28": 0,
+        "29": 0,
+        "30": 0,
+        "31": 0,
+        "32": 0,
+        "33": 0,
+        "34": 0
+      },
+      "lora_expert_cluster_domain_hist": {
+        "0": {
+          "code": 5,
+          "education": 5,
+          "finance": 5,
+          "general": 5,
+          "legal": 5,
+          "math": 5,
+          "medical": 5
+        }
+      },
+      "lora_expert_client_routes": {
+        "0": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "1": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "2": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "3": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "4": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "5": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "6": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "7": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "8": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "9": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "10": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "11": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "12": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "13": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "14": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "15": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "16": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "17": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "18": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "19": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "20": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "21": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "22": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "23": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "24": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "25": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "26": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "27": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "28": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "29": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "30": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "31": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "32": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "33": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "34": [
+          [
+            0,
+            1.0
+          ]
+        ]
+      },
+      "client_local_macro_token_accuracy": 0.6091338017078147,
+      "client_local_macro_perplexity": 5.9842789721312055,
+      "client_local_macro_loss": 1.7001480247222445,
+      "off_domain_macro_token_accuracy": 0.6009576790896793,
+      "off_domain_macro_perplexity": 6.013241866876781,
+      "off_domain_macro_loss": 1.7337678445892963,
+      "in_domain_domain_test_macro_token_accuracy": 0.6009576790896793,
+      "in_domain_domain_test_macro_perplexity": 6.013241866876782,
+      "in_domain_domain_test_macro_loss": 1.7337678445892961,
+      "personalization_gap_token_accuracy": 0.008176122618135384,
+      "personalization_gap_perplexity": 0.02896289474557534,
+      "personalization_gap_loss": 0.03361981986705187,
+      "v8_round_a_schedule": {
+        "train_upload_a": false,
+        "upload_scope": "b_only",
+        "warmup_rounds": 1,
+        "refresh_interval": 5
+      }
+    }
+  ],
+  "recommended_kpis": {
+    "token_accuracy": [
+      "domain_macro_token_accuracy",
+      "worst_domain_token_accuracy",
+      "client_local_macro_token_accuracy",
+      "in_domain_domain_test_macro_token_accuracy",
+      "off_domain_macro_token_accuracy"
+    ],
+    "perplexity": [
+      "domain_macro_perplexity",
+      "worst_domain_perplexity",
+      "client_local_macro_perplexity",
+      "in_domain_domain_test_macro_perplexity",
+      "off_domain_macro_perplexity"
+    ],
+    "communication": {
+      "path": "communication",
+      "fields": [
+        "down_bytes_per_client",
+        "up_bytes_per_client",
+        "agg_type"
+      ]
+    },
+    "fedplora_oneshot_conflict": {
+      "path": "rounds[i].fedplora_oneshot_conflict",
+      "note": "Present after FedPLoRA-Oneshot server aggregation; typically mean_conflict, max_conflict, high_conflict_row_frac, mean_init_gate. Other agg_type: omit or {}. Eval-only reload uses checkpoint meta when available."
+    },
+    "personalization_gaps": [
+      "personalization_gap_token_accuracy",
+      "personalization_gap_perplexity"
+    ]
+  },
+  "recommended_primary_personalization_metrics": [
+    "client_local_macro_token_accuracy",
+    "client_local_macro_perplexity",
+    "off_domain_macro_token_accuracy",
+    "off_domain_macro_perplexity",
+    "personalization_gap_token_accuracy",
+    "personalization_gap_perplexity"
+  ]
+}
