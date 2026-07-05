@@ -67,6 +67,11 @@ from methods.v10 import (
     build_fedplora_v10_upload_package,
     is_fedplora_v10_agg,
 )
+from methods.v11 import (
+    aggregate_models_fedplora_v11,
+    build_fedplora_v11_upload_package,
+    is_fedplora_v11_agg,
+)
 from utilities.models import (
     create_peft_causal_lm_model,
     create_peft_causal_lm_ffa_model,
@@ -90,6 +95,8 @@ from utilities.utils import (
     is_fedplora_v8_scheduled_a_agg,
     is_fedplora_v9_family_agg,
     is_fedplora_v10_family_agg,
+    is_fedplora_v11_family_agg,
+    is_fedplora_v11_gmix_agg,
     v8_train_a_this_round,
     get_fedplora_shared_param_names,
     get_trainable_param_names,
@@ -516,6 +523,13 @@ parser.add_argument(
     type=float,
     default=1.5,
     help="FedPLoRA-v10 server: clip corrected A row norms to [ref/ratio, ref*ratio]. <=1 disables.",
+)
+parser.add_argument(
+    "--v11_global_b_mix_mu",
+    type=float,
+    default=0.4,
+    help="FedPLoRA-v11c: explicit global-B branch weight in "
+    "B_client=mu*B_global+(1-mu)*B_routed. Used only by v11c_gmix.",
 )
 parser.add_argument(
     "--hilora_leaf_blend",
@@ -1255,6 +1269,7 @@ def _configure_v8_round_a_schedule(args, model, round_idx: int) -> bool:
         is_fedplora_v8_family_agg(args.agg_type)
         or is_fedplora_v9_family_agg(args.agg_type)
         or is_fedplora_v10_family_agg(args.agg_type)
+        or is_fedplora_v11_family_agg(args.agg_type)
     ):
         args._v8_current_train_a = None
         args._v8_current_b_only_upload = None
@@ -1268,12 +1283,13 @@ def _configure_v8_round_a_schedule(args, model, round_idx: int) -> bool:
         args._v8_current_train_a = bool(train_a)
         args._v8_current_b_only_upload = not bool(train_a)
         return bool(train_a)
-    if is_fedplora_v10_family_agg(args.agg_type):
+    if is_fedplora_v10_family_agg(args.agg_type) or is_fedplora_v11_family_agg(args.agg_type):
         _set_lora_a_trainable(model, True)
         args._v8_current_train_a = True
         args._v8_current_b_only_upload = False
+        label = "v11" if is_fedplora_v11_family_agg(args.agg_type) else "v10"
         print(
-            f"[v10-schedule] round={round_idx + 1} train_upload_A=yes "
+            f"[{label}-schedule] round={round_idx + 1} train_upload_A=yes "
             f"upload_scope=A-correction+B",
             flush=True,
         )
@@ -1310,6 +1326,7 @@ def _comm_info_for_args(model, args):
         v8_a_refresh_interval=getattr(args, "v8_a_refresh_interval", 5),
         v8_cache_shared_a_downlink=getattr(args, "v8_cache_shared_a_downlink", True),
         v10_a_sketch_rank=getattr(args, "v10_a_sketch_rank", 2),
+        v11_global_b_mix_mu=getattr(args, "v11_global_b_mix_mu", 0.4),
     )
 
 
@@ -1340,7 +1357,7 @@ def _communication_metrics_payload(args, comm_info):
             payload[key] = comm_info[key]
     if is_fedplora_v8_family_agg(args.agg_type) or is_fedplora_v9_family_agg(
         args.agg_type
-    ) or is_fedplora_v10_family_agg(args.agg_type):
+    ) or is_fedplora_v10_family_agg(args.agg_type) or is_fedplora_v11_family_agg(args.agg_type):
         payload["v8_a_warmup_rounds"] = int(getattr(args, "v8_a_warmup_rounds", 1) or 0)
         payload["v8_a_refresh_interval"] = int(
             getattr(args, "v8_a_refresh_interval", 5) or 0
@@ -1370,6 +1387,32 @@ def _communication_metrics_payload(args, comm_info):
         for key in (
             "v10_a_correction_bytes_per_client",
             "v10_a_correction_mode",
+        ):
+            if key in comm_info:
+                payload[key] = comm_info[key]
+    if is_fedplora_v11_family_agg(args.agg_type):
+        payload["v10_a_correction_alpha"] = float(
+            getattr(args, "v10_a_correction_alpha", 0.35) or 0.0
+        )
+        payload["v10_a_anchor_lambda"] = float(
+            getattr(args, "v10_a_anchor_lambda", 1e-3) or 0.0
+        )
+        payload["v10_a_prox_lambda"] = float(
+            getattr(args, "v10_a_prox_lambda", 5e-4) or 0.0
+        )
+        payload["v10_b_prox_lambda"] = float(
+            getattr(args, "v10_b_prox_lambda", 1e-4) or 0.0
+        )
+        payload["v10_a_sketch_rank"] = int(getattr(args, "v10_a_sketch_rank", 2) or 0)
+        payload["v10_a_norm_clip_ratio"] = float(
+            getattr(args, "v10_a_norm_clip_ratio", 1.5) or 0.0
+        )
+        payload["v11_global_b_mix_mu"] = float(
+            getattr(args, "v11_global_b_mix_mu", 0.4) or 0.0
+        )
+        for key in (
+            "v11_a_correction_bytes_per_client",
+            "v11_a_correction_mode",
         ):
             if key in comm_info:
                 payload[key] = comm_info[key]
@@ -1469,7 +1512,7 @@ def _resume_meta_matches(meta: dict, args, split_dir: str, client_ids) -> bool:
                 getattr(args, "v9_mix_lambda", 0.5) or 0.0
             ):
                 return _bad("v9_mix_lambda")
-        if is_fedplora_v10_family_agg(args.agg_type):
+        if is_fedplora_v10_family_agg(args.agg_type) or is_fedplora_v11_family_agg(args.agg_type):
             v10_float_fields = [
                 "v10_a_correction_alpha",
                 "v10_a_anchor_lambda",
@@ -1486,6 +1529,11 @@ def _resume_meta_matches(meta: dict, args, split_dir: str, client_ids) -> bool:
                 getattr(args, "v10_a_sketch_rank", 0) or 0
             ):
                 return _bad("v10_a_sketch_rank")
+        if is_fedplora_v11_gmix_agg(args.agg_type):
+            if float(cfg.get("v11_global_b_mix_mu", 0.4) or 0.0) != float(
+                getattr(args, "v11_global_b_mix_mu", 0.4) or 0.0
+            ):
+                return _bad("v11_global_b_mix_mu")
     return True
 
 
@@ -2091,7 +2139,7 @@ def _save_run_checkpoint(
                 meta["lora_expert_config"]["v9_mix_lambda"] = float(
                     getattr(args, "v9_mix_lambda", 0.5) or 0.0
                 )
-            if is_fedplora_v10_family_agg(args.agg_type):
+            if is_fedplora_v10_family_agg(args.agg_type) or is_fedplora_v11_family_agg(args.agg_type):
                 meta["lora_expert_config"].update(
                     {
                         "v10_a_correction_alpha": float(
@@ -2113,6 +2161,10 @@ def _save_run_checkpoint(
                             getattr(args, "v10_a_norm_clip_ratio", 1.5) or 0.0
                         ),
                     }
+                )
+            if is_fedplora_v11_gmix_agg(args.agg_type):
+                meta["lora_expert_config"]["v11_global_b_mix_mu"] = float(
+                    getattr(args, "v11_global_b_mix_mu", 0.4) or 0.0
                 )
         if round_saved_1based is not None:
             meta["round_saved_1based"] = int(round_saved_1based)
@@ -2446,11 +2498,16 @@ def federated_sft(args):
         is_fedplora_v8_family_agg(args.agg_type)
         or is_fedplora_v9_family_agg(args.agg_type)
         or is_fedplora_v10_family_agg(args.agg_type)
+        or is_fedplora_v11_family_agg(args.agg_type)
     ):
         label = (
-            "v10"
-            if is_fedplora_v10_family_agg(args.agg_type)
-            else ("v9" if is_fedplora_v9_family_agg(args.agg_type) else "v8")
+            "v11"
+            if is_fedplora_v11_family_agg(args.agg_type)
+            else (
+                "v10"
+                if is_fedplora_v10_family_agg(args.agg_type)
+                else ("v9" if is_fedplora_v9_family_agg(args.agg_type) else "v8")
+            )
         )
         print(
             f"[setup] {label} effective_comm_down_bytes_per_client="
@@ -2465,9 +2522,9 @@ def federated_sft(args):
                 f"[setup] v9_mix_lambda={float(getattr(args, 'v9_mix_lambda', 0.5) or 0.0):.3f}",
                 flush=True,
             )
-        if is_fedplora_v10_family_agg(args.agg_type):
+        if is_fedplora_v10_family_agg(args.agg_type) or is_fedplora_v11_family_agg(args.agg_type):
             print(
-                f"[setup] v10_a_correction_alpha="
+                f"[setup] {label}_a_correction_alpha="
                 f"{float(getattr(args, 'v10_a_correction_alpha', 0.35) or 0.0):.3f} "
                 f"v10_a_anchor_lambda="
                 f"{float(getattr(args, 'v10_a_anchor_lambda', 1e-3) or 0.0):.2e} "
@@ -2476,9 +2533,16 @@ def federated_sft(args):
                 f"v10_b_prox_lambda="
                 f"{float(getattr(args, 'v10_b_prox_lambda', 1e-4) or 0.0):.2e} "
                 f"v10_a_sketch_rank={int(getattr(args, 'v10_a_sketch_rank', 2) or 0)} "
-                f"v10_a_correction_mode={comm_info.get('v10_a_correction_mode', '')}",
+                f"a_correction_mode="
+                f"{comm_info.get('v11_a_correction_mode', '') or comm_info.get('v10_a_correction_mode', '')}",
                 flush=True,
             )
+            if is_fedplora_v11_gmix_agg(args.agg_type):
+                print(
+                    f"[setup] v11_global_b_mix_mu="
+                    f"{float(getattr(args, 'v11_global_b_mix_mu', 0.4) or 0.0):.3f}",
+                    flush=True,
+                )
 
     if is_lora_a_disk_agg(args.agg_type):
         init_fedplora_adapters(global_model)
@@ -2585,7 +2649,7 @@ def federated_sft(args):
                 broadcast_fedplora_shared_state(global_model, gp_global_state)
                 local_state = _get_client_local_state(client_store, client_id)
                 load_fedplora_local_state(global_model, local_state)
-                if is_fedplora_v10_family_agg(args.agg_type):
+                if is_fedplora_v10_family_agg(args.agg_type) or is_fedplora_v11_family_agg(args.agg_type):
                     args._fedplora_round_start_B = {
                         k: v.detach().cpu().clone()
                         for k, v in local_state.items()
@@ -2605,7 +2669,9 @@ def federated_sft(args):
                 cid = int(client_ids[i])
                 dom = (getattr(args, "_fedplora_client_domains", {}) or {}).get(cid, "unknown")
                 if is_lora_expert_agg(args.agg_type):
-                    if is_fedplora_v10_agg(args.agg_type):
+                    if is_fedplora_v11_agg(args.agg_type):
+                        build_expert_payload = build_fedplora_v11_upload_package
+                    elif is_fedplora_v10_agg(args.agg_type):
                         build_expert_payload = build_fedplora_v10_upload_package
                     elif is_fedplora_v9_agg(args.agg_type):
                         build_expert_payload = build_fedplora_v9_upload_package
@@ -2689,7 +2755,11 @@ def federated_sft(args):
             global_model = aggregate_models_ffa(global_model, client_states_for_agg)
         elif is_lora_expert_agg(args.agg_type):
             args._aggregate_client_sizes = client_sizes
-            if is_fedplora_v10_agg(args.agg_type):
+            if is_fedplora_v11_agg(args.agg_type):
+                global_model = aggregate_models_fedplora_v11(
+                    global_model, lora_expert_uploads, args
+                )
+            elif is_fedplora_v10_agg(args.agg_type):
                 global_model = aggregate_models_fedplora_v10(
                     global_model, lora_expert_uploads, args
                 )
@@ -2731,6 +2801,24 @@ def federated_sft(args):
                         f"{expert_summ.get('v9_mix_lambda', float('nan')):.3f} "
                         f"mean_mix_delta_norm_ratio="
                         f"{expert_summ.get('v9_mean_mix_delta_norm_ratio', float('nan')):.4f}",
+                        flush=True,
+                    )
+                if is_fedplora_v11_agg(args.agg_type):
+                    print(
+                        f"[fedplora-v11] branch="
+                        f"{expert_summ.get('v11_branch', 'na')} "
+                        f"mu="
+                        f"{expert_summ.get('v11_global_b_mix_mu', float('nan')):.3f} "
+                        f"a_payload="
+                        f"{expert_summ.get('v11_a_payload', 'na')} "
+                        f"a_alpha="
+                        f"{expert_summ.get('v11_a_correction_alpha', float('nan')):.3f} "
+                        f"a_rel_update="
+                        f"{expert_summ.get('v11_a_mean_rel_update_norm', float('nan')):.4f} "
+                        f"a_row_cos="
+                        f"{expert_summ.get('v11_a_mean_row_cos_to_ref', float('nan')):.4f} "
+                        f"a_clipped_row_frac="
+                        f"{expert_summ.get('v11_a_clipped_row_frac', float('nan')):.4f}",
                         flush=True,
                     )
                 if is_fedplora_v10_agg(args.agg_type):
@@ -2939,6 +3027,52 @@ def federated_sft(args):
                 ),
                 "upload_scope": "a_correction_b",
             }
+        if is_fedplora_v11_family_agg(args.agg_type):
+            round_payload["v11"] = {
+                "branch": (
+                    "global_B_mixing"
+                    if is_fedplora_v11_gmix_agg(args.agg_type)
+                    else "A_relaxation"
+                ),
+                "a_correction_alpha": float(
+                    getattr(args, "v10_a_correction_alpha", 0.35) or 0.0
+                ),
+                "a_anchor_lambda": float(
+                    getattr(args, "v10_a_anchor_lambda", 1e-3) or 0.0
+                ),
+                "a_prox_lambda": float(
+                    getattr(args, "v10_a_prox_lambda", 5e-4) or 0.0
+                ),
+                "b_prox_lambda": float(
+                    getattr(args, "v10_b_prox_lambda", 1e-4) or 0.0
+                ),
+                "a_sketch_rank": int(getattr(args, "v10_a_sketch_rank", 2) or 0),
+                "a_norm_clip_ratio": float(
+                    getattr(args, "v10_a_norm_clip_ratio", 1.5) or 0.0
+                ),
+                "global_b_mix_mu": float(
+                    getattr(args, "v11_global_b_mix_mu", 0.4) or 0.0
+                ),
+                "upload_scope": "true_a_sketch_b",
+            }
+        if is_lora_expert_agg(args.agg_type) and "lora_expert_stats" not in round_payload:
+            expert_stats = getattr(args, "_lora_expert_stats", {}) or {}
+            if expert_stats:
+                round_payload["lora_expert_stats"] = expert_stats.get(
+                    "_summary", expert_stats
+                )
+                if "client_clusters" in expert_stats:
+                    round_payload["lora_expert_client_clusters"] = expert_stats[
+                        "client_clusters"
+                    ]
+                if "cluster_domain_hist" in expert_stats:
+                    round_payload["lora_expert_cluster_domain_hist"] = expert_stats[
+                        "cluster_domain_hist"
+                    ]
+                if "client_routes" in expert_stats:
+                    round_payload["lora_expert_client_routes"] = expert_stats[
+                        "client_routes"
+                    ]
         metrics_history["rounds"].append(round_payload)
 
     metrics_path = _metrics_path(args, split_dir)

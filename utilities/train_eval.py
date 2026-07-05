@@ -53,6 +53,7 @@ from utilities.utils import (
     is_fedplora_oneshot_agg,
     is_fedplora_oneshot_family_agg,
     is_fedplora_v10_family_agg,
+    is_fedplora_v11_family_agg,
     is_yoco_agg,
 )
 
@@ -256,7 +257,10 @@ def _add_fedplora_oneshot_anchor(loss, model, args):
 
 
 def _add_fedplora_v10_geometry_regularizer(loss, model, args):
-    if not is_fedplora_v10_family_agg(getattr(args, "agg_type", None)):
+    if not (
+        is_fedplora_v10_family_agg(getattr(args, "agg_type", None))
+        or is_fedplora_v11_family_agg(getattr(args, "agg_type", None))
+    ):
         return loss
 
     a_ref = getattr(args, "_fedplora_v10_global_A_gpu", None)
@@ -338,7 +342,10 @@ def _fedplora_refresh_reg_tensor_gpu_cache(model, args):
             if gpu_map:
                 args._fedplora_global_A_gpu = gpu_map
 
-    if is_fedplora_v10_family_agg(getattr(args, "agg_type", None)):
+    if (
+        is_fedplora_v10_family_agg(getattr(args, "agg_type", None))
+        or is_fedplora_v11_family_agg(getattr(args, "agg_type", None))
+    ):
         sd = model.state_dict()
         Ag = getattr(args, "_fedplora_global_A", None)
         if isinstance(Ag, dict) and Ag:

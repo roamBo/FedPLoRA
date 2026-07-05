@@ -15,6 +15,9 @@ downlinked LoRA state per client:
     methods.v9; listed here only for shared helper compatibility).
   - fedplora_v10_geom_a / sketch_a: geometry-preserving A correction plus
     routed B (implemented in methods.v10; listed here for shared helpers).
+  - fedplora_v11a_relaxed_a / v11c_gmix: true sketch A-correction payloads
+    plus routed/global-mixed B (implemented in methods.v11; listed here for
+    shared helpers).
   - fedlease: adaptive B-subspace expert allocation plus top-M expert blending.
   - hilora: root shared A, cluster B, and a local leaf residual folded into B.
   - hydralora: shared A plus multiple B experts with hard/soft routing.
@@ -37,6 +40,7 @@ import torch
 from methods import common as M
 from utilities.utils import (
     FEDPLORA_V8_FAMILY_AGGS,
+    FEDPLORA_V11_FAMILY_AGGS,
     get_trainable_param_names,
     is_lora_a_param_name,
     is_lora_b_param_name,
@@ -73,6 +77,14 @@ SUPPORTED_LORA_EXPERT_AGGS = {
     "fedplora_v10_sketch_a",
     "v10_geom_a",
     "v10_sketch_a",
+    "fedplora_v11a_relaxed_a",
+    "fedplora_v11a",
+    "v11a_relaxed_a",
+    "v11a",
+    "fedplora_v11c_gmix",
+    "fedplora_v11_gmix",
+    "v11c_gmix",
+    "v11_gmix",
     "fedlease",
     "hilora",
     "ecolora",
@@ -90,6 +102,8 @@ def _canonical_agg(agg_type) -> str:
         return "fedplora_v7"
     if t in FEDPLORA_V8_FAMILY_AGGS:
         return "fedplora_v8"
+    if t in FEDPLORA_V11_FAMILY_AGGS:
+        return t
     return t
 
 
@@ -772,6 +786,14 @@ def aggregate_models_lora_expert_baseline(global_model, client_uploads, args):
             "fedplora_v10_sketch_a",
             "v10_geom_a",
             "v10_sketch_a",
+            "fedplora_v11a_relaxed_a",
+            "fedplora_v11a",
+            "v11a_relaxed_a",
+            "v11a",
+            "fedplora_v11c_gmix",
+            "fedplora_v11_gmix",
+            "v11c_gmix",
+            "v11_gmix",
         }:
             route = [(int(assign[i]), 1.0)]
         else:
