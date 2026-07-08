@@ -100,6 +100,7 @@ export TORCH_DTYPE=bfloat16
 export TARGET_MODULES=q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj
 export EVAL_MAX_BATCHES=0
 
+# 默认物理 GPU 1；改卡见 §9 或 `export GPU=0`
 export GPU=1
 
 check_benchmark () {
@@ -287,6 +288,23 @@ GPU=1 run_sft_smoke smoke_normal normal
 GPU=1 run_sft_smoke smoke_ecolora ecolora --ecolora_keep_ratio 0.25 --ecolora_mask_mode round_robin
 GPU=1 run_sft_smoke smoke_yoco yoco --yoco_aggregate_mode conflict --yoco_conflict_method avgm
 GPU=1 run_sft_smoke smoke_feddat feddat --feddat_teacher_lambda 0.01
+```
+
+### 1.2 一键复制：本节全部 smoke（GPU=0，`export` 生效，行首勿写 `GPU=1`）
+
+```bash
+export GPU=0
+
+run_sft_smoke smoke_v11a_relaxed_a fedplora_v11a_relaxed_a --v10_a_sketch_rank 2 --v10_a_correction_alpha 0.75 --v10_a_anchor_lambda 0.001 --v10_a_prox_lambda 0.0005 --v10_b_prox_lambda 0.0001 --v10_a_norm_clip_ratio 1.5
+run_sft_smoke smoke_v11a_oracle_domain fedplora_v11a_relaxed_a --expert_cluster_mode domain --v10_a_sketch_rank 2 --v10_a_correction_alpha 0.35
+run_sft_smoke smoke_v11c_gmix_mu040 fedplora_v11c_gmix --v11_global_b_mix_mu 0.4 --v10_a_sketch_rank 2 --v10_a_correction_alpha 0.35
+run_sft_smoke smoke_v10_sketch_rank2_alpha050 fedplora_v10_sketch_a --v10_a_sketch_rank 2 --v10_a_correction_alpha 0.50 --v10_a_anchor_lambda 0.001 --v10_a_prox_lambda 0.0005 --v10_b_prox_lambda 0.0001 --v10_a_norm_clip_ratio 1.5
+run_sft_smoke smoke_v8 fedplora_v8
+run_sft_smoke smoke_v9_mix_ab_lam05 fedplora_v9_mix_ab --v9_mix_lambda 0.5
+run_sft_smoke smoke_normal normal
+run_sft_smoke smoke_ecolora ecolora --ecolora_keep_ratio 0.25 --ecolora_mask_mode round_robin
+run_sft_smoke smoke_yoco yoco --yoco_aggregate_mode conflict --yoco_conflict_method avgm
+run_sft_smoke smoke_feddat feddat --feddat_teacher_lambda 0.01
 ```
 
 ---
@@ -572,6 +590,109 @@ ps -p <pid> -o pid,cmd
 
 ---
 
+## 9. 一键复制综合（全部 GPU=0）
+
+`run_sft_full` / `run_sft_smoke` 内部读 `local gpu="${GPU:-1}"`，因此：
+
+- **`export GPU=0` 有效**：后续命令**不要**再写 `GPU=1` 前缀，否则会覆盖 export（行首 `GPU=1 cmd` 只对这一条生效）。
+- 若某条命令写了 `GPU=1 run_sft_full ...`，即使用过 `export GPU=0`，该条仍跑在 **1** 号卡。
+- 双卡并行：一条 `export GPU=0` + 无前缀命令，另一条用 `GPU=1 run_sft_full ...` 显式指定。
+
+### 9.1 smoke 全部（GPU=0）
+
+```bash
+export GPU=0
+
+run_sft_smoke smoke_v11a_relaxed_a fedplora_v11a_relaxed_a --v10_a_sketch_rank 2 --v10_a_correction_alpha 0.75 --v10_a_anchor_lambda 0.001 --v10_a_prox_lambda 0.0005 --v10_b_prox_lambda 0.0001 --v10_a_norm_clip_ratio 1.5
+run_sft_smoke smoke_v11a_oracle_domain fedplora_v11a_relaxed_a --expert_cluster_mode domain --v10_a_sketch_rank 2 --v10_a_correction_alpha 0.35
+run_sft_smoke smoke_v11c_gmix_mu040 fedplora_v11c_gmix --v11_global_b_mix_mu 0.4 --v10_a_sketch_rank 2 --v10_a_correction_alpha 0.35
+run_sft_smoke smoke_v10_sketch_rank2_alpha050 fedplora_v10_sketch_a --v10_a_sketch_rank 2 --v10_a_correction_alpha 0.50 --v10_a_anchor_lambda 0.001 --v10_a_prox_lambda 0.0005 --v10_b_prox_lambda 0.0001 --v10_a_norm_clip_ratio 1.5
+run_sft_smoke smoke_v8 fedplora_v8
+run_sft_smoke smoke_v9_mix_ab_lam05 fedplora_v9_mix_ab --v9_mix_lambda 0.5
+run_sft_smoke smoke_normal normal
+run_sft_smoke smoke_ecolora ecolora --ecolora_keep_ratio 0.25 --ecolora_mask_mode round_robin
+run_sft_smoke smoke_yoco yoco --yoco_aggregate_mode conflict --yoco_conflict_method avgm
+run_sft_smoke smoke_feddat feddat --feddat_teacher_lambda 0.01
+```
+
+### 9.2 E1 + E2 + E3 + E8 正式（GPU=0，seed=42）
+
+```bash
+export GPU=0
+export BENCHMARK_SPLIT=dir05
+export RUN_ID_PREFIX=v11_20260705_35c_dir05_r10_finaleval
+set_run_paths 42
+
+run_sft_full E1_v11a_alpha075 fedplora_v11a_relaxed_a --v10_a_sketch_rank 2 --v10_a_correction_alpha 0.75 --v10_a_anchor_lambda 0.001 --v10_a_prox_lambda 0.0005 --v10_b_prox_lambda 0.0001 --v10_a_norm_clip_ratio 1.5
+run_sft_full E1_v11a_alpha100 fedplora_v11a_relaxed_a --v10_a_sketch_rank 2 --v10_a_correction_alpha 1.00 --v10_a_anchor_lambda 0.001 --v10_a_prox_lambda 0.0005 --v10_b_prox_lambda 0.0001 --v10_a_norm_clip_ratio 1.5
+run_sft_full E1_v11a_alpha050_noAreg fedplora_v11a_relaxed_a --v10_a_sketch_rank 2 --v10_a_correction_alpha 0.50 --v10_a_anchor_lambda 0.0 --v10_a_prox_lambda 0.0 --v10_b_prox_lambda 0.0001 --v10_a_norm_clip_ratio 0.0
+run_sft_full E1_v11a_alpha100_noreg fedplora_v11a_relaxed_a --v10_a_sketch_rank 2 --v10_a_correction_alpha 1.00 --v10_a_anchor_lambda 0.0 --v10_a_prox_lambda 0.0 --v10_b_prox_lambda 0.0 --v10_a_norm_clip_ratio 0.0
+run_sft_full E2_v11a_oracle_domain fedplora_v11a_relaxed_a --expert_cluster_mode domain --v10_a_sketch_rank 2 --v10_a_correction_alpha 0.35 --v10_a_anchor_lambda 0.001 --v10_a_prox_lambda 0.0005 --v10_b_prox_lambda 0.0001 --v10_a_norm_clip_ratio 1.5
+run_sft_full E2_v11a_fixed_k7 fedplora_v11a_relaxed_a --expert_cluster_k 7 --v10_a_sketch_rank 2 --v10_a_correction_alpha 0.35 --v10_a_anchor_lambda 0.001 --v10_a_prox_lambda 0.0005 --v10_b_prox_lambda 0.0001 --v10_a_norm_clip_ratio 1.5
+run_sft_full E3_v11c_gmix_mu020 fedplora_v11c_gmix --v11_global_b_mix_mu 0.2 --v10_a_sketch_rank 2 --v10_a_correction_alpha 0.35 --v10_a_anchor_lambda 0.001 --v10_a_prox_lambda 0.0005 --v10_b_prox_lambda 0.0001 --v10_a_norm_clip_ratio 1.5
+run_sft_full E3_v11c_gmix_mu040 fedplora_v11c_gmix --v11_global_b_mix_mu 0.4 --v10_a_sketch_rank 2 --v10_a_correction_alpha 0.35 --v10_a_anchor_lambda 0.001 --v10_a_prox_lambda 0.0005 --v10_b_prox_lambda 0.0001 --v10_a_norm_clip_ratio 1.5
+run_sft_full E3_v11c_gmix_mu060 fedplora_v11c_gmix --v11_global_b_mix_mu 0.6 --v10_a_sketch_rank 2 --v10_a_correction_alpha 0.35 --v10_a_anchor_lambda 0.001 --v10_a_prox_lambda 0.0005 --v10_b_prox_lambda 0.0001 --v10_a_norm_clip_ratio 1.5
+run_sft_full E3_v11c_gmix_mu040_oracle fedplora_v11c_gmix --expert_cluster_mode domain --v11_global_b_mix_mu 0.4 --v10_a_sketch_rank 2 --v10_a_correction_alpha 0.35 --v10_a_anchor_lambda 0.001 --v10_a_prox_lambda 0.0005 --v10_b_prox_lambda 0.0001 --v10_a_norm_clip_ratio 1.5
+run_sft_full E8_yoco yoco --yoco_aggregate_mode conflict --yoco_conflict_method avgm --yoco_sign_lambda 0.01
+run_sft_full E8_feddat feddat --feddat_teacher_lambda 0.01
+```
+
+> 同一 GPU 上不要同时塞多条 10 轮正式实验；可等上一条 pid 跑完再发下一条，或与 §9.3 双卡搭配。
+
+### 9.3 E4 多 seed（GPU=0）
+
+```bash
+export GPU=0
+export BENCHMARK_SPLIT=dir05
+export RUN_ID_PREFIX=v11_20260705_35c_dir05_r10_finaleval
+
+set_run_paths 43
+run_sft_full E4_seed43_normal normal
+run_sft_full E4_seed43_ecolora ecolora --ecolora_keep_ratio 0.25 --ecolora_mask_mode round_robin
+run_sft_full E4_seed43_v8 fedplora_v8
+run_sft_full E4_seed43_v9_mix_ab_lam05 fedplora_v9_mix_ab --v9_mix_lambda 0.5
+run_sft_full E4_seed43_v10_rank1 fedplora_v10_sketch_a --v10_a_sketch_rank 1 --v10_a_correction_alpha 0.35 --v10_a_anchor_lambda 0.001 --v10_a_prox_lambda 0.0005 --v10_b_prox_lambda 0.0001 --v10_a_norm_clip_ratio 1.5
+run_sft_full E4_seed43_v10_rank2_alpha050 fedplora_v10_sketch_a --v10_a_sketch_rank 2 --v10_a_correction_alpha 0.50 --v10_a_anchor_lambda 0.001 --v10_a_prox_lambda 0.0005 --v10_b_prox_lambda 0.0001 --v10_a_norm_clip_ratio 1.5
+run_sft_full E4_seed43_v11c_gmix_mu040 fedplora_v11c_gmix --v11_global_b_mix_mu 0.4 --v10_a_sketch_rank 2 --v10_a_correction_alpha 0.35 --v10_a_anchor_lambda 0.001 --v10_a_prox_lambda 0.0005 --v10_b_prox_lambda 0.0001 --v10_a_norm_clip_ratio 1.5
+
+set_run_paths 44
+run_sft_full E4_seed44_normal normal
+run_sft_full E4_seed44_ecolora ecolora --ecolora_keep_ratio 0.25 --ecolora_mask_mode round_robin
+run_sft_full E4_seed44_v8 fedplora_v8
+run_sft_full E4_seed44_v9_mix_ab_lam05 fedplora_v9_mix_ab --v9_mix_lambda 0.5
+run_sft_full E4_seed44_v10_rank1 fedplora_v10_sketch_a --v10_a_sketch_rank 1 --v10_a_correction_alpha 0.35 --v10_a_anchor_lambda 0.001 --v10_a_prox_lambda 0.0005 --v10_b_prox_lambda 0.0001 --v10_a_norm_clip_ratio 1.5
+run_sft_full E4_seed44_v10_rank2_alpha050 fedplora_v10_sketch_a --v10_a_sketch_rank 2 --v10_a_correction_alpha 0.50 --v10_a_anchor_lambda 0.001 --v10_a_prox_lambda 0.0005 --v10_b_prox_lambda 0.0001 --v10_a_norm_clip_ratio 1.5
+run_sft_full E4_seed44_v11c_gmix_mu040 fedplora_v11c_gmix --v11_global_b_mix_mu 0.4 --v10_a_sketch_rank 2 --v10_a_correction_alpha 0.35 --v10_a_anchor_lambda 0.001 --v10_a_prox_lambda 0.0005 --v10_b_prox_lambda 0.0001 --v10_a_norm_clip_ratio 1.5
+
+set_run_paths 42
+```
+
+### 9.4 E7 旧 split（GPU=0，跑完记得切回 dir05）
+
+```bash
+export GPU=0
+export BENCHMARK_SPLIT=old35c
+export RUN_ID_PREFIX=v11_20260705_old35c_r10_finaleval
+set_run_paths 42
+check_benchmark "$BENCHMARK_DIR"
+run_sft_full E7_old35c_v9_mix_ab_lam05 fedplora_v9_mix_ab --v9_mix_lambda 0.5
+
+export BENCHMARK_SPLIT=dir05
+export RUN_ID_PREFIX=v11_20260705_35c_dir05_r10_finaleval
+set_run_paths 42
+```
+
+### 9.5 双卡并行示例（0 号卡 smoke + 1 号卡正式，更快）
+
+```bash
+export GPU=0
+run_sft_smoke smoke_v11a_relaxed_a fedplora_v11a_relaxed_a --v10_a_sketch_rank 2 --v10_a_correction_alpha 0.75 --v10_a_anchor_lambda 0.001 --v10_a_prox_lambda 0.0005 --v10_b_prox_lambda 0.0001 --v10_a_norm_clip_ratio 1.5
+
+GPU=1 run_sft_smoke smoke_v11a_oracle_domain fedplora_v11a_relaxed_a --expert_cluster_mode domain --v10_a_sketch_rank 2 --v10_a_correction_alpha 0.35
+```
+
+---
+
 【注意事项】
 
 1. 不要把 `35c` 与 `35c_dir05` 结果合并进同一论文主表；汇总脚本会列出 benchmark split，若出现多个 split 需分表。
@@ -580,4 +701,4 @@ ps -p <pid> -o pid,cmd
 4. 如果 `eval_personalization_metrics` 后段长时间无输出，这是 personalization full eval 静默阶段，不是必然卡死；看 `nvidia-smi` 与 run log 尾部判断。
 5. v11 的 raw/effective 通信应接近一致；若 summary 显示 v11 raw 仍等于完整 A+B，说明命令没有跑到新代码或 agg_type 写错。
 6. `set_run_paths <seed>` 会同步 `BENCHMARK_DIR=.../dir05/seed_<seed>` 与训练 `--seed`；E4 跑 43/44 前确认对应数据已建好（见 `order_gb.md` §0）。
-7. 并行多任务时把 `GPU=1` 改成 `GPU=2`、`GPU=3`；`run_sft_full` / `run_sft_smoke` 已 `nohup ... &` 并 echo `pid`，可连续敲多条。
+7. **GPU 绑定**：`export GPU=0` 对无 `GPU=` 前缀的 `run_sft_*` **有效**（见 §9）；行首 `GPU=1 cmd` 会覆盖 export。并行多卡时用 `export GPU=0` + 无前缀，或 `GPU=1 run_sft_full ...` 显式指定。`run_sft_full` / `run_sft_smoke` 已 `nohup ... &` 并 echo `pid`。
