@@ -1,0 +1,3679 @@
+{
+  "args": {
+    "model": "/data/yaominghao/gb/models/SmolLM2-135M",
+    "benchmark_dir": "/data/yaominghao/gb/FedPLoRA/data/domain_benchmark_35c_dir05/seed_42",
+    "benchmark_jsonl": "",
+    "build_benchmark": false,
+    "benchmark_output_dir": "data/domain_benchmark",
+    "num_clients_per_domain": 5,
+    "min_samples_per_client": 50,
+    "agg_type": "fedplora_v11a_relaxed_a",
+    "rounds": 10,
+    "num_clients": 35,
+    "local_epochs": 1,
+    "lr": 0.0002,
+    "lora_r": 8,
+    "lora_alpha": 16,
+    "lora_dropout": 0.05,
+    "rslora": false,
+    "batch_size": 2,
+    "warmup_ratio": 0.03,
+    "max_seq_length": 256,
+    "seed": 42,
+    "gradient_checkpointing": true,
+    "trust_remote_code": false,
+    "torch_dtype": "bfloat16",
+    "target_modules": "q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj",
+    "client_state_dir": "/data/yaominghao/gb/result/FedPLoRA/v11_20260705_35c_dir05_r10_finaleval_seed42/result_files/client_states/E2_v11a_fixed_k7",
+    "save_client_state_to_disk": true,
+    "metrics_output_dir": "/data/yaominghao/gb/result/FedPLoRA/v11_20260705_35c_dir05_r10_finaleval_seed42/result_logs/E2_v11a_fixed_k7",
+    "save_run_checkpoint_dir": "/data/yaominghao/gb/models/trained_models_LW/v11_20260705_35c_dir05_r10_finaleval_seed42/E2_v11a_fixed_k7_SmolLM2-135M_dir05_r10_e1_lr0.0002_seed42",
+    "skip_post_agg_snapshots": true,
+    "trained_models_root": "/data/yaominghao/gb/models/trained_models_LW/v11_20260705_35c_dir05_r10_finaleval_seed42",
+    "no_auto_save_run_checkpoint": false,
+    "force_retrain": false,
+    "eval_only_from_checkpoint": "",
+    "gp_align_lambda": 0.01,
+    "gp_prox_lambda": 0.001,
+    "gp_orth_lambda": 0.0001,
+    "gp_consensus_power": 2.0,
+    "gp_agg_momentum": 0.5,
+    "yoco_sparse_lambda": 0.0001,
+    "yoco_pcwa_components": 3,
+    "yoco_aggregate_mode": "conflict",
+    "yoco_conflict_method": "avgm",
+    "yoco_sign_lambda": 0.01,
+    "yoco_eval_use_local_clients": false,
+    "memory_agg_eval_use_local_clients": false,
+    "flora_svd_device": "auto",
+    "oneshot_consensus_power": 2.0,
+    "oneshot_importance_power": 1.0,
+    "oneshot_importance_clip": 5.0,
+    "oneshot_conflict_threshold": 0.35,
+    "oneshot_conflict_blend": 1.0,
+    "oneshot_scale_clip_ratio": 0.0,
+    "oneshot_anchor_lambda": 0.0001,
+    "oneshot_prox_lambda": 0.0,
+    "oneshot_no_keep_init_on_conflict": false,
+    "oneshot_orthogonalize": false,
+    "oneshot_ablation_plain_fedavg": false,
+    "v3_conflict_quantile": 0.8,
+    "v3_gate_temperature": 0.05,
+    "v3_conflict_blend": 1.0,
+    "v3_residual_norm_power": 1.0,
+    "v3_residual_eps": 1e-07,
+    "v3_cluster_mode": "domain_prior",
+    "v3_cluster_lambda_min": 0.2,
+    "v3_cluster_lambda_max": 1.0,
+    "v3_rpca_rank": 1,
+    "v3_sparse_quantile": 0.8,
+    "v3_domain_cluster_map": "",
+    "v6_dcr_mode": "",
+    "v6_dcr_rc_policy": "auto",
+    "v6_dcr_shared_rank": 0,
+    "v6_dcr_min_shared_rank": 1,
+    "v6_dcr_max_shared_rank": 0,
+    "v6_dcr_energy_tau": 0.8,
+    "v6_dcr_conflict_strength": 1.0,
+    "v6_dcr_importance_power": 0.0,
+    "v6_dcr_importance_clip": 5.0,
+    "v7_b_mode": "mean",
+    "expert_cluster_mode": "auto",
+    "expert_cluster_k": 7,
+    "expert_max_clusters": 0,
+    "expert_b_mode": "",
+    "expert_top_m": 0,
+    "expert_router_temperature": 0.2,
+    "expert_freeze_a": false,
+    "v8_a_warmup_rounds": 1,
+    "v8_a_refresh_interval": 5,
+    "v8_cache_shared_a_downlink": true,
+    "v9_mix_lambda": 0.5,
+    "v10_a_correction_alpha": 0.35,
+    "v10_a_anchor_lambda": 0.001,
+    "v10_a_prox_lambda": 0.0005,
+    "v10_b_prox_lambda": 0.0001,
+    "v10_a_sketch_rank": 2,
+    "v10_a_norm_clip_ratio": 1.5,
+    "v11_global_b_mix_mu": 0.4,
+    "hilora_leaf_blend": 0.25,
+    "ecolora_keep_ratio": 0.25,
+    "ecolora_mask_mode": "round_robin",
+    "feddat_teacher_lambda": 0.01,
+    "v5m_keep_ratio": 0.2,
+    "v5m_dare_p": 0.3,
+    "v5m_rank_policy": "fixed",
+    "v5m_rank_cap": 64,
+    "v5m_energy_tau": 0.95,
+    "v5m_knots_normalize": 1,
+    "v5m_basis_energy_tau": 0.9999,
+    "v5m_chunk_rows": 2048,
+    "v5m_device": "auto",
+    "eval_max_batches": 0,
+    "eval_batch_size": 0,
+    "eval_interval": 1,
+    "eval_final_only": true,
+    "train_max_steps_per_client": 0,
+    "max_train_samples_per_client": 0,
+    "dataloader_num_workers": 0,
+    "eval_dataloader_num_workers": 0,
+    "dataloader_pin_memory": true,
+    "dataloader_persistent_workers": false,
+    "attn_implementation": "",
+    "tokenizer_use_fast": true,
+    "eval_personalization_metrics": true,
+    "fedplora_ablation_no_consensus": false,
+    "fedplora_ablation_no_momentum": false,
+    "_runtime_client_sizes": [
+      225,
+      175,
+      368,
+      392,
+      286,
+      40,
+      59,
+      64,
+      77,
+      104,
+      203,
+      296,
+      258,
+      295,
+      392,
+      305,
+      504,
+      201,
+      273,
+      161,
+      145,
+      352,
+      77,
+      240,
+      632,
+      674,
+      126,
+      243,
+      268,
+      133,
+      305,
+      276,
+      256,
+      393,
+      214
+    ],
+    "_fedplora_client_domains": {
+      "0": "code",
+      "1": "code",
+      "2": "code",
+      "3": "code",
+      "4": "code",
+      "5": "education",
+      "6": "education",
+      "7": "education",
+      "8": "education",
+      "9": "education",
+      "10": "finance",
+      "11": "finance",
+      "12": "finance",
+      "13": "finance",
+      "14": "finance",
+      "15": "general",
+      "16": "general",
+      "17": "general",
+      "18": "general",
+      "19": "general",
+      "20": "legal",
+      "21": "legal",
+      "22": "legal",
+      "23": "legal",
+      "24": "legal",
+      "25": "math",
+      "26": "math",
+      "27": "math",
+      "28": "math",
+      "29": "math",
+      "30": "medical",
+      "31": "medical",
+      "32": "medical",
+      "33": "medical",
+      "34": "medical"
+    },
+    "_fedplora_round_client_ids": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      30,
+      31,
+      32,
+      33,
+      34
+    ]
+  },
+  "benchmark_dir": "/data/yaominghao/gb/FedPLoRA/data/domain_benchmark_35c_dir05/seed_42",
+  "recommended_primary_metrics": [
+    "domain_macro_token_accuracy",
+    "domain_macro_perplexity",
+    "worst_domain_token_accuracy",
+    "worst_domain_perplexity"
+  ],
+  "communication": {
+    "agg_type": "fedplora_v11a_relaxed_a",
+    "down_bytes_per_client": 6189840,
+    "up_bytes_per_client": 6189840,
+    "effective_down_bytes_per_client": 6189840,
+    "effective_up_bytes_per_client": 6189840,
+    "downlink_policy": "cache_shared_a_plus_true_v11_a_sketch",
+    "v8_a_refresh_rounds": 10,
+    "v8_a_refresh_fraction": 1.0,
+    "v8_a_warmup_rounds": 1,
+    "v8_a_refresh_interval": 5,
+    "v8_cache_shared_a_downlink": true,
+    "v10_a_correction_alpha": 0.35,
+    "v10_a_anchor_lambda": 0.001,
+    "v10_a_prox_lambda": 0.0005,
+    "v10_b_prox_lambda": 0.0001,
+    "v10_a_sketch_rank": 2,
+    "v10_a_norm_clip_ratio": 1.5,
+    "v11_global_b_mix_mu": 0.4,
+    "v11_a_correction_bytes_per_client": 1213200,
+    "v11_a_correction_mode": "true_lowrank_delta"
+  },
+  "rounds": [
+    {
+      "round": 1,
+      "eval_skipped": true,
+      "eval_skip_reason": "eval_final_only",
+      "v11": {
+        "branch": "A_relaxation",
+        "a_correction_alpha": 0.35,
+        "a_anchor_lambda": 0.001,
+        "a_prox_lambda": 0.0005,
+        "b_prox_lambda": 0.0001,
+        "a_sketch_rank": 2,
+        "a_norm_clip_ratio": 1.5,
+        "global_b_mix_mu": 0.4,
+        "upload_scope": "true_a_sketch_b"
+      },
+      "lora_expert_stats": {
+        "selected_k": 7,
+        "silhouette": 0.14956989274527957,
+        "candidates": {},
+        "cluster_mode": "b_subspace_auto",
+        "mean_pair_angle_deg": 79.26483725028626,
+        "mean_pair_cos": 0.1859010110452634,
+        "cluster_sizes": {
+          "0": 5,
+          "1": 5,
+          "2": 5,
+          "3": 5,
+          "4": 5,
+          "5": 5,
+          "6": 5
+        },
+        "domain_nmi": 1.0,
+        "domain_ari": 1.0,
+        "b_mode": "mean",
+        "expert_top_m": 1,
+        "expert_router_temperature": 0.2,
+        "hilora_leaf_blend": 0.0,
+        "num_b_layers": 210,
+        "upload_scope": "a_b",
+        "freeze_a": false,
+        "algorithm": "fedplora_v11a_relaxed_a",
+        "v11_branch": "A_relaxation",
+        "v11_a_payload": "true_lowrank_delta",
+        "v11_b_branch": "b_subspace_auto",
+        "v11_training_rule": "train_A+B_with_configurable_A_anchor_B_prox",
+        "v11_a_corrected_layers": 210,
+        "v11_a_correction_alpha": 0.35,
+        "v11_a_sketch_rank": 2,
+        "v11_a_mean_rel_update_norm": 0.032317945131817655,
+        "v11_a_mean_row_cos_to_ref": 0.9993522634108861,
+        "v11_a_clipped_row_frac": 0.0,
+        "v10_a_corrected_layers": 210,
+        "v10_a_correction_alpha": 0.35,
+        "v10_a_sketch_rank": 2,
+        "v10_a_mean_rel_update_norm": 0.032317945131817655,
+        "v10_a_mean_row_cos_to_ref": 0.9993522634108861,
+        "v10_a_clipped_row_frac": 0.0
+      },
+      "lora_expert_client_clusters": {
+        "0": 0,
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "4": 0,
+        "5": 1,
+        "6": 1,
+        "7": 1,
+        "8": 1,
+        "9": 1,
+        "10": 2,
+        "11": 2,
+        "12": 2,
+        "13": 2,
+        "14": 2,
+        "15": 3,
+        "16": 3,
+        "17": 3,
+        "18": 3,
+        "19": 3,
+        "20": 4,
+        "21": 4,
+        "22": 4,
+        "23": 4,
+        "24": 4,
+        "25": 5,
+        "26": 5,
+        "27": 5,
+        "28": 5,
+        "29": 5,
+        "30": 6,
+        "31": 6,
+        "32": 6,
+        "33": 6,
+        "34": 6
+      },
+      "lora_expert_cluster_domain_hist": {
+        "0": {
+          "code": 5
+        },
+        "1": {
+          "education": 5
+        },
+        "2": {
+          "finance": 5
+        },
+        "3": {
+          "general": 5
+        },
+        "4": {
+          "legal": 5
+        },
+        "5": {
+          "math": 5
+        },
+        "6": {
+          "medical": 5
+        }
+      },
+      "lora_expert_client_routes": {
+        "0": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "1": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "2": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "3": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "4": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "5": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "6": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "7": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "8": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "9": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "10": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "11": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "12": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "13": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "14": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "15": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "16": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "17": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "18": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "19": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "20": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "21": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "22": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "23": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "24": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "25": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "26": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "27": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "28": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "29": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "30": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "31": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "32": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "33": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "34": [
+          [
+            6,
+            1.0
+          ]
+        ]
+      }
+    },
+    {
+      "round": 2,
+      "eval_skipped": true,
+      "eval_skip_reason": "eval_final_only",
+      "v11": {
+        "branch": "A_relaxation",
+        "a_correction_alpha": 0.35,
+        "a_anchor_lambda": 0.001,
+        "a_prox_lambda": 0.0005,
+        "b_prox_lambda": 0.0001,
+        "a_sketch_rank": 2,
+        "a_norm_clip_ratio": 1.5,
+        "global_b_mix_mu": 0.4,
+        "upload_scope": "true_a_sketch_b"
+      },
+      "lora_expert_stats": {
+        "selected_k": 7,
+        "silhouette": 0.5272981853832243,
+        "candidates": {},
+        "cluster_mode": "b_subspace_auto",
+        "mean_pair_angle_deg": 76.05051678386022,
+        "mean_pair_cos": 0.2357971565651984,
+        "cluster_sizes": {
+          "0": 5,
+          "1": 5,
+          "2": 5,
+          "3": 5,
+          "4": 5,
+          "5": 5,
+          "6": 5
+        },
+        "domain_nmi": 1.0,
+        "domain_ari": 1.0,
+        "b_mode": "mean",
+        "expert_top_m": 1,
+        "expert_router_temperature": 0.2,
+        "hilora_leaf_blend": 0.0,
+        "num_b_layers": 210,
+        "upload_scope": "a_b",
+        "freeze_a": false,
+        "algorithm": "fedplora_v11a_relaxed_a",
+        "v11_branch": "A_relaxation",
+        "v11_a_payload": "true_lowrank_delta",
+        "v11_b_branch": "b_subspace_auto",
+        "v11_training_rule": "train_A+B_with_configurable_A_anchor_B_prox",
+        "v11_a_corrected_layers": 210,
+        "v11_a_correction_alpha": 0.35,
+        "v11_a_sketch_rank": 2,
+        "v11_a_mean_rel_update_norm": 0.026073827477520763,
+        "v11_a_mean_row_cos_to_ref": 0.9995944689781893,
+        "v11_a_clipped_row_frac": 0.0,
+        "v10_a_corrected_layers": 210,
+        "v10_a_correction_alpha": 0.35,
+        "v10_a_sketch_rank": 2,
+        "v10_a_mean_rel_update_norm": 0.026073827477520763,
+        "v10_a_mean_row_cos_to_ref": 0.9995944689781893,
+        "v10_a_clipped_row_frac": 0.0
+      },
+      "lora_expert_client_clusters": {
+        "0": 0,
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "4": 0,
+        "5": 1,
+        "6": 1,
+        "7": 1,
+        "8": 1,
+        "9": 1,
+        "10": 2,
+        "11": 2,
+        "12": 2,
+        "13": 2,
+        "14": 2,
+        "15": 3,
+        "16": 3,
+        "17": 3,
+        "18": 3,
+        "19": 3,
+        "20": 4,
+        "21": 4,
+        "22": 4,
+        "23": 4,
+        "24": 4,
+        "25": 5,
+        "26": 5,
+        "27": 5,
+        "28": 5,
+        "29": 5,
+        "30": 6,
+        "31": 6,
+        "32": 6,
+        "33": 6,
+        "34": 6
+      },
+      "lora_expert_cluster_domain_hist": {
+        "0": {
+          "code": 5
+        },
+        "1": {
+          "education": 5
+        },
+        "2": {
+          "finance": 5
+        },
+        "3": {
+          "general": 5
+        },
+        "4": {
+          "legal": 5
+        },
+        "5": {
+          "math": 5
+        },
+        "6": {
+          "medical": 5
+        }
+      },
+      "lora_expert_client_routes": {
+        "0": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "1": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "2": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "3": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "4": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "5": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "6": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "7": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "8": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "9": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "10": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "11": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "12": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "13": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "14": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "15": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "16": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "17": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "18": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "19": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "20": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "21": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "22": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "23": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "24": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "25": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "26": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "27": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "28": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "29": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "30": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "31": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "32": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "33": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "34": [
+          [
+            6,
+            1.0
+          ]
+        ]
+      }
+    },
+    {
+      "round": 3,
+      "eval_skipped": true,
+      "eval_skip_reason": "eval_final_only",
+      "v11": {
+        "branch": "A_relaxation",
+        "a_correction_alpha": 0.35,
+        "a_anchor_lambda": 0.001,
+        "a_prox_lambda": 0.0005,
+        "b_prox_lambda": 0.0001,
+        "a_sketch_rank": 2,
+        "a_norm_clip_ratio": 1.5,
+        "global_b_mix_mu": 0.4,
+        "upload_scope": "true_a_sketch_b"
+      },
+      "lora_expert_stats": {
+        "selected_k": 7,
+        "silhouette": 0.7095175300094068,
+        "candidates": {},
+        "cluster_mode": "b_subspace_auto",
+        "mean_pair_angle_deg": 74.61819896303973,
+        "mean_pair_cos": 0.2536260304266975,
+        "cluster_sizes": {
+          "0": 5,
+          "1": 5,
+          "2": 5,
+          "3": 5,
+          "4": 5,
+          "5": 5,
+          "6": 5
+        },
+        "domain_nmi": 1.0,
+        "domain_ari": 1.0,
+        "b_mode": "mean",
+        "expert_top_m": 1,
+        "expert_router_temperature": 0.2,
+        "hilora_leaf_blend": 0.0,
+        "num_b_layers": 210,
+        "upload_scope": "a_b",
+        "freeze_a": false,
+        "algorithm": "fedplora_v11a_relaxed_a",
+        "v11_branch": "A_relaxation",
+        "v11_a_payload": "true_lowrank_delta",
+        "v11_b_branch": "b_subspace_auto",
+        "v11_training_rule": "train_A+B_with_configurable_A_anchor_B_prox",
+        "v11_a_corrected_layers": 210,
+        "v11_a_correction_alpha": 0.35,
+        "v11_a_sketch_rank": 2,
+        "v11_a_mean_rel_update_norm": 0.020290256059340546,
+        "v11_a_mean_row_cos_to_ref": 0.9997560577023596,
+        "v11_a_clipped_row_frac": 0.0,
+        "v10_a_corrected_layers": 210,
+        "v10_a_correction_alpha": 0.35,
+        "v10_a_sketch_rank": 2,
+        "v10_a_mean_rel_update_norm": 0.020290256059340546,
+        "v10_a_mean_row_cos_to_ref": 0.9997560577023596,
+        "v10_a_clipped_row_frac": 0.0
+      },
+      "lora_expert_client_clusters": {
+        "0": 0,
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "4": 0,
+        "5": 1,
+        "6": 1,
+        "7": 1,
+        "8": 1,
+        "9": 1,
+        "10": 2,
+        "11": 2,
+        "12": 2,
+        "13": 2,
+        "14": 2,
+        "15": 3,
+        "16": 3,
+        "17": 3,
+        "18": 3,
+        "19": 3,
+        "20": 4,
+        "21": 4,
+        "22": 4,
+        "23": 4,
+        "24": 4,
+        "25": 5,
+        "26": 5,
+        "27": 5,
+        "28": 5,
+        "29": 5,
+        "30": 6,
+        "31": 6,
+        "32": 6,
+        "33": 6,
+        "34": 6
+      },
+      "lora_expert_cluster_domain_hist": {
+        "0": {
+          "code": 5
+        },
+        "1": {
+          "education": 5
+        },
+        "2": {
+          "finance": 5
+        },
+        "3": {
+          "general": 5
+        },
+        "4": {
+          "legal": 5
+        },
+        "5": {
+          "math": 5
+        },
+        "6": {
+          "medical": 5
+        }
+      },
+      "lora_expert_client_routes": {
+        "0": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "1": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "2": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "3": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "4": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "5": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "6": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "7": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "8": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "9": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "10": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "11": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "12": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "13": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "14": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "15": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "16": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "17": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "18": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "19": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "20": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "21": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "22": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "23": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "24": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "25": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "26": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "27": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "28": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "29": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "30": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "31": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "32": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "33": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "34": [
+          [
+            6,
+            1.0
+          ]
+        ]
+      }
+    },
+    {
+      "round": 4,
+      "eval_skipped": true,
+      "eval_skip_reason": "eval_final_only",
+      "v11": {
+        "branch": "A_relaxation",
+        "a_correction_alpha": 0.35,
+        "a_anchor_lambda": 0.001,
+        "a_prox_lambda": 0.0005,
+        "b_prox_lambda": 0.0001,
+        "a_sketch_rank": 2,
+        "a_norm_clip_ratio": 1.5,
+        "global_b_mix_mu": 0.4,
+        "upload_scope": "true_a_sketch_b"
+      },
+      "lora_expert_stats": {
+        "selected_k": 7,
+        "silhouette": 0.8010261430549305,
+        "candidates": {},
+        "cluster_mode": "b_subspace_auto",
+        "mean_pair_angle_deg": 73.91386657656224,
+        "mean_pair_cos": 0.26000829726970404,
+        "cluster_sizes": {
+          "0": 5,
+          "1": 5,
+          "2": 5,
+          "3": 5,
+          "4": 5,
+          "5": 5,
+          "6": 5
+        },
+        "domain_nmi": 1.0,
+        "domain_ari": 1.0,
+        "b_mode": "mean",
+        "expert_top_m": 1,
+        "expert_router_temperature": 0.2,
+        "hilora_leaf_blend": 0.0,
+        "num_b_layers": 210,
+        "upload_scope": "a_b",
+        "freeze_a": false,
+        "algorithm": "fedplora_v11a_relaxed_a",
+        "v11_branch": "A_relaxation",
+        "v11_a_payload": "true_lowrank_delta",
+        "v11_b_branch": "b_subspace_auto",
+        "v11_training_rule": "train_A+B_with_configurable_A_anchor_B_prox",
+        "v11_a_corrected_layers": 210,
+        "v11_a_correction_alpha": 0.35,
+        "v11_a_sketch_rank": 2,
+        "v11_a_mean_rel_update_norm": 0.017008814081847227,
+        "v11_a_mean_row_cos_to_ref": 0.9998274753845874,
+        "v11_a_clipped_row_frac": 0.0,
+        "v10_a_corrected_layers": 210,
+        "v10_a_correction_alpha": 0.35,
+        "v10_a_sketch_rank": 2,
+        "v10_a_mean_rel_update_norm": 0.017008814081847227,
+        "v10_a_mean_row_cos_to_ref": 0.9998274753845874,
+        "v10_a_clipped_row_frac": 0.0
+      },
+      "lora_expert_client_clusters": {
+        "0": 0,
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "4": 0,
+        "5": 1,
+        "6": 1,
+        "7": 1,
+        "8": 1,
+        "9": 1,
+        "10": 2,
+        "11": 2,
+        "12": 2,
+        "13": 2,
+        "14": 2,
+        "15": 3,
+        "16": 3,
+        "17": 3,
+        "18": 3,
+        "19": 3,
+        "20": 4,
+        "21": 4,
+        "22": 4,
+        "23": 4,
+        "24": 4,
+        "25": 5,
+        "26": 5,
+        "27": 5,
+        "28": 5,
+        "29": 5,
+        "30": 6,
+        "31": 6,
+        "32": 6,
+        "33": 6,
+        "34": 6
+      },
+      "lora_expert_cluster_domain_hist": {
+        "0": {
+          "code": 5
+        },
+        "1": {
+          "education": 5
+        },
+        "2": {
+          "finance": 5
+        },
+        "3": {
+          "general": 5
+        },
+        "4": {
+          "legal": 5
+        },
+        "5": {
+          "math": 5
+        },
+        "6": {
+          "medical": 5
+        }
+      },
+      "lora_expert_client_routes": {
+        "0": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "1": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "2": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "3": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "4": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "5": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "6": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "7": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "8": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "9": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "10": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "11": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "12": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "13": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "14": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "15": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "16": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "17": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "18": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "19": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "20": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "21": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "22": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "23": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "24": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "25": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "26": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "27": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "28": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "29": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "30": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "31": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "32": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "33": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "34": [
+          [
+            6,
+            1.0
+          ]
+        ]
+      }
+    },
+    {
+      "round": 5,
+      "eval_skipped": true,
+      "eval_skip_reason": "eval_final_only",
+      "v11": {
+        "branch": "A_relaxation",
+        "a_correction_alpha": 0.35,
+        "a_anchor_lambda": 0.001,
+        "a_prox_lambda": 0.0005,
+        "b_prox_lambda": 0.0001,
+        "a_sketch_rank": 2,
+        "a_norm_clip_ratio": 1.5,
+        "global_b_mix_mu": 0.4,
+        "upload_scope": "true_a_sketch_b"
+      },
+      "lora_expert_stats": {
+        "selected_k": 7,
+        "silhouette": 0.8570677375729145,
+        "candidates": {},
+        "cluster_mode": "b_subspace_auto",
+        "mean_pair_angle_deg": 73.50253700588773,
+        "mean_pair_cos": 0.2622110367766103,
+        "cluster_sizes": {
+          "0": 5,
+          "1": 5,
+          "2": 5,
+          "3": 5,
+          "4": 5,
+          "5": 5,
+          "6": 5
+        },
+        "domain_nmi": 1.0,
+        "domain_ari": 1.0,
+        "b_mode": "mean",
+        "expert_top_m": 1,
+        "expert_router_temperature": 0.2,
+        "hilora_leaf_blend": 0.0,
+        "num_b_layers": 210,
+        "upload_scope": "a_b",
+        "freeze_a": false,
+        "algorithm": "fedplora_v11a_relaxed_a",
+        "v11_branch": "A_relaxation",
+        "v11_a_payload": "true_lowrank_delta",
+        "v11_b_branch": "b_subspace_auto",
+        "v11_training_rule": "train_A+B_with_configurable_A_anchor_B_prox",
+        "v11_a_corrected_layers": 210,
+        "v11_a_correction_alpha": 0.35,
+        "v11_a_sketch_rank": 2,
+        "v11_a_mean_rel_update_norm": 0.014900413012770487,
+        "v11_a_mean_row_cos_to_ref": 0.9998675526252815,
+        "v11_a_clipped_row_frac": 0.0,
+        "v10_a_corrected_layers": 210,
+        "v10_a_correction_alpha": 0.35,
+        "v10_a_sketch_rank": 2,
+        "v10_a_mean_rel_update_norm": 0.014900413012770487,
+        "v10_a_mean_row_cos_to_ref": 0.9998675526252815,
+        "v10_a_clipped_row_frac": 0.0
+      },
+      "lora_expert_client_clusters": {
+        "0": 0,
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "4": 0,
+        "5": 1,
+        "6": 1,
+        "7": 1,
+        "8": 1,
+        "9": 1,
+        "10": 2,
+        "11": 2,
+        "12": 2,
+        "13": 2,
+        "14": 2,
+        "15": 3,
+        "16": 3,
+        "17": 3,
+        "18": 3,
+        "19": 3,
+        "20": 4,
+        "21": 4,
+        "22": 4,
+        "23": 4,
+        "24": 4,
+        "25": 5,
+        "26": 5,
+        "27": 5,
+        "28": 5,
+        "29": 5,
+        "30": 6,
+        "31": 6,
+        "32": 6,
+        "33": 6,
+        "34": 6
+      },
+      "lora_expert_cluster_domain_hist": {
+        "0": {
+          "code": 5
+        },
+        "1": {
+          "education": 5
+        },
+        "2": {
+          "finance": 5
+        },
+        "3": {
+          "general": 5
+        },
+        "4": {
+          "legal": 5
+        },
+        "5": {
+          "math": 5
+        },
+        "6": {
+          "medical": 5
+        }
+      },
+      "lora_expert_client_routes": {
+        "0": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "1": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "2": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "3": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "4": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "5": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "6": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "7": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "8": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "9": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "10": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "11": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "12": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "13": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "14": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "15": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "16": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "17": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "18": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "19": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "20": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "21": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "22": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "23": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "24": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "25": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "26": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "27": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "28": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "29": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "30": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "31": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "32": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "33": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "34": [
+          [
+            6,
+            1.0
+          ]
+        ]
+      }
+    },
+    {
+      "round": 6,
+      "eval_skipped": true,
+      "eval_skip_reason": "eval_final_only",
+      "v11": {
+        "branch": "A_relaxation",
+        "a_correction_alpha": 0.35,
+        "a_anchor_lambda": 0.001,
+        "a_prox_lambda": 0.0005,
+        "b_prox_lambda": 0.0001,
+        "a_sketch_rank": 2,
+        "a_norm_clip_ratio": 1.5,
+        "global_b_mix_mu": 0.4,
+        "upload_scope": "true_a_sketch_b"
+      },
+      "lora_expert_stats": {
+        "selected_k": 7,
+        "silhouette": 0.8915555016187579,
+        "candidates": {},
+        "cluster_mode": "b_subspace_auto",
+        "mean_pair_angle_deg": 73.26193207860155,
+        "mean_pair_cos": 0.26243311515276957,
+        "cluster_sizes": {
+          "0": 5,
+          "1": 5,
+          "2": 5,
+          "3": 5,
+          "4": 5,
+          "5": 5,
+          "6": 5
+        },
+        "domain_nmi": 1.0,
+        "domain_ari": 1.0,
+        "b_mode": "mean",
+        "expert_top_m": 1,
+        "expert_router_temperature": 0.2,
+        "hilora_leaf_blend": 0.0,
+        "num_b_layers": 210,
+        "upload_scope": "a_b",
+        "freeze_a": false,
+        "algorithm": "fedplora_v11a_relaxed_a",
+        "v11_branch": "A_relaxation",
+        "v11_a_payload": "true_lowrank_delta",
+        "v11_b_branch": "b_subspace_auto",
+        "v11_training_rule": "train_A+B_with_configurable_A_anchor_B_prox",
+        "v11_a_corrected_layers": 210,
+        "v11_a_correction_alpha": 0.35,
+        "v11_a_sketch_rank": 2,
+        "v11_a_mean_rel_update_norm": 0.013232418760741577,
+        "v11_a_mean_row_cos_to_ref": 0.9998950371430033,
+        "v11_a_clipped_row_frac": 0.0,
+        "v10_a_corrected_layers": 210,
+        "v10_a_correction_alpha": 0.35,
+        "v10_a_sketch_rank": 2,
+        "v10_a_mean_rel_update_norm": 0.013232418760741577,
+        "v10_a_mean_row_cos_to_ref": 0.9998950371430033,
+        "v10_a_clipped_row_frac": 0.0
+      },
+      "lora_expert_client_clusters": {
+        "0": 0,
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "4": 0,
+        "5": 1,
+        "6": 1,
+        "7": 1,
+        "8": 1,
+        "9": 1,
+        "10": 2,
+        "11": 2,
+        "12": 2,
+        "13": 2,
+        "14": 2,
+        "15": 3,
+        "16": 3,
+        "17": 3,
+        "18": 3,
+        "19": 3,
+        "20": 4,
+        "21": 4,
+        "22": 4,
+        "23": 4,
+        "24": 4,
+        "25": 5,
+        "26": 5,
+        "27": 5,
+        "28": 5,
+        "29": 5,
+        "30": 6,
+        "31": 6,
+        "32": 6,
+        "33": 6,
+        "34": 6
+      },
+      "lora_expert_cluster_domain_hist": {
+        "0": {
+          "code": 5
+        },
+        "1": {
+          "education": 5
+        },
+        "2": {
+          "finance": 5
+        },
+        "3": {
+          "general": 5
+        },
+        "4": {
+          "legal": 5
+        },
+        "5": {
+          "math": 5
+        },
+        "6": {
+          "medical": 5
+        }
+      },
+      "lora_expert_client_routes": {
+        "0": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "1": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "2": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "3": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "4": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "5": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "6": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "7": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "8": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "9": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "10": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "11": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "12": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "13": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "14": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "15": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "16": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "17": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "18": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "19": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "20": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "21": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "22": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "23": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "24": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "25": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "26": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "27": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "28": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "29": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "30": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "31": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "32": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "33": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "34": [
+          [
+            6,
+            1.0
+          ]
+        ]
+      }
+    },
+    {
+      "round": 7,
+      "eval_skipped": true,
+      "eval_skip_reason": "eval_final_only",
+      "v11": {
+        "branch": "A_relaxation",
+        "a_correction_alpha": 0.35,
+        "a_anchor_lambda": 0.001,
+        "a_prox_lambda": 0.0005,
+        "b_prox_lambda": 0.0001,
+        "a_sketch_rank": 2,
+        "a_norm_clip_ratio": 1.5,
+        "global_b_mix_mu": 0.4,
+        "upload_scope": "true_a_sketch_b"
+      },
+      "lora_expert_stats": {
+        "selected_k": 7,
+        "silhouette": 0.9147401552371388,
+        "candidates": {},
+        "cluster_mode": "b_subspace_auto",
+        "mean_pair_angle_deg": 73.09819218689952,
+        "mean_pair_cos": 0.2620080980783453,
+        "cluster_sizes": {
+          "0": 5,
+          "1": 5,
+          "2": 5,
+          "3": 5,
+          "4": 5,
+          "5": 5,
+          "6": 5
+        },
+        "domain_nmi": 1.0,
+        "domain_ari": 1.0,
+        "b_mode": "mean",
+        "expert_top_m": 1,
+        "expert_router_temperature": 0.2,
+        "hilora_leaf_blend": 0.0,
+        "num_b_layers": 210,
+        "upload_scope": "a_b",
+        "freeze_a": false,
+        "algorithm": "fedplora_v11a_relaxed_a",
+        "v11_branch": "A_relaxation",
+        "v11_a_payload": "true_lowrank_delta",
+        "v11_b_branch": "b_subspace_auto",
+        "v11_training_rule": "train_A+B_with_configurable_A_anchor_B_prox",
+        "v11_a_corrected_layers": 210,
+        "v11_a_correction_alpha": 0.35,
+        "v11_a_sketch_rank": 2,
+        "v11_a_mean_rel_update_norm": 0.012139759786538147,
+        "v11_a_mean_row_cos_to_ref": 0.9999113235445249,
+        "v11_a_clipped_row_frac": 0.0,
+        "v10_a_corrected_layers": 210,
+        "v10_a_correction_alpha": 0.35,
+        "v10_a_sketch_rank": 2,
+        "v10_a_mean_rel_update_norm": 0.012139759786538147,
+        "v10_a_mean_row_cos_to_ref": 0.9999113235445249,
+        "v10_a_clipped_row_frac": 0.0
+      },
+      "lora_expert_client_clusters": {
+        "0": 0,
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "4": 0,
+        "5": 1,
+        "6": 1,
+        "7": 1,
+        "8": 1,
+        "9": 1,
+        "10": 2,
+        "11": 2,
+        "12": 2,
+        "13": 2,
+        "14": 2,
+        "15": 3,
+        "16": 3,
+        "17": 3,
+        "18": 3,
+        "19": 3,
+        "20": 4,
+        "21": 4,
+        "22": 4,
+        "23": 4,
+        "24": 4,
+        "25": 5,
+        "26": 5,
+        "27": 5,
+        "28": 5,
+        "29": 5,
+        "30": 6,
+        "31": 6,
+        "32": 6,
+        "33": 6,
+        "34": 6
+      },
+      "lora_expert_cluster_domain_hist": {
+        "0": {
+          "code": 5
+        },
+        "1": {
+          "education": 5
+        },
+        "2": {
+          "finance": 5
+        },
+        "3": {
+          "general": 5
+        },
+        "4": {
+          "legal": 5
+        },
+        "5": {
+          "math": 5
+        },
+        "6": {
+          "medical": 5
+        }
+      },
+      "lora_expert_client_routes": {
+        "0": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "1": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "2": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "3": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "4": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "5": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "6": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "7": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "8": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "9": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "10": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "11": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "12": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "13": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "14": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "15": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "16": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "17": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "18": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "19": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "20": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "21": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "22": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "23": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "24": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "25": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "26": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "27": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "28": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "29": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "30": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "31": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "32": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "33": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "34": [
+          [
+            6,
+            1.0
+          ]
+        ]
+      }
+    },
+    {
+      "round": 8,
+      "eval_skipped": true,
+      "eval_skip_reason": "eval_final_only",
+      "v11": {
+        "branch": "A_relaxation",
+        "a_correction_alpha": 0.35,
+        "a_anchor_lambda": 0.001,
+        "a_prox_lambda": 0.0005,
+        "b_prox_lambda": 0.0001,
+        "a_sketch_rank": 2,
+        "a_norm_clip_ratio": 1.5,
+        "global_b_mix_mu": 0.4,
+        "upload_scope": "true_a_sketch_b"
+      },
+      "lora_expert_stats": {
+        "selected_k": 7,
+        "silhouette": 0.9308362521471285,
+        "candidates": {},
+        "cluster_mode": "b_subspace_auto",
+        "mean_pair_angle_deg": 72.99733659250741,
+        "mean_pair_cos": 0.2610829463939504,
+        "cluster_sizes": {
+          "0": 5,
+          "1": 5,
+          "2": 5,
+          "3": 5,
+          "4": 5,
+          "5": 5,
+          "6": 5
+        },
+        "domain_nmi": 1.0,
+        "domain_ari": 1.0,
+        "b_mode": "mean",
+        "expert_top_m": 1,
+        "expert_router_temperature": 0.2,
+        "hilora_leaf_blend": 0.0,
+        "num_b_layers": 210,
+        "upload_scope": "a_b",
+        "freeze_a": false,
+        "algorithm": "fedplora_v11a_relaxed_a",
+        "v11_branch": "A_relaxation",
+        "v11_a_payload": "true_lowrank_delta",
+        "v11_b_branch": "b_subspace_auto",
+        "v11_training_rule": "train_A+B_with_configurable_A_anchor_B_prox",
+        "v11_a_corrected_layers": 210,
+        "v11_a_correction_alpha": 0.35,
+        "v11_a_sketch_rank": 2,
+        "v11_a_mean_rel_update_norm": 0.011417918642667993,
+        "v11_a_mean_row_cos_to_ref": 0.9999221633587565,
+        "v11_a_clipped_row_frac": 0.0,
+        "v10_a_corrected_layers": 210,
+        "v10_a_correction_alpha": 0.35,
+        "v10_a_sketch_rank": 2,
+        "v10_a_mean_rel_update_norm": 0.011417918642667993,
+        "v10_a_mean_row_cos_to_ref": 0.9999221633587565,
+        "v10_a_clipped_row_frac": 0.0
+      },
+      "lora_expert_client_clusters": {
+        "0": 0,
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "4": 0,
+        "5": 1,
+        "6": 1,
+        "7": 1,
+        "8": 1,
+        "9": 1,
+        "10": 2,
+        "11": 2,
+        "12": 2,
+        "13": 2,
+        "14": 2,
+        "15": 3,
+        "16": 3,
+        "17": 3,
+        "18": 3,
+        "19": 3,
+        "20": 4,
+        "21": 4,
+        "22": 4,
+        "23": 4,
+        "24": 4,
+        "25": 5,
+        "26": 5,
+        "27": 5,
+        "28": 5,
+        "29": 5,
+        "30": 6,
+        "31": 6,
+        "32": 6,
+        "33": 6,
+        "34": 6
+      },
+      "lora_expert_cluster_domain_hist": {
+        "0": {
+          "code": 5
+        },
+        "1": {
+          "education": 5
+        },
+        "2": {
+          "finance": 5
+        },
+        "3": {
+          "general": 5
+        },
+        "4": {
+          "legal": 5
+        },
+        "5": {
+          "math": 5
+        },
+        "6": {
+          "medical": 5
+        }
+      },
+      "lora_expert_client_routes": {
+        "0": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "1": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "2": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "3": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "4": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "5": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "6": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "7": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "8": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "9": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "10": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "11": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "12": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "13": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "14": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "15": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "16": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "17": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "18": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "19": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "20": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "21": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "22": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "23": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "24": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "25": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "26": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "27": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "28": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "29": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "30": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "31": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "32": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "33": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "34": [
+          [
+            6,
+            1.0
+          ]
+        ]
+      }
+    },
+    {
+      "round": 9,
+      "eval_skipped": true,
+      "eval_skip_reason": "eval_final_only",
+      "v11": {
+        "branch": "A_relaxation",
+        "a_correction_alpha": 0.35,
+        "a_anchor_lambda": 0.001,
+        "a_prox_lambda": 0.0005,
+        "b_prox_lambda": 0.0001,
+        "a_sketch_rank": 2,
+        "a_norm_clip_ratio": 1.5,
+        "global_b_mix_mu": 0.4,
+        "upload_scope": "true_a_sketch_b"
+      },
+      "lora_expert_stats": {
+        "selected_k": 7,
+        "silhouette": 0.9422185044811678,
+        "candidates": {},
+        "cluster_mode": "b_subspace_auto",
+        "mean_pair_angle_deg": 72.93759761027954,
+        "mean_pair_cos": 0.25992630926903343,
+        "cluster_sizes": {
+          "0": 5,
+          "1": 5,
+          "2": 5,
+          "3": 5,
+          "4": 5,
+          "5": 5,
+          "6": 5
+        },
+        "domain_nmi": 1.0,
+        "domain_ari": 1.0,
+        "b_mode": "mean",
+        "expert_top_m": 1,
+        "expert_router_temperature": 0.2,
+        "hilora_leaf_blend": 0.0,
+        "num_b_layers": 210,
+        "upload_scope": "a_b",
+        "freeze_a": false,
+        "algorithm": "fedplora_v11a_relaxed_a",
+        "v11_branch": "A_relaxation",
+        "v11_a_payload": "true_lowrank_delta",
+        "v11_b_branch": "b_subspace_auto",
+        "v11_training_rule": "train_A+B_with_configurable_A_anchor_B_prox",
+        "v11_a_corrected_layers": 210,
+        "v11_a_correction_alpha": 0.35,
+        "v11_a_sketch_rank": 2,
+        "v11_a_mean_rel_update_norm": 0.01083694406244368,
+        "v11_a_mean_row_cos_to_ref": 0.999929828232243,
+        "v11_a_clipped_row_frac": 0.0,
+        "v10_a_corrected_layers": 210,
+        "v10_a_correction_alpha": 0.35,
+        "v10_a_sketch_rank": 2,
+        "v10_a_mean_rel_update_norm": 0.01083694406244368,
+        "v10_a_mean_row_cos_to_ref": 0.999929828232243,
+        "v10_a_clipped_row_frac": 0.0
+      },
+      "lora_expert_client_clusters": {
+        "0": 0,
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "4": 0,
+        "5": 1,
+        "6": 1,
+        "7": 1,
+        "8": 1,
+        "9": 1,
+        "10": 2,
+        "11": 2,
+        "12": 2,
+        "13": 2,
+        "14": 2,
+        "15": 3,
+        "16": 3,
+        "17": 3,
+        "18": 3,
+        "19": 3,
+        "20": 4,
+        "21": 4,
+        "22": 4,
+        "23": 4,
+        "24": 4,
+        "25": 5,
+        "26": 5,
+        "27": 5,
+        "28": 5,
+        "29": 5,
+        "30": 6,
+        "31": 6,
+        "32": 6,
+        "33": 6,
+        "34": 6
+      },
+      "lora_expert_cluster_domain_hist": {
+        "0": {
+          "code": 5
+        },
+        "1": {
+          "education": 5
+        },
+        "2": {
+          "finance": 5
+        },
+        "3": {
+          "general": 5
+        },
+        "4": {
+          "legal": 5
+        },
+        "5": {
+          "math": 5
+        },
+        "6": {
+          "medical": 5
+        }
+      },
+      "lora_expert_client_routes": {
+        "0": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "1": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "2": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "3": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "4": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "5": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "6": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "7": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "8": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "9": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "10": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "11": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "12": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "13": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "14": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "15": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "16": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "17": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "18": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "19": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "20": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "21": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "22": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "23": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "24": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "25": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "26": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "27": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "28": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "29": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "30": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "31": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "32": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "33": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "34": [
+          [
+            6,
+            1.0
+          ]
+        ]
+      }
+    },
+    {
+      "round": 10,
+      "domain_macro_token_accuracy": 0.5879366437840908,
+      "best_domain_macro_token_accuracy": 0.5879366437840908,
+      "worst_domain_token_accuracy": 0.45940997257276583,
+      "best_worst_domain_token_accuracy": 0.45940997257276583,
+      "domain_macro_perplexity": 6.614654638442457,
+      "best_domain_macro_perplexity": 6.614654638442457,
+      "worst_domain_perplexity": 10.589335481998425,
+      "best_worst_domain_perplexity": 10.589335481998425,
+      "domain_macro_loss": 1.8169472040962529,
+      "best_domain_macro_loss": 1.8169472040962529,
+      "worst_domain_loss": 2.3554031003373015,
+      "best_worst_domain_loss": 2.3554031003373015,
+      "domain_metrics": {
+        "code": {
+          "loss": 1.338391662425967,
+          "token_accuracy": 0.684730056406124,
+          "perplexity": 3.818048306705346
+        },
+        "education": {
+          "loss": 1.8465068058243819,
+          "token_accuracy": 0.5895636921727692,
+          "perplexity": 6.43690603297758
+        },
+        "finance": {
+          "loss": 2.3554031003373015,
+          "token_accuracy": 0.45940997257276583,
+          "perplexity": 10.589335481998425
+        },
+        "general": {
+          "loss": 1.8256959977853615,
+          "token_accuracy": 0.6017671264132683,
+          "perplexity": 6.229230210908657
+        },
+        "legal": {
+          "loss": 2.0956863859434343,
+          "token_accuracy": 0.5351035018276168,
+          "perplexity": 8.247344583963718
+        },
+        "math": {
+          "loss": 1.2529290543283733,
+          "token_accuracy": 0.6920525528467719,
+          "perplexity": 3.5138338542993246
+        },
+        "medical": {
+          "loss": 2.00401742202895,
+          "token_accuracy": 0.5529296042493196,
+          "perplexity": 7.467883998244138
+        }
+      },
+      "lora_expert_stats": {
+        "selected_k": 7,
+        "silhouette": 0.9504040672229345,
+        "candidates": {},
+        "cluster_mode": "b_subspace_auto",
+        "mean_pair_angle_deg": 72.91527442907046,
+        "mean_pair_cos": 0.258559776201558,
+        "cluster_sizes": {
+          "0": 5,
+          "1": 5,
+          "2": 5,
+          "3": 5,
+          "4": 5,
+          "5": 5,
+          "6": 5
+        },
+        "domain_nmi": 1.0,
+        "domain_ari": 1.0,
+        "b_mode": "mean",
+        "expert_top_m": 1,
+        "expert_router_temperature": 0.2,
+        "hilora_leaf_blend": 0.0,
+        "num_b_layers": 210,
+        "upload_scope": "a_b",
+        "freeze_a": false,
+        "algorithm": "fedplora_v11a_relaxed_a",
+        "v11_branch": "A_relaxation",
+        "v11_a_payload": "true_lowrank_delta",
+        "v11_b_branch": "b_subspace_auto",
+        "v11_training_rule": "train_A+B_with_configurable_A_anchor_B_prox",
+        "v11_a_corrected_layers": 210,
+        "v11_a_correction_alpha": 0.35,
+        "v11_a_sketch_rank": 2,
+        "v11_a_mean_rel_update_norm": 0.010516210356170829,
+        "v11_a_mean_row_cos_to_ref": 0.9999340038569201,
+        "v11_a_clipped_row_frac": 0.0,
+        "v10_a_corrected_layers": 210,
+        "v10_a_correction_alpha": 0.35,
+        "v10_a_sketch_rank": 2,
+        "v10_a_mean_rel_update_norm": 0.010516210356170829,
+        "v10_a_mean_row_cos_to_ref": 0.9999340038569201,
+        "v10_a_clipped_row_frac": 0.0
+      },
+      "lora_expert_client_clusters": {
+        "0": 0,
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "4": 0,
+        "5": 1,
+        "6": 1,
+        "7": 1,
+        "8": 1,
+        "9": 1,
+        "10": 2,
+        "11": 2,
+        "12": 2,
+        "13": 2,
+        "14": 2,
+        "15": 3,
+        "16": 3,
+        "17": 3,
+        "18": 3,
+        "19": 3,
+        "20": 4,
+        "21": 4,
+        "22": 4,
+        "23": 4,
+        "24": 4,
+        "25": 5,
+        "26": 5,
+        "27": 5,
+        "28": 5,
+        "29": 5,
+        "30": 6,
+        "31": 6,
+        "32": 6,
+        "33": 6,
+        "34": 6
+      },
+      "lora_expert_cluster_domain_hist": {
+        "0": {
+          "code": 5
+        },
+        "1": {
+          "education": 5
+        },
+        "2": {
+          "finance": 5
+        },
+        "3": {
+          "general": 5
+        },
+        "4": {
+          "legal": 5
+        },
+        "5": {
+          "math": 5
+        },
+        "6": {
+          "medical": 5
+        }
+      },
+      "lora_expert_client_routes": {
+        "0": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "1": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "2": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "3": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "4": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "5": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "6": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "7": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "8": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "9": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "10": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "11": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "12": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "13": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "14": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "15": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "16": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "17": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "18": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "19": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "20": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "21": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "22": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "23": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "24": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "25": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "26": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "27": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "28": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "29": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "30": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "31": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "32": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "33": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "34": [
+          [
+            6,
+            1.0
+          ]
+        ]
+      },
+      "client_local_macro_token_accuracy": 0.6345807005711297,
+      "client_local_macro_perplexity": 5.021046254804287,
+      "client_local_macro_loss": 1.527865240910096,
+      "off_domain_macro_token_accuracy": 0.5819659220721225,
+      "off_domain_macro_perplexity": 6.865352331102867,
+      "off_domain_macro_loss": 1.8576618592980318,
+      "in_domain_domain_test_macro_token_accuracy": 0.6237609740559008,
+      "in_domain_domain_test_macro_perplexity": 5.110468482479997,
+      "in_domain_domain_test_macro_loss": 1.5726592728855784,
+      "personalization_gap_token_accuracy": 0.0526147784990072,
+      "personalization_gap_perplexity": 1.8443060762985795,
+      "personalization_gap_loss": 0.32979661838793595,
+      "v11": {
+        "branch": "A_relaxation",
+        "a_correction_alpha": 0.35,
+        "a_anchor_lambda": 0.001,
+        "a_prox_lambda": 0.0005,
+        "b_prox_lambda": 0.0001,
+        "a_sketch_rank": 2,
+        "a_norm_clip_ratio": 1.5,
+        "global_b_mix_mu": 0.4,
+        "upload_scope": "true_a_sketch_b"
+      }
+    }
+  ],
+  "recommended_kpis": {
+    "token_accuracy": [
+      "domain_macro_token_accuracy",
+      "worst_domain_token_accuracy",
+      "client_local_macro_token_accuracy",
+      "in_domain_domain_test_macro_token_accuracy",
+      "off_domain_macro_token_accuracy"
+    ],
+    "perplexity": [
+      "domain_macro_perplexity",
+      "worst_domain_perplexity",
+      "client_local_macro_perplexity",
+      "in_domain_domain_test_macro_perplexity",
+      "off_domain_macro_perplexity"
+    ],
+    "communication": {
+      "path": "communication",
+      "fields": [
+        "down_bytes_per_client",
+        "up_bytes_per_client",
+        "agg_type"
+      ]
+    },
+    "fedplora_oneshot_conflict": {
+      "path": "rounds[i].fedplora_oneshot_conflict",
+      "note": "Present after FedPLoRA-Oneshot server aggregation; typically mean_conflict, max_conflict, high_conflict_row_frac, mean_init_gate. Other agg_type: omit or {}. Eval-only reload uses checkpoint meta when available."
+    },
+    "personalization_gaps": [
+      "personalization_gap_token_accuracy",
+      "personalization_gap_perplexity"
+    ]
+  },
+  "recommended_primary_personalization_metrics": [
+    "client_local_macro_token_accuracy",
+    "client_local_macro_perplexity",
+    "off_domain_macro_token_accuracy",
+    "off_domain_macro_perplexity",
+    "personalization_gap_token_accuracy",
+    "personalization_gap_perplexity"
+  ]
+}
