@@ -1,0 +1,3789 @@
+{
+  "args": {
+    "model": "/data/yaominghao/gb/models/SmolLM2-135M",
+    "benchmark_dir": "/data/yaominghao/gb/FedPLoRA/data/domain_benchmark_35c_dir05/seed_42",
+    "benchmark_jsonl": "",
+    "build_benchmark": false,
+    "benchmark_output_dir": "data/domain_benchmark",
+    "num_clients_per_domain": 5,
+    "min_samples_per_client": 50,
+    "agg_type": "fedplora_v11c_gmix",
+    "rounds": 10,
+    "num_clients": 35,
+    "local_epochs": 1,
+    "lr": 0.0002,
+    "lora_r": 8,
+    "lora_alpha": 16,
+    "lora_dropout": 0.05,
+    "rslora": false,
+    "batch_size": 2,
+    "warmup_ratio": 0.03,
+    "max_seq_length": 256,
+    "seed": 42,
+    "gradient_checkpointing": true,
+    "trust_remote_code": false,
+    "torch_dtype": "bfloat16",
+    "target_modules": "q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj",
+    "client_state_dir": "/data/yaominghao/gb/result/FedPLoRA/v11_20260705_35c_dir05_r10_finaleval_seed42/result_files/client_states/E3_v11c_gmix_mu040_oracle",
+    "save_client_state_to_disk": true,
+    "metrics_output_dir": "/data/yaominghao/gb/result/FedPLoRA/v11_20260705_35c_dir05_r10_finaleval_seed42/result_logs/E3_v11c_gmix_mu040_oracle",
+    "save_run_checkpoint_dir": "/data/yaominghao/gb/models/trained_models_LW/v11_20260705_35c_dir05_r10_finaleval_seed42/E3_v11c_gmix_mu040_oracle_SmolLM2-135M_dir05_r10_e1_lr0.0002_seed42",
+    "skip_post_agg_snapshots": true,
+    "trained_models_root": "/data/yaominghao/gb/models/trained_models_LW/v11_20260705_35c_dir05_r10_finaleval_seed42",
+    "no_auto_save_run_checkpoint": false,
+    "force_retrain": false,
+    "eval_only_from_checkpoint": "",
+    "gp_align_lambda": 0.01,
+    "gp_prox_lambda": 0.001,
+    "gp_orth_lambda": 0.0001,
+    "gp_consensus_power": 2.0,
+    "gp_agg_momentum": 0.5,
+    "yoco_sparse_lambda": 0.0001,
+    "yoco_pcwa_components": 3,
+    "yoco_aggregate_mode": "conflict",
+    "yoco_conflict_method": "avgm",
+    "yoco_sign_lambda": 0.01,
+    "yoco_eval_use_local_clients": false,
+    "memory_agg_eval_use_local_clients": false,
+    "flora_svd_device": "auto",
+    "oneshot_consensus_power": 2.0,
+    "oneshot_importance_power": 1.0,
+    "oneshot_importance_clip": 5.0,
+    "oneshot_conflict_threshold": 0.35,
+    "oneshot_conflict_blend": 1.0,
+    "oneshot_scale_clip_ratio": 0.0,
+    "oneshot_anchor_lambda": 0.0001,
+    "oneshot_prox_lambda": 0.0,
+    "oneshot_no_keep_init_on_conflict": false,
+    "oneshot_orthogonalize": false,
+    "oneshot_ablation_plain_fedavg": false,
+    "v3_conflict_quantile": 0.8,
+    "v3_gate_temperature": 0.05,
+    "v3_conflict_blend": 1.0,
+    "v3_residual_norm_power": 1.0,
+    "v3_residual_eps": 1e-07,
+    "v3_cluster_mode": "domain_prior",
+    "v3_cluster_lambda_min": 0.2,
+    "v3_cluster_lambda_max": 1.0,
+    "v3_rpca_rank": 1,
+    "v3_sparse_quantile": 0.8,
+    "v3_domain_cluster_map": "",
+    "v6_dcr_mode": "",
+    "v6_dcr_rc_policy": "auto",
+    "v6_dcr_shared_rank": 0,
+    "v6_dcr_min_shared_rank": 1,
+    "v6_dcr_max_shared_rank": 0,
+    "v6_dcr_energy_tau": 0.8,
+    "v6_dcr_conflict_strength": 1.0,
+    "v6_dcr_importance_power": 0.0,
+    "v6_dcr_importance_clip": 5.0,
+    "v7_b_mode": "mean",
+    "expert_cluster_mode": "domain",
+    "expert_cluster_k": 0,
+    "expert_max_clusters": 0,
+    "expert_b_mode": "",
+    "expert_top_m": 0,
+    "expert_router_temperature": 0.2,
+    "expert_freeze_a": false,
+    "v8_a_warmup_rounds": 1,
+    "v8_a_refresh_interval": 5,
+    "v8_cache_shared_a_downlink": true,
+    "v9_mix_lambda": 0.5,
+    "v10_a_correction_alpha": 0.35,
+    "v10_a_anchor_lambda": 0.001,
+    "v10_a_prox_lambda": 0.0005,
+    "v10_b_prox_lambda": 0.0001,
+    "v10_a_sketch_rank": 2,
+    "v10_a_norm_clip_ratio": 1.5,
+    "v11_global_b_mix_mu": 0.4,
+    "hilora_leaf_blend": 0.25,
+    "ecolora_keep_ratio": 0.25,
+    "ecolora_mask_mode": "round_robin",
+    "feddat_teacher_lambda": 0.01,
+    "v5m_keep_ratio": 0.2,
+    "v5m_dare_p": 0.3,
+    "v5m_rank_policy": "fixed",
+    "v5m_rank_cap": 64,
+    "v5m_energy_tau": 0.95,
+    "v5m_knots_normalize": 1,
+    "v5m_basis_energy_tau": 0.9999,
+    "v5m_chunk_rows": 2048,
+    "v5m_device": "auto",
+    "eval_max_batches": 0,
+    "eval_batch_size": 0,
+    "eval_interval": 1,
+    "eval_final_only": true,
+    "train_max_steps_per_client": 0,
+    "max_train_samples_per_client": 0,
+    "dataloader_num_workers": 0,
+    "eval_dataloader_num_workers": 0,
+    "dataloader_pin_memory": true,
+    "dataloader_persistent_workers": false,
+    "attn_implementation": "",
+    "tokenizer_use_fast": true,
+    "eval_personalization_metrics": true,
+    "fedplora_ablation_no_consensus": false,
+    "fedplora_ablation_no_momentum": false,
+    "_runtime_client_sizes": [
+      225,
+      175,
+      368,
+      392,
+      286,
+      40,
+      59,
+      64,
+      77,
+      104,
+      203,
+      296,
+      258,
+      295,
+      392,
+      305,
+      504,
+      201,
+      273,
+      161,
+      145,
+      352,
+      77,
+      240,
+      632,
+      674,
+      126,
+      243,
+      268,
+      133,
+      305,
+      276,
+      256,
+      393,
+      214
+    ],
+    "_fedplora_client_domains": {
+      "0": "code",
+      "1": "code",
+      "2": "code",
+      "3": "code",
+      "4": "code",
+      "5": "education",
+      "6": "education",
+      "7": "education",
+      "8": "education",
+      "9": "education",
+      "10": "finance",
+      "11": "finance",
+      "12": "finance",
+      "13": "finance",
+      "14": "finance",
+      "15": "general",
+      "16": "general",
+      "17": "general",
+      "18": "general",
+      "19": "general",
+      "20": "legal",
+      "21": "legal",
+      "22": "legal",
+      "23": "legal",
+      "24": "legal",
+      "25": "math",
+      "26": "math",
+      "27": "math",
+      "28": "math",
+      "29": "math",
+      "30": "medical",
+      "31": "medical",
+      "32": "medical",
+      "33": "medical",
+      "34": "medical"
+    },
+    "_fedplora_round_client_ids": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      30,
+      31,
+      32,
+      33,
+      34
+    ]
+  },
+  "benchmark_dir": "/data/yaominghao/gb/FedPLoRA/data/domain_benchmark_35c_dir05/seed_42",
+  "recommended_primary_metrics": [
+    "domain_macro_token_accuracy",
+    "domain_macro_perplexity",
+    "worst_domain_token_accuracy",
+    "worst_domain_perplexity"
+  ],
+  "communication": {
+    "agg_type": "fedplora_v11c_gmix",
+    "down_bytes_per_client": 6189840,
+    "up_bytes_per_client": 6189840,
+    "effective_down_bytes_per_client": 6189840,
+    "effective_up_bytes_per_client": 6189840,
+    "downlink_policy": "cache_shared_a_plus_true_v11_a_sketch",
+    "v8_a_refresh_rounds": 10,
+    "v8_a_refresh_fraction": 1.0,
+    "v8_a_warmup_rounds": 1,
+    "v8_a_refresh_interval": 5,
+    "v8_cache_shared_a_downlink": true,
+    "v10_a_correction_alpha": 0.35,
+    "v10_a_anchor_lambda": 0.001,
+    "v10_a_prox_lambda": 0.0005,
+    "v10_b_prox_lambda": 0.0001,
+    "v10_a_sketch_rank": 2,
+    "v10_a_norm_clip_ratio": 1.5,
+    "v11_global_b_mix_mu": 0.4,
+    "v11_a_correction_bytes_per_client": 1213200,
+    "v11_a_correction_mode": "true_lowrank_delta"
+  },
+  "rounds": [
+    {
+      "round": 1,
+      "eval_skipped": true,
+      "eval_skip_reason": "eval_final_only",
+      "v11": {
+        "branch": "global_B_mixing",
+        "a_correction_alpha": 0.35,
+        "a_anchor_lambda": 0.001,
+        "a_prox_lambda": 0.0005,
+        "b_prox_lambda": 0.0001,
+        "a_sketch_rank": 2,
+        "a_norm_clip_ratio": 1.5,
+        "global_b_mix_mu": 0.4,
+        "upload_scope": "true_a_sketch_b"
+      },
+      "lora_expert_stats": {
+        "cluster_mode": "domain",
+        "selected_k": 7,
+        "domain_label_map": {
+          "0": "code",
+          "1": "education",
+          "2": "finance",
+          "3": "general",
+          "4": "legal",
+          "5": "math",
+          "6": "medical"
+        },
+        "mean_pair_angle_deg": 79.26483725028626,
+        "mean_pair_cos": 0.1859010110452634,
+        "cluster_sizes": {
+          "0": 5,
+          "1": 5,
+          "2": 5,
+          "3": 5,
+          "4": 5,
+          "5": 5,
+          "6": 5
+        },
+        "domain_nmi": 1.0,
+        "domain_ari": 1.0,
+        "b_mode": "mean",
+        "expert_top_m": 1,
+        "expert_router_temperature": 0.2,
+        "hilora_leaf_blend": 0.0,
+        "num_b_layers": 210,
+        "upload_scope": "a_b",
+        "freeze_a": false,
+        "algorithm": "fedplora_v11c_gmix",
+        "v11_branch": "global_B_mixing",
+        "v11_a_payload": "true_lowrank_delta",
+        "v11_global_b_mix_mu": 0.4,
+        "v11_global_branch": "sample_size_weighted_b_mean",
+        "v11_routed_branch": "domain",
+        "v11_mixing_rule": "B_client=mu*B_global+(1-mu)*B_routed",
+        "v11_mean_mix_delta_norm_ratio": 0.3534281926226767,
+        "v11_mean_global_delta_norm_ratio": 0.8835705239165835,
+        "v11_a_corrected_layers": 210,
+        "v11_a_correction_alpha": 0.35,
+        "v11_a_sketch_rank": 2,
+        "v11_a_mean_rel_update_norm": 0.032317945131817655,
+        "v11_a_mean_row_cos_to_ref": 0.9993522634108861,
+        "v11_a_clipped_row_frac": 0.0,
+        "v10_a_corrected_layers": 210,
+        "v10_a_correction_alpha": 0.35,
+        "v10_a_sketch_rank": 2,
+        "v10_a_mean_rel_update_norm": 0.032317945131817655,
+        "v10_a_mean_row_cos_to_ref": 0.9993522634108861,
+        "v10_a_clipped_row_frac": 0.0
+      },
+      "lora_expert_client_clusters": {
+        "0": 0,
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "4": 0,
+        "5": 1,
+        "6": 1,
+        "7": 1,
+        "8": 1,
+        "9": 1,
+        "10": 2,
+        "11": 2,
+        "12": 2,
+        "13": 2,
+        "14": 2,
+        "15": 3,
+        "16": 3,
+        "17": 3,
+        "18": 3,
+        "19": 3,
+        "20": 4,
+        "21": 4,
+        "22": 4,
+        "23": 4,
+        "24": 4,
+        "25": 5,
+        "26": 5,
+        "27": 5,
+        "28": 5,
+        "29": 5,
+        "30": 6,
+        "31": 6,
+        "32": 6,
+        "33": 6,
+        "34": 6
+      },
+      "lora_expert_cluster_domain_hist": {
+        "0": {
+          "code": 5
+        },
+        "1": {
+          "education": 5
+        },
+        "2": {
+          "finance": 5
+        },
+        "3": {
+          "general": 5
+        },
+        "4": {
+          "legal": 5
+        },
+        "5": {
+          "math": 5
+        },
+        "6": {
+          "medical": 5
+        }
+      },
+      "lora_expert_client_routes": {
+        "0": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "1": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "2": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "3": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "4": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "5": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "6": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "7": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "8": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "9": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "10": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "11": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "12": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "13": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "14": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "15": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "16": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "17": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "18": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "19": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "20": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "21": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "22": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "23": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "24": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "25": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "26": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "27": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "28": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "29": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "30": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "31": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "32": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "33": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "34": [
+          [
+            6,
+            1.0
+          ]
+        ]
+      }
+    },
+    {
+      "round": 2,
+      "eval_skipped": true,
+      "eval_skip_reason": "eval_final_only",
+      "v11": {
+        "branch": "global_B_mixing",
+        "a_correction_alpha": 0.35,
+        "a_anchor_lambda": 0.001,
+        "a_prox_lambda": 0.0005,
+        "b_prox_lambda": 0.0001,
+        "a_sketch_rank": 2,
+        "a_norm_clip_ratio": 1.5,
+        "global_b_mix_mu": 0.4,
+        "upload_scope": "true_a_sketch_b"
+      },
+      "lora_expert_stats": {
+        "cluster_mode": "domain",
+        "selected_k": 7,
+        "domain_label_map": {
+          "0": "code",
+          "1": "education",
+          "2": "finance",
+          "3": "general",
+          "4": "legal",
+          "5": "math",
+          "6": "medical"
+        },
+        "mean_pair_angle_deg": 74.1283602769998,
+        "mean_pair_cos": 0.27068585194441597,
+        "cluster_sizes": {
+          "0": 5,
+          "1": 5,
+          "2": 5,
+          "3": 5,
+          "4": 5,
+          "5": 5,
+          "6": 5
+        },
+        "domain_nmi": 1.0,
+        "domain_ari": 1.0,
+        "b_mode": "mean",
+        "expert_top_m": 1,
+        "expert_router_temperature": 0.2,
+        "hilora_leaf_blend": 0.0,
+        "num_b_layers": 210,
+        "upload_scope": "a_b",
+        "freeze_a": false,
+        "algorithm": "fedplora_v11c_gmix",
+        "v11_branch": "global_B_mixing",
+        "v11_a_payload": "true_lowrank_delta",
+        "v11_global_b_mix_mu": 0.4,
+        "v11_global_branch": "sample_size_weighted_b_mean",
+        "v11_routed_branch": "domain",
+        "v11_mixing_rule": "B_client=mu*B_global+(1-mu)*B_routed",
+        "v11_mean_mix_delta_norm_ratio": 0.32343125196243416,
+        "v11_mean_global_delta_norm_ratio": 0.8085781751820308,
+        "v11_a_corrected_layers": 210,
+        "v11_a_correction_alpha": 0.35,
+        "v11_a_sketch_rank": 2,
+        "v11_a_mean_rel_update_norm": 0.028799773879340525,
+        "v11_a_mean_row_cos_to_ref": 0.9995056292840413,
+        "v11_a_clipped_row_frac": 0.0,
+        "v10_a_corrected_layers": 210,
+        "v10_a_correction_alpha": 0.35,
+        "v10_a_sketch_rank": 2,
+        "v10_a_mean_rel_update_norm": 0.028799773879340525,
+        "v10_a_mean_row_cos_to_ref": 0.9995056292840413,
+        "v10_a_clipped_row_frac": 0.0
+      },
+      "lora_expert_client_clusters": {
+        "0": 0,
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "4": 0,
+        "5": 1,
+        "6": 1,
+        "7": 1,
+        "8": 1,
+        "9": 1,
+        "10": 2,
+        "11": 2,
+        "12": 2,
+        "13": 2,
+        "14": 2,
+        "15": 3,
+        "16": 3,
+        "17": 3,
+        "18": 3,
+        "19": 3,
+        "20": 4,
+        "21": 4,
+        "22": 4,
+        "23": 4,
+        "24": 4,
+        "25": 5,
+        "26": 5,
+        "27": 5,
+        "28": 5,
+        "29": 5,
+        "30": 6,
+        "31": 6,
+        "32": 6,
+        "33": 6,
+        "34": 6
+      },
+      "lora_expert_cluster_domain_hist": {
+        "0": {
+          "code": 5
+        },
+        "1": {
+          "education": 5
+        },
+        "2": {
+          "finance": 5
+        },
+        "3": {
+          "general": 5
+        },
+        "4": {
+          "legal": 5
+        },
+        "5": {
+          "math": 5
+        },
+        "6": {
+          "medical": 5
+        }
+      },
+      "lora_expert_client_routes": {
+        "0": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "1": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "2": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "3": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "4": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "5": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "6": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "7": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "8": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "9": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "10": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "11": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "12": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "13": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "14": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "15": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "16": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "17": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "18": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "19": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "20": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "21": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "22": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "23": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "24": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "25": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "26": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "27": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "28": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "29": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "30": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "31": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "32": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "33": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "34": [
+          [
+            6,
+            1.0
+          ]
+        ]
+      }
+    },
+    {
+      "round": 3,
+      "eval_skipped": true,
+      "eval_skip_reason": "eval_final_only",
+      "v11": {
+        "branch": "global_B_mixing",
+        "a_correction_alpha": 0.35,
+        "a_anchor_lambda": 0.001,
+        "a_prox_lambda": 0.0005,
+        "b_prox_lambda": 0.0001,
+        "a_sketch_rank": 2,
+        "a_norm_clip_ratio": 1.5,
+        "global_b_mix_mu": 0.4,
+        "upload_scope": "true_a_sketch_b"
+      },
+      "lora_expert_stats": {
+        "cluster_mode": "domain",
+        "selected_k": 7,
+        "domain_label_map": {
+          "0": "code",
+          "1": "education",
+          "2": "finance",
+          "3": "general",
+          "4": "legal",
+          "5": "math",
+          "6": "medical"
+        },
+        "mean_pair_angle_deg": 67.80642016670735,
+        "mean_pair_cos": 0.37312919077180584,
+        "cluster_sizes": {
+          "0": 5,
+          "1": 5,
+          "2": 5,
+          "3": 5,
+          "4": 5,
+          "5": 5,
+          "6": 5
+        },
+        "domain_nmi": 1.0,
+        "domain_ari": 1.0,
+        "b_mode": "mean",
+        "expert_top_m": 1,
+        "expert_router_temperature": 0.2,
+        "hilora_leaf_blend": 0.0,
+        "num_b_layers": 210,
+        "upload_scope": "a_b",
+        "freeze_a": false,
+        "algorithm": "fedplora_v11c_gmix",
+        "v11_branch": "global_B_mixing",
+        "v11_a_payload": "true_lowrank_delta",
+        "v11_global_b_mix_mu": 0.4,
+        "v11_global_branch": "sample_size_weighted_b_mean",
+        "v11_routed_branch": "domain",
+        "v11_mixing_rule": "B_client=mu*B_global+(1-mu)*B_routed",
+        "v11_mean_mix_delta_norm_ratio": 0.29383070297069525,
+        "v11_mean_global_delta_norm_ratio": 0.7345767967568998,
+        "v11_a_corrected_layers": 210,
+        "v11_a_correction_alpha": 0.35,
+        "v11_a_sketch_rank": 2,
+        "v11_a_mean_rel_update_norm": 0.02428183836341842,
+        "v11_a_mean_row_cos_to_ref": 0.9996519662085034,
+        "v11_a_clipped_row_frac": 0.0,
+        "v10_a_corrected_layers": 210,
+        "v10_a_correction_alpha": 0.35,
+        "v10_a_sketch_rank": 2,
+        "v10_a_mean_rel_update_norm": 0.02428183836341842,
+        "v10_a_mean_row_cos_to_ref": 0.9996519662085034,
+        "v10_a_clipped_row_frac": 0.0
+      },
+      "lora_expert_client_clusters": {
+        "0": 0,
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "4": 0,
+        "5": 1,
+        "6": 1,
+        "7": 1,
+        "8": 1,
+        "9": 1,
+        "10": 2,
+        "11": 2,
+        "12": 2,
+        "13": 2,
+        "14": 2,
+        "15": 3,
+        "16": 3,
+        "17": 3,
+        "18": 3,
+        "19": 3,
+        "20": 4,
+        "21": 4,
+        "22": 4,
+        "23": 4,
+        "24": 4,
+        "25": 5,
+        "26": 5,
+        "27": 5,
+        "28": 5,
+        "29": 5,
+        "30": 6,
+        "31": 6,
+        "32": 6,
+        "33": 6,
+        "34": 6
+      },
+      "lora_expert_cluster_domain_hist": {
+        "0": {
+          "code": 5
+        },
+        "1": {
+          "education": 5
+        },
+        "2": {
+          "finance": 5
+        },
+        "3": {
+          "general": 5
+        },
+        "4": {
+          "legal": 5
+        },
+        "5": {
+          "math": 5
+        },
+        "6": {
+          "medical": 5
+        }
+      },
+      "lora_expert_client_routes": {
+        "0": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "1": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "2": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "3": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "4": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "5": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "6": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "7": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "8": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "9": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "10": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "11": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "12": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "13": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "14": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "15": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "16": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "17": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "18": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "19": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "20": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "21": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "22": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "23": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "24": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "25": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "26": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "27": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "28": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "29": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "30": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "31": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "32": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "33": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "34": [
+          [
+            6,
+            1.0
+          ]
+        ]
+      }
+    },
+    {
+      "round": 4,
+      "eval_skipped": true,
+      "eval_skip_reason": "eval_final_only",
+      "v11": {
+        "branch": "global_B_mixing",
+        "a_correction_alpha": 0.35,
+        "a_anchor_lambda": 0.001,
+        "a_prox_lambda": 0.0005,
+        "b_prox_lambda": 0.0001,
+        "a_sketch_rank": 2,
+        "a_norm_clip_ratio": 1.5,
+        "global_b_mix_mu": 0.4,
+        "upload_scope": "true_a_sketch_b"
+      },
+      "lora_expert_stats": {
+        "cluster_mode": "domain",
+        "selected_k": 7,
+        "domain_label_map": {
+          "0": "code",
+          "1": "education",
+          "2": "finance",
+          "3": "general",
+          "4": "legal",
+          "5": "math",
+          "6": "medical"
+        },
+        "mean_pair_angle_deg": 61.42812594807638,
+        "mean_pair_cos": 0.472982207777358,
+        "cluster_sizes": {
+          "0": 5,
+          "1": 5,
+          "2": 5,
+          "3": 5,
+          "4": 5,
+          "5": 5,
+          "6": 5
+        },
+        "domain_nmi": 1.0,
+        "domain_ari": 1.0,
+        "b_mode": "mean",
+        "expert_top_m": 1,
+        "expert_router_temperature": 0.2,
+        "hilora_leaf_blend": 0.0,
+        "num_b_layers": 210,
+        "upload_scope": "a_b",
+        "freeze_a": false,
+        "algorithm": "fedplora_v11c_gmix",
+        "v11_branch": "global_B_mixing",
+        "v11_a_payload": "true_lowrank_delta",
+        "v11_global_b_mix_mu": 0.4,
+        "v11_global_branch": "sample_size_weighted_b_mean",
+        "v11_routed_branch": "domain",
+        "v11_mixing_rule": "B_client=mu*B_global+(1-mu)*B_routed",
+        "v11_mean_mix_delta_norm_ratio": 0.2666028447469978,
+        "v11_mean_global_delta_norm_ratio": 0.666507144517537,
+        "v11_a_corrected_layers": 210,
+        "v11_a_correction_alpha": 0.35,
+        "v11_a_sketch_rank": 2,
+        "v11_a_mean_rel_update_norm": 0.02131725662615328,
+        "v11_a_mean_row_cos_to_ref": 0.9997320048865818,
+        "v11_a_clipped_row_frac": 0.0,
+        "v10_a_corrected_layers": 210,
+        "v10_a_correction_alpha": 0.35,
+        "v10_a_sketch_rank": 2,
+        "v10_a_mean_rel_update_norm": 0.02131725662615328,
+        "v10_a_mean_row_cos_to_ref": 0.9997320048865818,
+        "v10_a_clipped_row_frac": 0.0
+      },
+      "lora_expert_client_clusters": {
+        "0": 0,
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "4": 0,
+        "5": 1,
+        "6": 1,
+        "7": 1,
+        "8": 1,
+        "9": 1,
+        "10": 2,
+        "11": 2,
+        "12": 2,
+        "13": 2,
+        "14": 2,
+        "15": 3,
+        "16": 3,
+        "17": 3,
+        "18": 3,
+        "19": 3,
+        "20": 4,
+        "21": 4,
+        "22": 4,
+        "23": 4,
+        "24": 4,
+        "25": 5,
+        "26": 5,
+        "27": 5,
+        "28": 5,
+        "29": 5,
+        "30": 6,
+        "31": 6,
+        "32": 6,
+        "33": 6,
+        "34": 6
+      },
+      "lora_expert_cluster_domain_hist": {
+        "0": {
+          "code": 5
+        },
+        "1": {
+          "education": 5
+        },
+        "2": {
+          "finance": 5
+        },
+        "3": {
+          "general": 5
+        },
+        "4": {
+          "legal": 5
+        },
+        "5": {
+          "math": 5
+        },
+        "6": {
+          "medical": 5
+        }
+      },
+      "lora_expert_client_routes": {
+        "0": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "1": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "2": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "3": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "4": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "5": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "6": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "7": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "8": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "9": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "10": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "11": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "12": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "13": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "14": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "15": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "16": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "17": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "18": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "19": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "20": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "21": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "22": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "23": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "24": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "25": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "26": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "27": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "28": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "29": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "30": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "31": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "32": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "33": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "34": [
+          [
+            6,
+            1.0
+          ]
+        ]
+      }
+    },
+    {
+      "round": 5,
+      "eval_skipped": true,
+      "eval_skip_reason": "eval_final_only",
+      "v11": {
+        "branch": "global_B_mixing",
+        "a_correction_alpha": 0.35,
+        "a_anchor_lambda": 0.001,
+        "a_prox_lambda": 0.0005,
+        "b_prox_lambda": 0.0001,
+        "a_sketch_rank": 2,
+        "a_norm_clip_ratio": 1.5,
+        "global_b_mix_mu": 0.4,
+        "upload_scope": "true_a_sketch_b"
+      },
+      "lora_expert_stats": {
+        "cluster_mode": "domain",
+        "selected_k": 7,
+        "domain_label_map": {
+          "0": "code",
+          "1": "education",
+          "2": "finance",
+          "3": "general",
+          "4": "legal",
+          "5": "math",
+          "6": "medical"
+        },
+        "mean_pair_angle_deg": 55.61487669649434,
+        "mean_pair_cos": 0.5593807720458236,
+        "cluster_sizes": {
+          "0": 5,
+          "1": 5,
+          "2": 5,
+          "3": 5,
+          "4": 5,
+          "5": 5,
+          "6": 5
+        },
+        "domain_nmi": 1.0,
+        "domain_ari": 1.0,
+        "b_mode": "mean",
+        "expert_top_m": 1,
+        "expert_router_temperature": 0.2,
+        "hilora_leaf_blend": 0.0,
+        "num_b_layers": 210,
+        "upload_scope": "a_b",
+        "freeze_a": false,
+        "algorithm": "fedplora_v11c_gmix",
+        "v11_branch": "global_B_mixing",
+        "v11_a_payload": "true_lowrank_delta",
+        "v11_global_b_mix_mu": 0.4,
+        "v11_global_branch": "sample_size_weighted_b_mean",
+        "v11_routed_branch": "domain",
+        "v11_mixing_rule": "B_client=mu*B_global+(1-mu)*B_routed",
+        "v11_mean_mix_delta_norm_ratio": 0.24382454135055048,
+        "v11_mean_global_delta_norm_ratio": 0.6095613828267232,
+        "v11_a_corrected_layers": 210,
+        "v11_a_correction_alpha": 0.35,
+        "v11_a_sketch_rank": 2,
+        "v11_a_mean_rel_update_norm": 0.019183007081664864,
+        "v11_a_mean_row_cos_to_ref": 0.9997843449669225,
+        "v11_a_clipped_row_frac": 0.0,
+        "v10_a_corrected_layers": 210,
+        "v10_a_correction_alpha": 0.35,
+        "v10_a_sketch_rank": 2,
+        "v10_a_mean_rel_update_norm": 0.019183007081664864,
+        "v10_a_mean_row_cos_to_ref": 0.9997843449669225,
+        "v10_a_clipped_row_frac": 0.0
+      },
+      "lora_expert_client_clusters": {
+        "0": 0,
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "4": 0,
+        "5": 1,
+        "6": 1,
+        "7": 1,
+        "8": 1,
+        "9": 1,
+        "10": 2,
+        "11": 2,
+        "12": 2,
+        "13": 2,
+        "14": 2,
+        "15": 3,
+        "16": 3,
+        "17": 3,
+        "18": 3,
+        "19": 3,
+        "20": 4,
+        "21": 4,
+        "22": 4,
+        "23": 4,
+        "24": 4,
+        "25": 5,
+        "26": 5,
+        "27": 5,
+        "28": 5,
+        "29": 5,
+        "30": 6,
+        "31": 6,
+        "32": 6,
+        "33": 6,
+        "34": 6
+      },
+      "lora_expert_cluster_domain_hist": {
+        "0": {
+          "code": 5
+        },
+        "1": {
+          "education": 5
+        },
+        "2": {
+          "finance": 5
+        },
+        "3": {
+          "general": 5
+        },
+        "4": {
+          "legal": 5
+        },
+        "5": {
+          "math": 5
+        },
+        "6": {
+          "medical": 5
+        }
+      },
+      "lora_expert_client_routes": {
+        "0": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "1": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "2": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "3": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "4": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "5": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "6": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "7": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "8": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "9": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "10": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "11": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "12": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "13": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "14": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "15": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "16": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "17": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "18": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "19": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "20": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "21": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "22": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "23": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "24": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "25": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "26": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "27": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "28": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "29": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "30": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "31": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "32": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "33": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "34": [
+          [
+            6,
+            1.0
+          ]
+        ]
+      }
+    },
+    {
+      "round": 6,
+      "eval_skipped": true,
+      "eval_skip_reason": "eval_final_only",
+      "v11": {
+        "branch": "global_B_mixing",
+        "a_correction_alpha": 0.35,
+        "a_anchor_lambda": 0.001,
+        "a_prox_lambda": 0.0005,
+        "b_prox_lambda": 0.0001,
+        "a_sketch_rank": 2,
+        "a_norm_clip_ratio": 1.5,
+        "global_b_mix_mu": 0.4,
+        "upload_scope": "true_a_sketch_b"
+      },
+      "lora_expert_stats": {
+        "cluster_mode": "domain",
+        "selected_k": 7,
+        "domain_label_map": {
+          "0": "code",
+          "1": "education",
+          "2": "finance",
+          "3": "general",
+          "4": "legal",
+          "5": "math",
+          "6": "medical"
+        },
+        "mean_pair_angle_deg": 50.27884076066498,
+        "mean_pair_cos": 0.6340175394031132,
+        "cluster_sizes": {
+          "0": 5,
+          "1": 5,
+          "2": 5,
+          "3": 5,
+          "4": 5,
+          "5": 5,
+          "6": 5
+        },
+        "domain_nmi": 1.0,
+        "domain_ari": 1.0,
+        "b_mode": "mean",
+        "expert_top_m": 1,
+        "expert_router_temperature": 0.2,
+        "hilora_leaf_blend": 0.0,
+        "num_b_layers": 210,
+        "upload_scope": "a_b",
+        "freeze_a": false,
+        "algorithm": "fedplora_v11c_gmix",
+        "v11_branch": "global_B_mixing",
+        "v11_a_payload": "true_lowrank_delta",
+        "v11_global_b_mix_mu": 0.4,
+        "v11_global_branch": "sample_size_weighted_b_mean",
+        "v11_routed_branch": "domain",
+        "v11_mixing_rule": "B_client=mu*B_global+(1-mu)*B_routed",
+        "v11_mean_mix_delta_norm_ratio": 0.22212262705804026,
+        "v11_mean_global_delta_norm_ratio": 0.5553065971413609,
+        "v11_a_corrected_layers": 210,
+        "v11_a_correction_alpha": 0.35,
+        "v11_a_sketch_rank": 2,
+        "v11_a_mean_rel_update_norm": 0.017168017747816355,
+        "v11_a_mean_row_cos_to_ref": 0.9998278513905547,
+        "v11_a_clipped_row_frac": 0.0,
+        "v10_a_corrected_layers": 210,
+        "v10_a_correction_alpha": 0.35,
+        "v10_a_sketch_rank": 2,
+        "v10_a_mean_rel_update_norm": 0.017168017747816355,
+        "v10_a_mean_row_cos_to_ref": 0.9998278513905547,
+        "v10_a_clipped_row_frac": 0.0
+      },
+      "lora_expert_client_clusters": {
+        "0": 0,
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "4": 0,
+        "5": 1,
+        "6": 1,
+        "7": 1,
+        "8": 1,
+        "9": 1,
+        "10": 2,
+        "11": 2,
+        "12": 2,
+        "13": 2,
+        "14": 2,
+        "15": 3,
+        "16": 3,
+        "17": 3,
+        "18": 3,
+        "19": 3,
+        "20": 4,
+        "21": 4,
+        "22": 4,
+        "23": 4,
+        "24": 4,
+        "25": 5,
+        "26": 5,
+        "27": 5,
+        "28": 5,
+        "29": 5,
+        "30": 6,
+        "31": 6,
+        "32": 6,
+        "33": 6,
+        "34": 6
+      },
+      "lora_expert_cluster_domain_hist": {
+        "0": {
+          "code": 5
+        },
+        "1": {
+          "education": 5
+        },
+        "2": {
+          "finance": 5
+        },
+        "3": {
+          "general": 5
+        },
+        "4": {
+          "legal": 5
+        },
+        "5": {
+          "math": 5
+        },
+        "6": {
+          "medical": 5
+        }
+      },
+      "lora_expert_client_routes": {
+        "0": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "1": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "2": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "3": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "4": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "5": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "6": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "7": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "8": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "9": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "10": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "11": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "12": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "13": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "14": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "15": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "16": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "17": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "18": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "19": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "20": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "21": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "22": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "23": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "24": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "25": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "26": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "27": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "28": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "29": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "30": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "31": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "32": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "33": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "34": [
+          [
+            6,
+            1.0
+          ]
+        ]
+      }
+    },
+    {
+      "round": 7,
+      "eval_skipped": true,
+      "eval_skip_reason": "eval_final_only",
+      "v11": {
+        "branch": "global_B_mixing",
+        "a_correction_alpha": 0.35,
+        "a_anchor_lambda": 0.001,
+        "a_prox_lambda": 0.0005,
+        "b_prox_lambda": 0.0001,
+        "a_sketch_rank": 2,
+        "a_norm_clip_ratio": 1.5,
+        "global_b_mix_mu": 0.4,
+        "upload_scope": "true_a_sketch_b"
+      },
+      "lora_expert_stats": {
+        "cluster_mode": "domain",
+        "selected_k": 7,
+        "domain_label_map": {
+          "0": "code",
+          "1": "education",
+          "2": "finance",
+          "3": "general",
+          "4": "legal",
+          "5": "math",
+          "6": "medical"
+        },
+        "mean_pair_angle_deg": 45.719639530894796,
+        "mean_pair_cos": 0.6935531555907447,
+        "cluster_sizes": {
+          "0": 5,
+          "1": 5,
+          "2": 5,
+          "3": 5,
+          "4": 5,
+          "5": 5,
+          "6": 5
+        },
+        "domain_nmi": 1.0,
+        "domain_ari": 1.0,
+        "b_mode": "mean",
+        "expert_top_m": 1,
+        "expert_router_temperature": 0.2,
+        "hilora_leaf_blend": 0.0,
+        "num_b_layers": 210,
+        "upload_scope": "a_b",
+        "freeze_a": false,
+        "algorithm": "fedplora_v11c_gmix",
+        "v11_branch": "global_B_mixing",
+        "v11_a_payload": "true_lowrank_delta",
+        "v11_global_b_mix_mu": 0.4,
+        "v11_global_branch": "sample_size_weighted_b_mean",
+        "v11_routed_branch": "domain",
+        "v11_mixing_rule": "B_client=mu*B_global+(1-mu)*B_routed",
+        "v11_mean_mix_delta_norm_ratio": 0.20408553943067345,
+        "v11_mean_global_delta_norm_ratio": 0.5102138724502716,
+        "v11_a_corrected_layers": 210,
+        "v11_a_correction_alpha": 0.35,
+        "v11_a_sketch_rank": 2,
+        "v11_a_mean_rel_update_norm": 0.01581254959000747,
+        "v11_a_mean_row_cos_to_ref": 0.9998547100949855,
+        "v11_a_clipped_row_frac": 0.0,
+        "v10_a_corrected_layers": 210,
+        "v10_a_correction_alpha": 0.35,
+        "v10_a_sketch_rank": 2,
+        "v10_a_mean_rel_update_norm": 0.01581254959000747,
+        "v10_a_mean_row_cos_to_ref": 0.9998547100949855,
+        "v10_a_clipped_row_frac": 0.0
+      },
+      "lora_expert_client_clusters": {
+        "0": 0,
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "4": 0,
+        "5": 1,
+        "6": 1,
+        "7": 1,
+        "8": 1,
+        "9": 1,
+        "10": 2,
+        "11": 2,
+        "12": 2,
+        "13": 2,
+        "14": 2,
+        "15": 3,
+        "16": 3,
+        "17": 3,
+        "18": 3,
+        "19": 3,
+        "20": 4,
+        "21": 4,
+        "22": 4,
+        "23": 4,
+        "24": 4,
+        "25": 5,
+        "26": 5,
+        "27": 5,
+        "28": 5,
+        "29": 5,
+        "30": 6,
+        "31": 6,
+        "32": 6,
+        "33": 6,
+        "34": 6
+      },
+      "lora_expert_cluster_domain_hist": {
+        "0": {
+          "code": 5
+        },
+        "1": {
+          "education": 5
+        },
+        "2": {
+          "finance": 5
+        },
+        "3": {
+          "general": 5
+        },
+        "4": {
+          "legal": 5
+        },
+        "5": {
+          "math": 5
+        },
+        "6": {
+          "medical": 5
+        }
+      },
+      "lora_expert_client_routes": {
+        "0": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "1": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "2": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "3": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "4": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "5": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "6": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "7": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "8": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "9": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "10": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "11": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "12": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "13": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "14": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "15": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "16": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "17": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "18": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "19": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "20": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "21": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "22": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "23": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "24": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "25": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "26": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "27": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "28": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "29": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "30": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "31": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "32": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "33": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "34": [
+          [
+            6,
+            1.0
+          ]
+        ]
+      }
+    },
+    {
+      "round": 8,
+      "eval_skipped": true,
+      "eval_skip_reason": "eval_final_only",
+      "v11": {
+        "branch": "global_B_mixing",
+        "a_correction_alpha": 0.35,
+        "a_anchor_lambda": 0.001,
+        "a_prox_lambda": 0.0005,
+        "b_prox_lambda": 0.0001,
+        "a_sketch_rank": 2,
+        "a_norm_clip_ratio": 1.5,
+        "global_b_mix_mu": 0.4,
+        "upload_scope": "true_a_sketch_b"
+      },
+      "lora_expert_stats": {
+        "cluster_mode": "domain",
+        "selected_k": 7,
+        "domain_label_map": {
+          "0": "code",
+          "1": "education",
+          "2": "finance",
+          "3": "general",
+          "4": "legal",
+          "5": "math",
+          "6": "medical"
+        },
+        "mean_pair_angle_deg": 41.83821505734783,
+        "mean_pair_cos": 0.7408446633207555,
+        "cluster_sizes": {
+          "0": 5,
+          "1": 5,
+          "2": 5,
+          "3": 5,
+          "4": 5,
+          "5": 5,
+          "6": 5
+        },
+        "domain_nmi": 1.0,
+        "domain_ari": 1.0,
+        "b_mode": "mean",
+        "expert_top_m": 1,
+        "expert_router_temperature": 0.2,
+        "hilora_leaf_blend": 0.0,
+        "num_b_layers": 210,
+        "upload_scope": "a_b",
+        "freeze_a": false,
+        "algorithm": "fedplora_v11c_gmix",
+        "v11_branch": "global_B_mixing",
+        "v11_a_payload": "true_lowrank_delta",
+        "v11_global_b_mix_mu": 0.4,
+        "v11_global_branch": "sample_size_weighted_b_mean",
+        "v11_routed_branch": "domain",
+        "v11_mixing_rule": "B_client=mu*B_global+(1-mu)*B_routed",
+        "v11_mean_mix_delta_norm_ratio": 0.18932493338904854,
+        "v11_mean_global_delta_norm_ratio": 0.47331235654778125,
+        "v11_a_corrected_layers": 210,
+        "v11_a_correction_alpha": 0.35,
+        "v11_a_sketch_rank": 2,
+        "v11_a_mean_rel_update_norm": 0.014637876123582232,
+        "v11_a_mean_row_cos_to_ref": 0.9998765056686741,
+        "v11_a_clipped_row_frac": 0.0,
+        "v10_a_corrected_layers": 210,
+        "v10_a_correction_alpha": 0.35,
+        "v10_a_sketch_rank": 2,
+        "v10_a_mean_rel_update_norm": 0.014637876123582232,
+        "v10_a_mean_row_cos_to_ref": 0.9998765056686741,
+        "v10_a_clipped_row_frac": 0.0
+      },
+      "lora_expert_client_clusters": {
+        "0": 0,
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "4": 0,
+        "5": 1,
+        "6": 1,
+        "7": 1,
+        "8": 1,
+        "9": 1,
+        "10": 2,
+        "11": 2,
+        "12": 2,
+        "13": 2,
+        "14": 2,
+        "15": 3,
+        "16": 3,
+        "17": 3,
+        "18": 3,
+        "19": 3,
+        "20": 4,
+        "21": 4,
+        "22": 4,
+        "23": 4,
+        "24": 4,
+        "25": 5,
+        "26": 5,
+        "27": 5,
+        "28": 5,
+        "29": 5,
+        "30": 6,
+        "31": 6,
+        "32": 6,
+        "33": 6,
+        "34": 6
+      },
+      "lora_expert_cluster_domain_hist": {
+        "0": {
+          "code": 5
+        },
+        "1": {
+          "education": 5
+        },
+        "2": {
+          "finance": 5
+        },
+        "3": {
+          "general": 5
+        },
+        "4": {
+          "legal": 5
+        },
+        "5": {
+          "math": 5
+        },
+        "6": {
+          "medical": 5
+        }
+      },
+      "lora_expert_client_routes": {
+        "0": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "1": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "2": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "3": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "4": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "5": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "6": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "7": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "8": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "9": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "10": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "11": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "12": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "13": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "14": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "15": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "16": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "17": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "18": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "19": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "20": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "21": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "22": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "23": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "24": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "25": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "26": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "27": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "28": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "29": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "30": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "31": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "32": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "33": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "34": [
+          [
+            6,
+            1.0
+          ]
+        ]
+      }
+    },
+    {
+      "round": 9,
+      "eval_skipped": true,
+      "eval_skip_reason": "eval_final_only",
+      "v11": {
+        "branch": "global_B_mixing",
+        "a_correction_alpha": 0.35,
+        "a_anchor_lambda": 0.001,
+        "a_prox_lambda": 0.0005,
+        "b_prox_lambda": 0.0001,
+        "a_sketch_rank": 2,
+        "a_norm_clip_ratio": 1.5,
+        "global_b_mix_mu": 0.4,
+        "upload_scope": "true_a_sketch_b"
+      },
+      "lora_expert_stats": {
+        "cluster_mode": "domain",
+        "selected_k": 7,
+        "domain_label_map": {
+          "0": "code",
+          "1": "education",
+          "2": "finance",
+          "3": "general",
+          "4": "legal",
+          "5": "math",
+          "6": "medical"
+        },
+        "mean_pair_angle_deg": 38.599442426492445,
+        "mean_pair_cos": 0.777708063377481,
+        "cluster_sizes": {
+          "0": 5,
+          "1": 5,
+          "2": 5,
+          "3": 5,
+          "4": 5,
+          "5": 5,
+          "6": 5
+        },
+        "domain_nmi": 1.0,
+        "domain_ari": 1.0,
+        "b_mode": "mean",
+        "expert_top_m": 1,
+        "expert_router_temperature": 0.2,
+        "hilora_leaf_blend": 0.0,
+        "num_b_layers": 210,
+        "upload_scope": "a_b",
+        "freeze_a": false,
+        "algorithm": "fedplora_v11c_gmix",
+        "v11_branch": "global_B_mixing",
+        "v11_a_payload": "true_lowrank_delta",
+        "v11_global_b_mix_mu": 0.4,
+        "v11_global_branch": "sample_size_weighted_b_mean",
+        "v11_routed_branch": "domain",
+        "v11_mixing_rule": "B_client=mu*B_global+(1-mu)*B_routed",
+        "v11_mean_mix_delta_norm_ratio": 0.17652817597476606,
+        "v11_mean_global_delta_norm_ratio": 0.44132046220871873,
+        "v11_a_corrected_layers": 210,
+        "v11_a_correction_alpha": 0.35,
+        "v11_a_sketch_rank": 2,
+        "v11_a_mean_rel_update_norm": 0.013827315430063986,
+        "v11_a_mean_row_cos_to_ref": 0.9998904999168147,
+        "v11_a_clipped_row_frac": 0.0,
+        "v10_a_corrected_layers": 210,
+        "v10_a_correction_alpha": 0.35,
+        "v10_a_sketch_rank": 2,
+        "v10_a_mean_rel_update_norm": 0.013827315430063986,
+        "v10_a_mean_row_cos_to_ref": 0.9998904999168147,
+        "v10_a_clipped_row_frac": 0.0
+      },
+      "lora_expert_client_clusters": {
+        "0": 0,
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "4": 0,
+        "5": 1,
+        "6": 1,
+        "7": 1,
+        "8": 1,
+        "9": 1,
+        "10": 2,
+        "11": 2,
+        "12": 2,
+        "13": 2,
+        "14": 2,
+        "15": 3,
+        "16": 3,
+        "17": 3,
+        "18": 3,
+        "19": 3,
+        "20": 4,
+        "21": 4,
+        "22": 4,
+        "23": 4,
+        "24": 4,
+        "25": 5,
+        "26": 5,
+        "27": 5,
+        "28": 5,
+        "29": 5,
+        "30": 6,
+        "31": 6,
+        "32": 6,
+        "33": 6,
+        "34": 6
+      },
+      "lora_expert_cluster_domain_hist": {
+        "0": {
+          "code": 5
+        },
+        "1": {
+          "education": 5
+        },
+        "2": {
+          "finance": 5
+        },
+        "3": {
+          "general": 5
+        },
+        "4": {
+          "legal": 5
+        },
+        "5": {
+          "math": 5
+        },
+        "6": {
+          "medical": 5
+        }
+      },
+      "lora_expert_client_routes": {
+        "0": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "1": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "2": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "3": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "4": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "5": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "6": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "7": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "8": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "9": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "10": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "11": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "12": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "13": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "14": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "15": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "16": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "17": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "18": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "19": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "20": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "21": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "22": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "23": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "24": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "25": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "26": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "27": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "28": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "29": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "30": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "31": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "32": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "33": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "34": [
+          [
+            6,
+            1.0
+          ]
+        ]
+      }
+    },
+    {
+      "round": 10,
+      "domain_macro_token_accuracy": 0.6018925436696333,
+      "best_domain_macro_token_accuracy": 0.6018925436696333,
+      "worst_domain_token_accuracy": 0.4688157664810326,
+      "best_worst_domain_token_accuracy": 0.4688157664810326,
+      "domain_macro_perplexity": 5.913852295526581,
+      "best_domain_macro_perplexity": 5.913852295526581,
+      "worst_domain_perplexity": 9.68626772513568,
+      "best_worst_domain_perplexity": 9.68626772513568,
+      "domain_macro_loss": 1.7164754387200902,
+      "best_domain_macro_loss": 1.7164754387200902,
+      "worst_domain_loss": 2.270320292030062,
+      "best_worst_domain_loss": 2.270320292030062,
+      "domain_metrics": {
+        "code": {
+          "loss": 1.2782432644603552,
+          "token_accuracy": 0.6942845631403246,
+          "perplexity": 3.590539542461748
+        },
+        "education": {
+          "loss": 1.7915920249762989,
+          "token_accuracy": 0.5931969806120212,
+          "perplexity": 6.018325462913085
+        },
+        "finance": {
+          "loss": 2.270320292030062,
+          "token_accuracy": 0.4688157664810326,
+          "perplexity": 9.68626772513568
+        },
+        "general": {
+          "loss": 1.7252079500133988,
+          "token_accuracy": 0.6144265493827649,
+          "perplexity": 5.614416970503098
+        },
+        "legal": {
+          "loss": 1.889583233917026,
+          "token_accuracy": 0.5691369481638606,
+          "perplexity": 6.623725029866399
+        },
+        "math": {
+          "loss": 1.1653234445197245,
+          "token_accuracy": 0.704607693667946,
+          "perplexity": 3.207771019342493
+        },
+        "medical": {
+          "loss": 1.8950578611237663,
+          "token_accuracy": 0.5687793042394834,
+          "perplexity": 6.6559203184635685
+        }
+      },
+      "lora_expert_stats": {
+        "cluster_mode": "domain",
+        "selected_k": 7,
+        "domain_label_map": {
+          "0": "code",
+          "1": "education",
+          "2": "finance",
+          "3": "general",
+          "4": "legal",
+          "5": "math",
+          "6": "medical"
+        },
+        "mean_pair_angle_deg": 35.91605883845759,
+        "mean_pair_cos": 0.8064132618446166,
+        "cluster_sizes": {
+          "0": 5,
+          "1": 5,
+          "2": 5,
+          "3": 5,
+          "4": 5,
+          "5": 5,
+          "6": 5
+        },
+        "domain_nmi": 1.0,
+        "domain_ari": 1.0,
+        "b_mode": "mean",
+        "expert_top_m": 1,
+        "expert_router_temperature": 0.2,
+        "hilora_leaf_blend": 0.0,
+        "num_b_layers": 210,
+        "upload_scope": "a_b",
+        "freeze_a": false,
+        "algorithm": "fedplora_v11c_gmix",
+        "v11_branch": "global_B_mixing",
+        "v11_a_payload": "true_lowrank_delta",
+        "v11_global_b_mix_mu": 0.4,
+        "v11_global_branch": "sample_size_weighted_b_mean",
+        "v11_routed_branch": "domain",
+        "v11_mixing_rule": "B_client=mu*B_global+(1-mu)*B_routed",
+        "v11_mean_mix_delta_norm_ratio": 0.16592326846326041,
+        "v11_mean_global_delta_norm_ratio": 0.4148081896273534,
+        "v11_a_corrected_layers": 210,
+        "v11_a_correction_alpha": 0.35,
+        "v11_a_sketch_rank": 2,
+        "v11_a_mean_rel_update_norm": 0.013078660139344434,
+        "v11_a_mean_row_cos_to_ref": 0.9999023731265749,
+        "v11_a_clipped_row_frac": 0.0,
+        "v10_a_corrected_layers": 210,
+        "v10_a_correction_alpha": 0.35,
+        "v10_a_sketch_rank": 2,
+        "v10_a_mean_rel_update_norm": 0.013078660139344434,
+        "v10_a_mean_row_cos_to_ref": 0.9999023731265749,
+        "v10_a_clipped_row_frac": 0.0
+      },
+      "lora_expert_client_clusters": {
+        "0": 0,
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "4": 0,
+        "5": 1,
+        "6": 1,
+        "7": 1,
+        "8": 1,
+        "9": 1,
+        "10": 2,
+        "11": 2,
+        "12": 2,
+        "13": 2,
+        "14": 2,
+        "15": 3,
+        "16": 3,
+        "17": 3,
+        "18": 3,
+        "19": 3,
+        "20": 4,
+        "21": 4,
+        "22": 4,
+        "23": 4,
+        "24": 4,
+        "25": 5,
+        "26": 5,
+        "27": 5,
+        "28": 5,
+        "29": 5,
+        "30": 6,
+        "31": 6,
+        "32": 6,
+        "33": 6,
+        "34": 6
+      },
+      "lora_expert_cluster_domain_hist": {
+        "0": {
+          "code": 5
+        },
+        "1": {
+          "education": 5
+        },
+        "2": {
+          "finance": 5
+        },
+        "3": {
+          "general": 5
+        },
+        "4": {
+          "legal": 5
+        },
+        "5": {
+          "math": 5
+        },
+        "6": {
+          "medical": 5
+        }
+      },
+      "lora_expert_client_routes": {
+        "0": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "1": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "2": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "3": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "4": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "5": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "6": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "7": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "8": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "9": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "10": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "11": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "12": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "13": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "14": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "15": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "16": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "17": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "18": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "19": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "20": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "21": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "22": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "23": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "24": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "25": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "26": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "27": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "28": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "29": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "30": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "31": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "32": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "33": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "34": [
+          [
+            6,
+            1.0
+          ]
+        ]
+      },
+      "client_local_macro_token_accuracy": 0.6232119366486294,
+      "client_local_macro_perplexity": 5.356748065003451,
+      "client_local_macro_loss": 1.5953800737583645,
+      "off_domain_macro_token_accuracy": 0.5999066888236336,
+      "off_domain_macro_perplexity": 5.991050201050887,
+      "off_domain_macro_loss": 1.72945276855888,
+      "in_domain_domain_test_macro_token_accuracy": 0.6138076727456308,
+      "in_domain_domain_test_macro_perplexity": 5.450664862380748,
+      "in_domain_domain_test_macro_loss": 1.63861145968735,
+      "personalization_gap_token_accuracy": 0.023305247824995767,
+      "personalization_gap_perplexity": 0.6343021360474355,
+      "personalization_gap_loss": 0.13407269480051554,
+      "v11": {
+        "branch": "global_B_mixing",
+        "a_correction_alpha": 0.35,
+        "a_anchor_lambda": 0.001,
+        "a_prox_lambda": 0.0005,
+        "b_prox_lambda": 0.0001,
+        "a_sketch_rank": 2,
+        "a_norm_clip_ratio": 1.5,
+        "global_b_mix_mu": 0.4,
+        "upload_scope": "true_a_sketch_b"
+      }
+    }
+  ],
+  "recommended_kpis": {
+    "token_accuracy": [
+      "domain_macro_token_accuracy",
+      "worst_domain_token_accuracy",
+      "client_local_macro_token_accuracy",
+      "in_domain_domain_test_macro_token_accuracy",
+      "off_domain_macro_token_accuracy"
+    ],
+    "perplexity": [
+      "domain_macro_perplexity",
+      "worst_domain_perplexity",
+      "client_local_macro_perplexity",
+      "in_domain_domain_test_macro_perplexity",
+      "off_domain_macro_perplexity"
+    ],
+    "communication": {
+      "path": "communication",
+      "fields": [
+        "down_bytes_per_client",
+        "up_bytes_per_client",
+        "agg_type"
+      ]
+    },
+    "fedplora_oneshot_conflict": {
+      "path": "rounds[i].fedplora_oneshot_conflict",
+      "note": "Present after FedPLoRA-Oneshot server aggregation; typically mean_conflict, max_conflict, high_conflict_row_frac, mean_init_gate. Other agg_type: omit or {}. Eval-only reload uses checkpoint meta when available."
+    },
+    "personalization_gaps": [
+      "personalization_gap_token_accuracy",
+      "personalization_gap_perplexity"
+    ]
+  },
+  "recommended_primary_personalization_metrics": [
+    "client_local_macro_token_accuracy",
+    "client_local_macro_perplexity",
+    "off_domain_macro_token_accuracy",
+    "off_domain_macro_perplexity",
+    "personalization_gap_token_accuracy",
+    "personalization_gap_perplexity"
+  ]
+}

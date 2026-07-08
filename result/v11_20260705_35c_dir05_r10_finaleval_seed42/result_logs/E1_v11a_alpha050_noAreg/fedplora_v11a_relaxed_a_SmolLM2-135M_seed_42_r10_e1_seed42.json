@@ -1,0 +1,3799 @@
+{
+  "args": {
+    "model": "/data/yaominghao/gb/models/SmolLM2-135M",
+    "benchmark_dir": "/data/yaominghao/gb/FedPLoRA/data/domain_benchmark_35c_dir05/seed_42",
+    "benchmark_jsonl": "",
+    "build_benchmark": false,
+    "benchmark_output_dir": "data/domain_benchmark",
+    "num_clients_per_domain": 5,
+    "min_samples_per_client": 50,
+    "agg_type": "fedplora_v11a_relaxed_a",
+    "rounds": 10,
+    "num_clients": 35,
+    "local_epochs": 1,
+    "lr": 0.0002,
+    "lora_r": 8,
+    "lora_alpha": 16,
+    "lora_dropout": 0.05,
+    "rslora": false,
+    "batch_size": 2,
+    "warmup_ratio": 0.03,
+    "max_seq_length": 256,
+    "seed": 42,
+    "gradient_checkpointing": true,
+    "trust_remote_code": false,
+    "torch_dtype": "bfloat16",
+    "target_modules": "q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj",
+    "client_state_dir": "/data/yaominghao/gb/result/FedPLoRA/v11_20260705_35c_dir05_r10_finaleval_seed42/result_files/client_states/E1_v11a_alpha050_noAreg",
+    "save_client_state_to_disk": true,
+    "metrics_output_dir": "/data/yaominghao/gb/result/FedPLoRA/v11_20260705_35c_dir05_r10_finaleval_seed42/result_logs/E1_v11a_alpha050_noAreg",
+    "save_run_checkpoint_dir": "/data/yaominghao/gb/models/trained_models_LW/v11_20260705_35c_dir05_r10_finaleval_seed42/E1_v11a_alpha050_noAreg_SmolLM2-135M_dir05_r10_e1_lr0.0002_seed42",
+    "skip_post_agg_snapshots": true,
+    "trained_models_root": "/data/yaominghao/gb/models/trained_models_LW/v11_20260705_35c_dir05_r10_finaleval_seed42",
+    "no_auto_save_run_checkpoint": false,
+    "force_retrain": false,
+    "eval_only_from_checkpoint": "",
+    "gp_align_lambda": 0.01,
+    "gp_prox_lambda": 0.001,
+    "gp_orth_lambda": 0.0001,
+    "gp_consensus_power": 2.0,
+    "gp_agg_momentum": 0.5,
+    "yoco_sparse_lambda": 0.0001,
+    "yoco_pcwa_components": 3,
+    "yoco_aggregate_mode": "conflict",
+    "yoco_conflict_method": "avgm",
+    "yoco_sign_lambda": 0.01,
+    "yoco_eval_use_local_clients": false,
+    "memory_agg_eval_use_local_clients": false,
+    "flora_svd_device": "auto",
+    "oneshot_consensus_power": 2.0,
+    "oneshot_importance_power": 1.0,
+    "oneshot_importance_clip": 5.0,
+    "oneshot_conflict_threshold": 0.35,
+    "oneshot_conflict_blend": 1.0,
+    "oneshot_scale_clip_ratio": 0.0,
+    "oneshot_anchor_lambda": 0.0001,
+    "oneshot_prox_lambda": 0.0,
+    "oneshot_no_keep_init_on_conflict": false,
+    "oneshot_orthogonalize": false,
+    "oneshot_ablation_plain_fedavg": false,
+    "v3_conflict_quantile": 0.8,
+    "v3_gate_temperature": 0.05,
+    "v3_conflict_blend": 1.0,
+    "v3_residual_norm_power": 1.0,
+    "v3_residual_eps": 1e-07,
+    "v3_cluster_mode": "domain_prior",
+    "v3_cluster_lambda_min": 0.2,
+    "v3_cluster_lambda_max": 1.0,
+    "v3_rpca_rank": 1,
+    "v3_sparse_quantile": 0.8,
+    "v3_domain_cluster_map": "",
+    "v6_dcr_mode": "",
+    "v6_dcr_rc_policy": "auto",
+    "v6_dcr_shared_rank": 0,
+    "v6_dcr_min_shared_rank": 1,
+    "v6_dcr_max_shared_rank": 0,
+    "v6_dcr_energy_tau": 0.8,
+    "v6_dcr_conflict_strength": 1.0,
+    "v6_dcr_importance_power": 0.0,
+    "v6_dcr_importance_clip": 5.0,
+    "v7_b_mode": "mean",
+    "expert_cluster_mode": "auto",
+    "expert_cluster_k": 0,
+    "expert_max_clusters": 0,
+    "expert_b_mode": "",
+    "expert_top_m": 0,
+    "expert_router_temperature": 0.2,
+    "expert_freeze_a": false,
+    "v8_a_warmup_rounds": 1,
+    "v8_a_refresh_interval": 5,
+    "v8_cache_shared_a_downlink": true,
+    "v9_mix_lambda": 0.5,
+    "v10_a_correction_alpha": 0.5,
+    "v10_a_anchor_lambda": 0.0,
+    "v10_a_prox_lambda": 0.0,
+    "v10_b_prox_lambda": 0.0001,
+    "v10_a_sketch_rank": 2,
+    "v10_a_norm_clip_ratio": 0.0,
+    "v11_global_b_mix_mu": 0.4,
+    "hilora_leaf_blend": 0.25,
+    "ecolora_keep_ratio": 0.25,
+    "ecolora_mask_mode": "round_robin",
+    "feddat_teacher_lambda": 0.01,
+    "v5m_keep_ratio": 0.2,
+    "v5m_dare_p": 0.3,
+    "v5m_rank_policy": "fixed",
+    "v5m_rank_cap": 64,
+    "v5m_energy_tau": 0.95,
+    "v5m_knots_normalize": 1,
+    "v5m_basis_energy_tau": 0.9999,
+    "v5m_chunk_rows": 2048,
+    "v5m_device": "auto",
+    "eval_max_batches": 0,
+    "eval_batch_size": 0,
+    "eval_interval": 1,
+    "eval_final_only": true,
+    "train_max_steps_per_client": 0,
+    "max_train_samples_per_client": 0,
+    "dataloader_num_workers": 0,
+    "eval_dataloader_num_workers": 0,
+    "dataloader_pin_memory": true,
+    "dataloader_persistent_workers": false,
+    "attn_implementation": "",
+    "tokenizer_use_fast": true,
+    "eval_personalization_metrics": true,
+    "fedplora_ablation_no_consensus": false,
+    "fedplora_ablation_no_momentum": false,
+    "_runtime_client_sizes": [
+      225,
+      175,
+      368,
+      392,
+      286,
+      40,
+      59,
+      64,
+      77,
+      104,
+      203,
+      296,
+      258,
+      295,
+      392,
+      305,
+      504,
+      201,
+      273,
+      161,
+      145,
+      352,
+      77,
+      240,
+      632,
+      674,
+      126,
+      243,
+      268,
+      133,
+      305,
+      276,
+      256,
+      393,
+      214
+    ],
+    "_fedplora_client_domains": {
+      "0": "code",
+      "1": "code",
+      "2": "code",
+      "3": "code",
+      "4": "code",
+      "5": "education",
+      "6": "education",
+      "7": "education",
+      "8": "education",
+      "9": "education",
+      "10": "finance",
+      "11": "finance",
+      "12": "finance",
+      "13": "finance",
+      "14": "finance",
+      "15": "general",
+      "16": "general",
+      "17": "general",
+      "18": "general",
+      "19": "general",
+      "20": "legal",
+      "21": "legal",
+      "22": "legal",
+      "23": "legal",
+      "24": "legal",
+      "25": "math",
+      "26": "math",
+      "27": "math",
+      "28": "math",
+      "29": "math",
+      "30": "medical",
+      "31": "medical",
+      "32": "medical",
+      "33": "medical",
+      "34": "medical"
+    },
+    "_fedplora_round_client_ids": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      30,
+      31,
+      32,
+      33,
+      34
+    ]
+  },
+  "benchmark_dir": "/data/yaominghao/gb/FedPLoRA/data/domain_benchmark_35c_dir05/seed_42",
+  "recommended_primary_metrics": [
+    "domain_macro_token_accuracy",
+    "domain_macro_perplexity",
+    "worst_domain_token_accuracy",
+    "worst_domain_perplexity"
+  ],
+  "communication": {
+    "agg_type": "fedplora_v11a_relaxed_a",
+    "down_bytes_per_client": 6189840,
+    "up_bytes_per_client": 6189840,
+    "effective_down_bytes_per_client": 6189840,
+    "effective_up_bytes_per_client": 6189840,
+    "downlink_policy": "cache_shared_a_plus_true_v11_a_sketch",
+    "v8_a_refresh_rounds": 10,
+    "v8_a_refresh_fraction": 1.0,
+    "v8_a_warmup_rounds": 1,
+    "v8_a_refresh_interval": 5,
+    "v8_cache_shared_a_downlink": true,
+    "v10_a_correction_alpha": 0.5,
+    "v10_a_anchor_lambda": 0.0,
+    "v10_a_prox_lambda": 0.0,
+    "v10_b_prox_lambda": 0.0001,
+    "v10_a_sketch_rank": 2,
+    "v10_a_norm_clip_ratio": 0.0,
+    "v11_global_b_mix_mu": 0.4,
+    "v11_a_correction_bytes_per_client": 1213200,
+    "v11_a_correction_mode": "true_lowrank_delta"
+  },
+  "rounds": [
+    {
+      "round": 1,
+      "eval_skipped": true,
+      "eval_skip_reason": "eval_final_only",
+      "v11": {
+        "branch": "A_relaxation",
+        "a_correction_alpha": 0.5,
+        "a_anchor_lambda": 0.0,
+        "a_prox_lambda": 0.0,
+        "b_prox_lambda": 0.0001,
+        "a_sketch_rank": 2,
+        "a_norm_clip_ratio": 0.0,
+        "global_b_mix_mu": 0.4,
+        "upload_scope": "true_a_sketch_b"
+      },
+      "lora_expert_stats": {
+        "selected_k": 8,
+        "silhouette": 0.17421319745467603,
+        "candidates": {
+          "2": 0.08546519623932189,
+          "3": 0.09765338429930127,
+          "4": 0.11158322300253053,
+          "5": 0.12149729038583611,
+          "6": 0.14085942474869637,
+          "7": 0.14956863805328746,
+          "8": 0.17421319745467603
+        },
+        "cluster_mode": "b_subspace_auto",
+        "mean_pair_angle_deg": 79.26496794466571,
+        "mean_pair_cos": 0.18589877896446164,
+        "cluster_sizes": {
+          "0": 5,
+          "1": 5,
+          "2": 5,
+          "3": 4,
+          "4": 1,
+          "5": 5,
+          "6": 5,
+          "7": 5
+        },
+        "domain_nmi": 0.9819630242940854,
+        "domain_ari": 0.966796875,
+        "b_mode": "mean",
+        "expert_top_m": 1,
+        "expert_router_temperature": 0.2,
+        "hilora_leaf_blend": 0.0,
+        "num_b_layers": 210,
+        "upload_scope": "a_b",
+        "freeze_a": false,
+        "algorithm": "fedplora_v11a_relaxed_a",
+        "v11_branch": "A_relaxation",
+        "v11_a_payload": "true_lowrank_delta",
+        "v11_b_branch": "b_subspace_auto",
+        "v11_training_rule": "train_A+B_with_configurable_A_anchor_B_prox",
+        "v11_a_corrected_layers": 210,
+        "v11_a_correction_alpha": 0.5,
+        "v11_a_sketch_rank": 2,
+        "v11_a_mean_rel_update_norm": 0.046196434745552274,
+        "v11_a_mean_row_cos_to_ref": 0.9986817497227873,
+        "v11_a_clipped_row_frac": 0.0,
+        "v10_a_corrected_layers": 210,
+        "v10_a_correction_alpha": 0.5,
+        "v10_a_sketch_rank": 2,
+        "v10_a_mean_rel_update_norm": 0.046196434745552274,
+        "v10_a_mean_row_cos_to_ref": 0.9986817497227873,
+        "v10_a_clipped_row_frac": 0.0
+      },
+      "lora_expert_client_clusters": {
+        "0": 0,
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "4": 0,
+        "5": 1,
+        "6": 1,
+        "7": 1,
+        "8": 1,
+        "9": 1,
+        "10": 2,
+        "11": 2,
+        "12": 2,
+        "13": 2,
+        "14": 2,
+        "15": 3,
+        "16": 3,
+        "17": 3,
+        "18": 4,
+        "19": 3,
+        "20": 5,
+        "21": 5,
+        "22": 5,
+        "23": 5,
+        "24": 5,
+        "25": 6,
+        "26": 6,
+        "27": 6,
+        "28": 6,
+        "29": 6,
+        "30": 7,
+        "31": 7,
+        "32": 7,
+        "33": 7,
+        "34": 7
+      },
+      "lora_expert_cluster_domain_hist": {
+        "0": {
+          "code": 5
+        },
+        "1": {
+          "education": 5
+        },
+        "2": {
+          "finance": 5
+        },
+        "3": {
+          "general": 4
+        },
+        "4": {
+          "general": 1
+        },
+        "5": {
+          "legal": 5
+        },
+        "6": {
+          "math": 5
+        },
+        "7": {
+          "medical": 5
+        }
+      },
+      "lora_expert_client_routes": {
+        "0": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "1": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "2": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "3": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "4": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "5": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "6": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "7": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "8": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "9": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "10": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "11": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "12": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "13": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "14": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "15": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "16": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "17": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "18": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "19": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "20": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "21": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "22": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "23": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "24": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "25": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "26": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "27": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "28": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "29": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "30": [
+          [
+            7,
+            1.0
+          ]
+        ],
+        "31": [
+          [
+            7,
+            1.0
+          ]
+        ],
+        "32": [
+          [
+            7,
+            1.0
+          ]
+        ],
+        "33": [
+          [
+            7,
+            1.0
+          ]
+        ],
+        "34": [
+          [
+            7,
+            1.0
+          ]
+        ]
+      }
+    },
+    {
+      "round": 2,
+      "eval_skipped": true,
+      "eval_skip_reason": "eval_final_only",
+      "v11": {
+        "branch": "A_relaxation",
+        "a_correction_alpha": 0.5,
+        "a_anchor_lambda": 0.0,
+        "a_prox_lambda": 0.0,
+        "b_prox_lambda": 0.0001,
+        "a_sketch_rank": 2,
+        "a_norm_clip_ratio": 0.0,
+        "global_b_mix_mu": 0.4,
+        "upload_scope": "true_a_sketch_b"
+      },
+      "lora_expert_stats": {
+        "selected_k": 8,
+        "silhouette": 0.5546682909962299,
+        "candidates": {
+          "2": 0.19940736168045203,
+          "3": 0.25814826593080137,
+          "4": 0.31643037158142046,
+          "5": 0.387307991955607,
+          "6": 0.4511778994038348,
+          "7": 0.4829785400519035,
+          "8": 0.5546682909962299
+        },
+        "cluster_mode": "b_subspace_auto",
+        "mean_pair_angle_deg": 76.22190769555327,
+        "mean_pair_cos": 0.2328303838599952,
+        "cluster_sizes": {
+          "0": 5,
+          "1": 5,
+          "2": 5,
+          "3": 4,
+          "4": 1,
+          "5": 5,
+          "6": 5,
+          "7": 5
+        },
+        "domain_nmi": 0.9819630242940854,
+        "domain_ari": 0.966796875,
+        "b_mode": "mean",
+        "expert_top_m": 1,
+        "expert_router_temperature": 0.2,
+        "hilora_leaf_blend": 0.0,
+        "num_b_layers": 210,
+        "upload_scope": "a_b",
+        "freeze_a": false,
+        "algorithm": "fedplora_v11a_relaxed_a",
+        "v11_branch": "A_relaxation",
+        "v11_a_payload": "true_lowrank_delta",
+        "v11_b_branch": "b_subspace_auto",
+        "v11_training_rule": "train_A+B_with_configurable_A_anchor_B_prox",
+        "v11_a_corrected_layers": 210,
+        "v11_a_correction_alpha": 0.5,
+        "v11_a_sketch_rank": 2,
+        "v11_a_mean_rel_update_norm": 0.03537645423929804,
+        "v11_a_mean_row_cos_to_ref": 0.999260399384158,
+        "v11_a_clipped_row_frac": 0.0,
+        "v10_a_corrected_layers": 210,
+        "v10_a_correction_alpha": 0.5,
+        "v10_a_sketch_rank": 2,
+        "v10_a_mean_rel_update_norm": 0.03537645423929804,
+        "v10_a_mean_row_cos_to_ref": 0.999260399384158,
+        "v10_a_clipped_row_frac": 0.0
+      },
+      "lora_expert_client_clusters": {
+        "0": 0,
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "4": 0,
+        "5": 1,
+        "6": 1,
+        "7": 1,
+        "8": 1,
+        "9": 1,
+        "10": 2,
+        "11": 2,
+        "12": 2,
+        "13": 2,
+        "14": 2,
+        "15": 3,
+        "16": 3,
+        "17": 3,
+        "18": 4,
+        "19": 3,
+        "20": 5,
+        "21": 5,
+        "22": 5,
+        "23": 5,
+        "24": 5,
+        "25": 6,
+        "26": 6,
+        "27": 6,
+        "28": 6,
+        "29": 6,
+        "30": 7,
+        "31": 7,
+        "32": 7,
+        "33": 7,
+        "34": 7
+      },
+      "lora_expert_cluster_domain_hist": {
+        "0": {
+          "code": 5
+        },
+        "1": {
+          "education": 5
+        },
+        "2": {
+          "finance": 5
+        },
+        "3": {
+          "general": 4
+        },
+        "4": {
+          "general": 1
+        },
+        "5": {
+          "legal": 5
+        },
+        "6": {
+          "math": 5
+        },
+        "7": {
+          "medical": 5
+        }
+      },
+      "lora_expert_client_routes": {
+        "0": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "1": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "2": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "3": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "4": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "5": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "6": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "7": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "8": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "9": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "10": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "11": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "12": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "13": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "14": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "15": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "16": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "17": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "18": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "19": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "20": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "21": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "22": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "23": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "24": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "25": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "26": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "27": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "28": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "29": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "30": [
+          [
+            7,
+            1.0
+          ]
+        ],
+        "31": [
+          [
+            7,
+            1.0
+          ]
+        ],
+        "32": [
+          [
+            7,
+            1.0
+          ]
+        ],
+        "33": [
+          [
+            7,
+            1.0
+          ]
+        ],
+        "34": [
+          [
+            7,
+            1.0
+          ]
+        ]
+      }
+    },
+    {
+      "round": 3,
+      "eval_skipped": true,
+      "eval_skip_reason": "eval_final_only",
+      "v11": {
+        "branch": "A_relaxation",
+        "a_correction_alpha": 0.5,
+        "a_anchor_lambda": 0.0,
+        "a_prox_lambda": 0.0,
+        "b_prox_lambda": 0.0001,
+        "a_sketch_rank": 2,
+        "a_norm_clip_ratio": 0.0,
+        "global_b_mix_mu": 0.4,
+        "upload_scope": "true_a_sketch_b"
+      },
+      "lora_expert_stats": {
+        "selected_k": 8,
+        "silhouette": 0.7315507309738205,
+        "candidates": {
+          "2": 0.23771740341366876,
+          "3": 0.3207498257626199,
+          "4": 0.4030980136257461,
+          "5": 0.5046867202844543,
+          "6": 0.5972246564047973,
+          "7": 0.6334915886344791,
+          "8": 0.7315507309738205
+        },
+        "cluster_mode": "b_subspace_auto",
+        "mean_pair_angle_deg": 74.91870552835765,
+        "mean_pair_cos": 0.2485579356258096,
+        "cluster_sizes": {
+          "0": 5,
+          "1": 5,
+          "2": 5,
+          "3": 4,
+          "4": 1,
+          "5": 5,
+          "6": 5,
+          "7": 5
+        },
+        "domain_nmi": 0.9819630242940854,
+        "domain_ari": 0.966796875,
+        "b_mode": "mean",
+        "expert_top_m": 1,
+        "expert_router_temperature": 0.2,
+        "hilora_leaf_blend": 0.0,
+        "num_b_layers": 210,
+        "upload_scope": "a_b",
+        "freeze_a": false,
+        "algorithm": "fedplora_v11a_relaxed_a",
+        "v11_branch": "A_relaxation",
+        "v11_a_payload": "true_lowrank_delta",
+        "v11_b_branch": "b_subspace_auto",
+        "v11_training_rule": "train_A+B_with_configurable_A_anchor_B_prox",
+        "v11_a_corrected_layers": 210,
+        "v11_a_correction_alpha": 0.5,
+        "v11_a_sketch_rank": 2,
+        "v11_a_mean_rel_update_norm": 0.026617618857756042,
+        "v11_a_mean_row_cos_to_ref": 0.9995851010438942,
+        "v11_a_clipped_row_frac": 0.0,
+        "v10_a_corrected_layers": 210,
+        "v10_a_correction_alpha": 0.5,
+        "v10_a_sketch_rank": 2,
+        "v10_a_mean_rel_update_norm": 0.026617618857756042,
+        "v10_a_mean_row_cos_to_ref": 0.9995851010438942,
+        "v10_a_clipped_row_frac": 0.0
+      },
+      "lora_expert_client_clusters": {
+        "0": 0,
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "4": 0,
+        "5": 1,
+        "6": 1,
+        "7": 1,
+        "8": 1,
+        "9": 1,
+        "10": 2,
+        "11": 2,
+        "12": 2,
+        "13": 2,
+        "14": 2,
+        "15": 3,
+        "16": 3,
+        "17": 3,
+        "18": 4,
+        "19": 3,
+        "20": 5,
+        "21": 5,
+        "22": 5,
+        "23": 5,
+        "24": 5,
+        "25": 6,
+        "26": 6,
+        "27": 6,
+        "28": 6,
+        "29": 6,
+        "30": 7,
+        "31": 7,
+        "32": 7,
+        "33": 7,
+        "34": 7
+      },
+      "lora_expert_cluster_domain_hist": {
+        "0": {
+          "code": 5
+        },
+        "1": {
+          "education": 5
+        },
+        "2": {
+          "finance": 5
+        },
+        "3": {
+          "general": 4
+        },
+        "4": {
+          "general": 1
+        },
+        "5": {
+          "legal": 5
+        },
+        "6": {
+          "math": 5
+        },
+        "7": {
+          "medical": 5
+        }
+      },
+      "lora_expert_client_routes": {
+        "0": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "1": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "2": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "3": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "4": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "5": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "6": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "7": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "8": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "9": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "10": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "11": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "12": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "13": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "14": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "15": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "16": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "17": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "18": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "19": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "20": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "21": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "22": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "23": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "24": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "25": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "26": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "27": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "28": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "29": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "30": [
+          [
+            7,
+            1.0
+          ]
+        ],
+        "31": [
+          [
+            7,
+            1.0
+          ]
+        ],
+        "32": [
+          [
+            7,
+            1.0
+          ]
+        ],
+        "33": [
+          [
+            7,
+            1.0
+          ]
+        ],
+        "34": [
+          [
+            7,
+            1.0
+          ]
+        ]
+      }
+    },
+    {
+      "round": 4,
+      "eval_skipped": true,
+      "eval_skip_reason": "eval_final_only",
+      "v11": {
+        "branch": "A_relaxation",
+        "a_correction_alpha": 0.5,
+        "a_anchor_lambda": 0.0,
+        "a_prox_lambda": 0.0,
+        "b_prox_lambda": 0.0001,
+        "a_sketch_rank": 2,
+        "a_norm_clip_ratio": 0.0,
+        "global_b_mix_mu": 0.4,
+        "upload_scope": "true_a_sketch_b"
+      },
+      "lora_expert_stats": {
+        "selected_k": 8,
+        "silhouette": 0.8153690192913128,
+        "candidates": {
+          "2": 0.2535926281379401,
+          "3": 0.3476966778539522,
+          "4": 0.4424890331896938,
+          "5": 0.5607524633887101,
+          "6": 0.6658387685067512,
+          "7": 0.7033911318567644,
+          "8": 0.8153690192913128
+        },
+        "cluster_mode": "b_subspace_auto",
+        "mean_pair_angle_deg": 74.32252180079111,
+        "mean_pair_cos": 0.25345544292041067,
+        "cluster_sizes": {
+          "0": 5,
+          "1": 5,
+          "2": 5,
+          "3": 4,
+          "4": 1,
+          "5": 5,
+          "6": 5,
+          "7": 5
+        },
+        "domain_nmi": 0.9819630242940854,
+        "domain_ari": 0.966796875,
+        "b_mode": "mean",
+        "expert_top_m": 1,
+        "expert_router_temperature": 0.2,
+        "hilora_leaf_blend": 0.0,
+        "num_b_layers": 210,
+        "upload_scope": "a_b",
+        "freeze_a": false,
+        "algorithm": "fedplora_v11a_relaxed_a",
+        "v11_branch": "A_relaxation",
+        "v11_a_payload": "true_lowrank_delta",
+        "v11_b_branch": "b_subspace_auto",
+        "v11_training_rule": "train_A+B_with_configurable_A_anchor_B_prox",
+        "v11_a_corrected_layers": 210,
+        "v11_a_correction_alpha": 0.5,
+        "v11_a_sketch_rank": 2,
+        "v11_a_mean_rel_update_norm": 0.02205411168125944,
+        "v11_a_mean_row_cos_to_ref": 0.999713485829887,
+        "v11_a_clipped_row_frac": 0.0,
+        "v10_a_corrected_layers": 210,
+        "v10_a_correction_alpha": 0.5,
+        "v10_a_sketch_rank": 2,
+        "v10_a_mean_rel_update_norm": 0.02205411168125944,
+        "v10_a_mean_row_cos_to_ref": 0.999713485829887,
+        "v10_a_clipped_row_frac": 0.0
+      },
+      "lora_expert_client_clusters": {
+        "0": 0,
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "4": 0,
+        "5": 1,
+        "6": 1,
+        "7": 1,
+        "8": 1,
+        "9": 1,
+        "10": 2,
+        "11": 2,
+        "12": 2,
+        "13": 2,
+        "14": 2,
+        "15": 3,
+        "16": 3,
+        "17": 3,
+        "18": 4,
+        "19": 3,
+        "20": 5,
+        "21": 5,
+        "22": 5,
+        "23": 5,
+        "24": 5,
+        "25": 6,
+        "26": 6,
+        "27": 6,
+        "28": 6,
+        "29": 6,
+        "30": 7,
+        "31": 7,
+        "32": 7,
+        "33": 7,
+        "34": 7
+      },
+      "lora_expert_cluster_domain_hist": {
+        "0": {
+          "code": 5
+        },
+        "1": {
+          "education": 5
+        },
+        "2": {
+          "finance": 5
+        },
+        "3": {
+          "general": 4
+        },
+        "4": {
+          "general": 1
+        },
+        "5": {
+          "legal": 5
+        },
+        "6": {
+          "math": 5
+        },
+        "7": {
+          "medical": 5
+        }
+      },
+      "lora_expert_client_routes": {
+        "0": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "1": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "2": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "3": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "4": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "5": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "6": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "7": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "8": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "9": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "10": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "11": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "12": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "13": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "14": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "15": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "16": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "17": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "18": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "19": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "20": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "21": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "22": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "23": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "24": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "25": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "26": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "27": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "28": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "29": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "30": [
+          [
+            7,
+            1.0
+          ]
+        ],
+        "31": [
+          [
+            7,
+            1.0
+          ]
+        ],
+        "32": [
+          [
+            7,
+            1.0
+          ]
+        ],
+        "33": [
+          [
+            7,
+            1.0
+          ]
+        ],
+        "34": [
+          [
+            7,
+            1.0
+          ]
+        ]
+      }
+    },
+    {
+      "round": 5,
+      "eval_skipped": true,
+      "eval_skip_reason": "eval_final_only",
+      "v11": {
+        "branch": "A_relaxation",
+        "a_correction_alpha": 0.5,
+        "a_anchor_lambda": 0.0,
+        "a_prox_lambda": 0.0,
+        "b_prox_lambda": 0.0001,
+        "a_sketch_rank": 2,
+        "a_norm_clip_ratio": 0.0,
+        "global_b_mix_mu": 0.4,
+        "upload_scope": "true_a_sketch_b"
+      },
+      "lora_expert_stats": {
+        "selected_k": 8,
+        "silhouette": 0.868339030591696,
+        "candidates": {
+          "2": 0.2616739009581628,
+          "3": 0.3633157421056165,
+          "4": 0.46629882532198963,
+          "5": 0.5955475264354844,
+          "6": 0.710197063932883,
+          "7": 0.748574010749169,
+          "8": 0.868339030591696
+        },
+        "cluster_mode": "b_subspace_auto",
+        "mean_pair_angle_deg": 73.96052552577025,
+        "mean_pair_cos": 0.25502060235703455,
+        "cluster_sizes": {
+          "0": 5,
+          "1": 5,
+          "2": 5,
+          "3": 4,
+          "4": 1,
+          "5": 5,
+          "6": 5,
+          "7": 5
+        },
+        "domain_nmi": 0.9819630242940854,
+        "domain_ari": 0.966796875,
+        "b_mode": "mean",
+        "expert_top_m": 1,
+        "expert_router_temperature": 0.2,
+        "hilora_leaf_blend": 0.0,
+        "num_b_layers": 210,
+        "upload_scope": "a_b",
+        "freeze_a": false,
+        "algorithm": "fedplora_v11a_relaxed_a",
+        "v11_branch": "A_relaxation",
+        "v11_a_payload": "true_lowrank_delta",
+        "v11_b_branch": "b_subspace_auto",
+        "v11_training_rule": "train_A+B_with_configurable_A_anchor_B_prox",
+        "v11_a_corrected_layers": 210,
+        "v11_a_correction_alpha": 0.5,
+        "v11_a_sketch_rank": 2,
+        "v11_a_mean_rel_update_norm": 0.019236268770692518,
+        "v11_a_mean_row_cos_to_ref": 0.9997827793870654,
+        "v11_a_clipped_row_frac": 0.0,
+        "v10_a_corrected_layers": 210,
+        "v10_a_correction_alpha": 0.5,
+        "v10_a_sketch_rank": 2,
+        "v10_a_mean_rel_update_norm": 0.019236268770692518,
+        "v10_a_mean_row_cos_to_ref": 0.9997827793870654,
+        "v10_a_clipped_row_frac": 0.0
+      },
+      "lora_expert_client_clusters": {
+        "0": 0,
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "4": 0,
+        "5": 1,
+        "6": 1,
+        "7": 1,
+        "8": 1,
+        "9": 1,
+        "10": 2,
+        "11": 2,
+        "12": 2,
+        "13": 2,
+        "14": 2,
+        "15": 3,
+        "16": 3,
+        "17": 3,
+        "18": 4,
+        "19": 3,
+        "20": 5,
+        "21": 5,
+        "22": 5,
+        "23": 5,
+        "24": 5,
+        "25": 6,
+        "26": 6,
+        "27": 6,
+        "28": 6,
+        "29": 6,
+        "30": 7,
+        "31": 7,
+        "32": 7,
+        "33": 7,
+        "34": 7
+      },
+      "lora_expert_cluster_domain_hist": {
+        "0": {
+          "code": 5
+        },
+        "1": {
+          "education": 5
+        },
+        "2": {
+          "finance": 5
+        },
+        "3": {
+          "general": 4
+        },
+        "4": {
+          "general": 1
+        },
+        "5": {
+          "legal": 5
+        },
+        "6": {
+          "math": 5
+        },
+        "7": {
+          "medical": 5
+        }
+      },
+      "lora_expert_client_routes": {
+        "0": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "1": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "2": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "3": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "4": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "5": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "6": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "7": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "8": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "9": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "10": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "11": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "12": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "13": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "14": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "15": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "16": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "17": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "18": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "19": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "20": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "21": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "22": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "23": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "24": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "25": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "26": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "27": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "28": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "29": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "30": [
+          [
+            7,
+            1.0
+          ]
+        ],
+        "31": [
+          [
+            7,
+            1.0
+          ]
+        ],
+        "32": [
+          [
+            7,
+            1.0
+          ]
+        ],
+        "33": [
+          [
+            7,
+            1.0
+          ]
+        ],
+        "34": [
+          [
+            7,
+            1.0
+          ]
+        ]
+      }
+    },
+    {
+      "round": 6,
+      "eval_skipped": true,
+      "eval_skip_reason": "eval_final_only",
+      "v11": {
+        "branch": "A_relaxation",
+        "a_correction_alpha": 0.5,
+        "a_anchor_lambda": 0.0,
+        "a_prox_lambda": 0.0,
+        "b_prox_lambda": 0.0001,
+        "a_sketch_rank": 2,
+        "a_norm_clip_ratio": 0.0,
+        "global_b_mix_mu": 0.4,
+        "upload_scope": "true_a_sketch_b"
+      },
+      "lora_expert_stats": {
+        "selected_k": 8,
+        "silhouette": 0.9002117869433085,
+        "candidates": {
+          "2": 0.26563108834078175,
+          "3": 0.37212682267381414,
+          "4": 0.48040733161724075,
+          "5": 0.6160285871378283,
+          "6": 0.7361901888021591,
+          "7": 0.7748924331588937,
+          "8": 0.9002117869433085
+        },
+        "cluster_mode": "b_subspace_auto",
+        "mean_pair_angle_deg": 73.75993795794271,
+        "mean_pair_cos": 0.2548188587894984,
+        "cluster_sizes": {
+          "0": 5,
+          "1": 5,
+          "2": 5,
+          "3": 4,
+          "4": 1,
+          "5": 5,
+          "6": 5,
+          "7": 5
+        },
+        "domain_nmi": 0.9819630242940854,
+        "domain_ari": 0.966796875,
+        "b_mode": "mean",
+        "expert_top_m": 1,
+        "expert_router_temperature": 0.2,
+        "hilora_leaf_blend": 0.0,
+        "num_b_layers": 210,
+        "upload_scope": "a_b",
+        "freeze_a": false,
+        "algorithm": "fedplora_v11a_relaxed_a",
+        "v11_branch": "A_relaxation",
+        "v11_a_payload": "true_lowrank_delta",
+        "v11_b_branch": "b_subspace_auto",
+        "v11_training_rule": "train_A+B_with_configurable_A_anchor_B_prox",
+        "v11_a_corrected_layers": 210,
+        "v11_a_correction_alpha": 0.5,
+        "v11_a_sketch_rank": 2,
+        "v11_a_mean_rel_update_norm": 0.016983396743362928,
+        "v11_a_mean_row_cos_to_ref": 0.999830260766404,
+        "v11_a_clipped_row_frac": 0.0,
+        "v10_a_corrected_layers": 210,
+        "v10_a_correction_alpha": 0.5,
+        "v10_a_sketch_rank": 2,
+        "v10_a_mean_rel_update_norm": 0.016983396743362928,
+        "v10_a_mean_row_cos_to_ref": 0.999830260766404,
+        "v10_a_clipped_row_frac": 0.0
+      },
+      "lora_expert_client_clusters": {
+        "0": 0,
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "4": 0,
+        "5": 1,
+        "6": 1,
+        "7": 1,
+        "8": 1,
+        "9": 1,
+        "10": 2,
+        "11": 2,
+        "12": 2,
+        "13": 2,
+        "14": 2,
+        "15": 3,
+        "16": 3,
+        "17": 3,
+        "18": 4,
+        "19": 3,
+        "20": 5,
+        "21": 5,
+        "22": 5,
+        "23": 5,
+        "24": 5,
+        "25": 6,
+        "26": 6,
+        "27": 6,
+        "28": 6,
+        "29": 6,
+        "30": 7,
+        "31": 7,
+        "32": 7,
+        "33": 7,
+        "34": 7
+      },
+      "lora_expert_cluster_domain_hist": {
+        "0": {
+          "code": 5
+        },
+        "1": {
+          "education": 5
+        },
+        "2": {
+          "finance": 5
+        },
+        "3": {
+          "general": 4
+        },
+        "4": {
+          "general": 1
+        },
+        "5": {
+          "legal": 5
+        },
+        "6": {
+          "math": 5
+        },
+        "7": {
+          "medical": 5
+        }
+      },
+      "lora_expert_client_routes": {
+        "0": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "1": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "2": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "3": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "4": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "5": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "6": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "7": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "8": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "9": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "10": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "11": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "12": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "13": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "14": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "15": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "16": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "17": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "18": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "19": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "20": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "21": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "22": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "23": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "24": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "25": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "26": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "27": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "28": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "29": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "30": [
+          [
+            7,
+            1.0
+          ]
+        ],
+        "31": [
+          [
+            7,
+            1.0
+          ]
+        ],
+        "32": [
+          [
+            7,
+            1.0
+          ]
+        ],
+        "33": [
+          [
+            7,
+            1.0
+          ]
+        ],
+        "34": [
+          [
+            7,
+            1.0
+          ]
+        ]
+      }
+    },
+    {
+      "round": 7,
+      "eval_skipped": true,
+      "eval_skip_reason": "eval_final_only",
+      "v11": {
+        "branch": "A_relaxation",
+        "a_correction_alpha": 0.5,
+        "a_anchor_lambda": 0.0,
+        "a_prox_lambda": 0.0,
+        "b_prox_lambda": 0.0001,
+        "a_sketch_rank": 2,
+        "a_norm_clip_ratio": 0.0,
+        "global_b_mix_mu": 0.4,
+        "upload_scope": "true_a_sketch_b"
+      },
+      "lora_expert_stats": {
+        "selected_k": 8,
+        "silhouette": 0.9212002847156002,
+        "candidates": {
+          "2": 0.26750775443246394,
+          "3": 0.3779896555366207,
+          "4": 0.48953640075671945,
+          "5": 0.6294269807493771,
+          "6": 0.7534019869381864,
+          "7": 0.7925073692543848,
+          "8": 0.9212002847156002
+        },
+        "cluster_mode": "b_subspace_auto",
+        "mean_pair_angle_deg": 73.62973708551377,
+        "mean_pair_cos": 0.2540932641232333,
+        "cluster_sizes": {
+          "0": 5,
+          "1": 5,
+          "2": 5,
+          "3": 4,
+          "4": 1,
+          "5": 5,
+          "6": 5,
+          "7": 5
+        },
+        "domain_nmi": 0.9819630242940854,
+        "domain_ari": 0.966796875,
+        "b_mode": "mean",
+        "expert_top_m": 1,
+        "expert_router_temperature": 0.2,
+        "hilora_leaf_blend": 0.0,
+        "num_b_layers": 210,
+        "upload_scope": "a_b",
+        "freeze_a": false,
+        "algorithm": "fedplora_v11a_relaxed_a",
+        "v11_branch": "A_relaxation",
+        "v11_a_payload": "true_lowrank_delta",
+        "v11_b_branch": "b_subspace_auto",
+        "v11_training_rule": "train_A+B_with_configurable_A_anchor_B_prox",
+        "v11_a_corrected_layers": 210,
+        "v11_a_correction_alpha": 0.5,
+        "v11_a_sketch_rank": 2,
+        "v11_a_mean_rel_update_norm": 0.015788640873760362,
+        "v11_a_mean_row_cos_to_ref": 0.9998538671504884,
+        "v11_a_clipped_row_frac": 0.0,
+        "v10_a_corrected_layers": 210,
+        "v10_a_correction_alpha": 0.5,
+        "v10_a_sketch_rank": 2,
+        "v10_a_mean_rel_update_norm": 0.015788640873760362,
+        "v10_a_mean_row_cos_to_ref": 0.9998538671504884,
+        "v10_a_clipped_row_frac": 0.0
+      },
+      "lora_expert_client_clusters": {
+        "0": 0,
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "4": 0,
+        "5": 1,
+        "6": 1,
+        "7": 1,
+        "8": 1,
+        "9": 1,
+        "10": 2,
+        "11": 2,
+        "12": 2,
+        "13": 2,
+        "14": 2,
+        "15": 3,
+        "16": 3,
+        "17": 3,
+        "18": 4,
+        "19": 3,
+        "20": 5,
+        "21": 5,
+        "22": 5,
+        "23": 5,
+        "24": 5,
+        "25": 6,
+        "26": 6,
+        "27": 6,
+        "28": 6,
+        "29": 6,
+        "30": 7,
+        "31": 7,
+        "32": 7,
+        "33": 7,
+        "34": 7
+      },
+      "lora_expert_cluster_domain_hist": {
+        "0": {
+          "code": 5
+        },
+        "1": {
+          "education": 5
+        },
+        "2": {
+          "finance": 5
+        },
+        "3": {
+          "general": 4
+        },
+        "4": {
+          "general": 1
+        },
+        "5": {
+          "legal": 5
+        },
+        "6": {
+          "math": 5
+        },
+        "7": {
+          "medical": 5
+        }
+      },
+      "lora_expert_client_routes": {
+        "0": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "1": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "2": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "3": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "4": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "5": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "6": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "7": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "8": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "9": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "10": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "11": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "12": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "13": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "14": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "15": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "16": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "17": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "18": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "19": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "20": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "21": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "22": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "23": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "24": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "25": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "26": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "27": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "28": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "29": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "30": [
+          [
+            7,
+            1.0
+          ]
+        ],
+        "31": [
+          [
+            7,
+            1.0
+          ]
+        ],
+        "32": [
+          [
+            7,
+            1.0
+          ]
+        ],
+        "33": [
+          [
+            7,
+            1.0
+          ]
+        ],
+        "34": [
+          [
+            7,
+            1.0
+          ]
+        ]
+      }
+    },
+    {
+      "round": 8,
+      "eval_skipped": true,
+      "eval_skip_reason": "eval_final_only",
+      "v11": {
+        "branch": "A_relaxation",
+        "a_correction_alpha": 0.5,
+        "a_anchor_lambda": 0.0,
+        "a_prox_lambda": 0.0,
+        "b_prox_lambda": 0.0001,
+        "a_sketch_rank": 2,
+        "a_norm_clip_ratio": 0.0,
+        "global_b_mix_mu": 0.4,
+        "upload_scope": "true_a_sketch_b"
+      },
+      "lora_expert_stats": {
+        "selected_k": 8,
+        "silhouette": 0.9357568315122348,
+        "candidates": {
+          "2": 0.26857757528878967,
+          "3": 0.3816273926152109,
+          "4": 0.4959096801654388,
+          "5": 0.6393963167792522,
+          "6": 0.7657608099265649,
+          "7": 0.8050692257325099,
+          "8": 0.9357568315122348
+        },
+        "cluster_mode": "b_subspace_auto",
+        "mean_pair_angle_deg": 73.54585955803203,
+        "mean_pair_cos": 0.25310040666189204,
+        "cluster_sizes": {
+          "0": 5,
+          "1": 5,
+          "2": 5,
+          "3": 4,
+          "4": 1,
+          "5": 5,
+          "6": 5,
+          "7": 5
+        },
+        "domain_nmi": 0.9819630242940854,
+        "domain_ari": 0.966796875,
+        "b_mode": "mean",
+        "expert_top_m": 1,
+        "expert_router_temperature": 0.2,
+        "hilora_leaf_blend": 0.0,
+        "num_b_layers": 210,
+        "upload_scope": "a_b",
+        "freeze_a": false,
+        "algorithm": "fedplora_v11a_relaxed_a",
+        "v11_branch": "A_relaxation",
+        "v11_a_payload": "true_lowrank_delta",
+        "v11_b_branch": "b_subspace_auto",
+        "v11_training_rule": "train_A+B_with_configurable_A_anchor_B_prox",
+        "v11_a_corrected_layers": 210,
+        "v11_a_correction_alpha": 0.5,
+        "v11_a_sketch_rank": 2,
+        "v11_a_mean_rel_update_norm": 0.015009795107256323,
+        "v11_a_mean_row_cos_to_ref": 0.9998699115855353,
+        "v11_a_clipped_row_frac": 0.0,
+        "v10_a_corrected_layers": 210,
+        "v10_a_correction_alpha": 0.5,
+        "v10_a_sketch_rank": 2,
+        "v10_a_mean_rel_update_norm": 0.015009795107256323,
+        "v10_a_mean_row_cos_to_ref": 0.9998699115855353,
+        "v10_a_clipped_row_frac": 0.0
+      },
+      "lora_expert_client_clusters": {
+        "0": 0,
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "4": 0,
+        "5": 1,
+        "6": 1,
+        "7": 1,
+        "8": 1,
+        "9": 1,
+        "10": 2,
+        "11": 2,
+        "12": 2,
+        "13": 2,
+        "14": 2,
+        "15": 3,
+        "16": 3,
+        "17": 3,
+        "18": 4,
+        "19": 3,
+        "20": 5,
+        "21": 5,
+        "22": 5,
+        "23": 5,
+        "24": 5,
+        "25": 6,
+        "26": 6,
+        "27": 6,
+        "28": 6,
+        "29": 6,
+        "30": 7,
+        "31": 7,
+        "32": 7,
+        "33": 7,
+        "34": 7
+      },
+      "lora_expert_cluster_domain_hist": {
+        "0": {
+          "code": 5
+        },
+        "1": {
+          "education": 5
+        },
+        "2": {
+          "finance": 5
+        },
+        "3": {
+          "general": 4
+        },
+        "4": {
+          "general": 1
+        },
+        "5": {
+          "legal": 5
+        },
+        "6": {
+          "math": 5
+        },
+        "7": {
+          "medical": 5
+        }
+      },
+      "lora_expert_client_routes": {
+        "0": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "1": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "2": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "3": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "4": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "5": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "6": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "7": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "8": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "9": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "10": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "11": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "12": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "13": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "14": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "15": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "16": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "17": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "18": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "19": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "20": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "21": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "22": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "23": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "24": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "25": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "26": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "27": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "28": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "29": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "30": [
+          [
+            7,
+            1.0
+          ]
+        ],
+        "31": [
+          [
+            7,
+            1.0
+          ]
+        ],
+        "32": [
+          [
+            7,
+            1.0
+          ]
+        ],
+        "33": [
+          [
+            7,
+            1.0
+          ]
+        ],
+        "34": [
+          [
+            7,
+            1.0
+          ]
+        ]
+      }
+    },
+    {
+      "round": 9,
+      "eval_skipped": true,
+      "eval_skip_reason": "eval_final_only",
+      "v11": {
+        "branch": "A_relaxation",
+        "a_correction_alpha": 0.5,
+        "a_anchor_lambda": 0.0,
+        "a_prox_lambda": 0.0,
+        "b_prox_lambda": 0.0001,
+        "a_sketch_rank": 2,
+        "a_norm_clip_ratio": 0.0,
+        "global_b_mix_mu": 0.4,
+        "upload_scope": "true_a_sketch_b"
+      },
+      "lora_expert_stats": {
+        "selected_k": 8,
+        "silhouette": 0.9461082114385566,
+        "candidates": {
+          "2": 0.26867487571343485,
+          "3": 0.3839845749593931,
+          "4": 0.5000039473793888,
+          "5": 0.6460609417382421,
+          "6": 0.774218423307865,
+          "7": 0.8135715692350979,
+          "8": 0.9461082114385566
+        },
+        "cluster_mode": "b_subspace_auto",
+        "mean_pair_angle_deg": 73.49988061398881,
+        "mean_pair_cos": 0.2518981355020837,
+        "cluster_sizes": {
+          "0": 5,
+          "1": 5,
+          "2": 5,
+          "3": 4,
+          "4": 1,
+          "5": 5,
+          "6": 5,
+          "7": 5
+        },
+        "domain_nmi": 0.9819630242940854,
+        "domain_ari": 0.966796875,
+        "b_mode": "mean",
+        "expert_top_m": 1,
+        "expert_router_temperature": 0.2,
+        "hilora_leaf_blend": 0.0,
+        "num_b_layers": 210,
+        "upload_scope": "a_b",
+        "freeze_a": false,
+        "algorithm": "fedplora_v11a_relaxed_a",
+        "v11_branch": "A_relaxation",
+        "v11_a_payload": "true_lowrank_delta",
+        "v11_b_branch": "b_subspace_auto",
+        "v11_training_rule": "train_A+B_with_configurable_A_anchor_B_prox",
+        "v11_a_corrected_layers": 210,
+        "v11_a_correction_alpha": 0.5,
+        "v11_a_sketch_rank": 2,
+        "v11_a_mean_rel_update_norm": 0.014292990488082908,
+        "v11_a_mean_row_cos_to_ref": 0.9998830344705355,
+        "v11_a_clipped_row_frac": 0.0,
+        "v10_a_corrected_layers": 210,
+        "v10_a_correction_alpha": 0.5,
+        "v10_a_sketch_rank": 2,
+        "v10_a_mean_rel_update_norm": 0.014292990488082908,
+        "v10_a_mean_row_cos_to_ref": 0.9998830344705355,
+        "v10_a_clipped_row_frac": 0.0
+      },
+      "lora_expert_client_clusters": {
+        "0": 0,
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "4": 0,
+        "5": 1,
+        "6": 1,
+        "7": 1,
+        "8": 1,
+        "9": 1,
+        "10": 2,
+        "11": 2,
+        "12": 2,
+        "13": 2,
+        "14": 2,
+        "15": 3,
+        "16": 3,
+        "17": 3,
+        "18": 4,
+        "19": 3,
+        "20": 5,
+        "21": 5,
+        "22": 5,
+        "23": 5,
+        "24": 5,
+        "25": 6,
+        "26": 6,
+        "27": 6,
+        "28": 6,
+        "29": 6,
+        "30": 7,
+        "31": 7,
+        "32": 7,
+        "33": 7,
+        "34": 7
+      },
+      "lora_expert_cluster_domain_hist": {
+        "0": {
+          "code": 5
+        },
+        "1": {
+          "education": 5
+        },
+        "2": {
+          "finance": 5
+        },
+        "3": {
+          "general": 4
+        },
+        "4": {
+          "general": 1
+        },
+        "5": {
+          "legal": 5
+        },
+        "6": {
+          "math": 5
+        },
+        "7": {
+          "medical": 5
+        }
+      },
+      "lora_expert_client_routes": {
+        "0": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "1": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "2": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "3": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "4": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "5": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "6": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "7": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "8": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "9": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "10": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "11": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "12": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "13": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "14": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "15": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "16": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "17": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "18": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "19": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "20": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "21": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "22": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "23": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "24": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "25": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "26": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "27": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "28": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "29": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "30": [
+          [
+            7,
+            1.0
+          ]
+        ],
+        "31": [
+          [
+            7,
+            1.0
+          ]
+        ],
+        "32": [
+          [
+            7,
+            1.0
+          ]
+        ],
+        "33": [
+          [
+            7,
+            1.0
+          ]
+        ],
+        "34": [
+          [
+            7,
+            1.0
+          ]
+        ]
+      }
+    },
+    {
+      "round": 10,
+      "domain_macro_token_accuracy": 0.5867736650993366,
+      "best_domain_macro_token_accuracy": 0.5867736650993366,
+      "worst_domain_token_accuracy": 0.4595436898367282,
+      "best_worst_domain_token_accuracy": 0.4595436898367282,
+      "domain_macro_perplexity": 6.678344867263791,
+      "best_domain_macro_perplexity": 6.678344867263791,
+      "worst_domain_perplexity": 10.680255773351314,
+      "best_worst_domain_perplexity": 10.680255773351314,
+      "domain_macro_loss": 1.8256586593668231,
+      "best_domain_macro_loss": 1.8256586593668231,
+      "worst_domain_loss": 2.363509330868721,
+      "best_worst_domain_loss": 2.363509330868721,
+      "domain_metrics": {
+        "code": {
+          "loss": 1.34603638790613,
+          "token_accuracy": 0.6834511338782087,
+          "perplexity": 3.848018249682028
+        },
+        "education": {
+          "loss": 1.8534167427392232,
+          "token_accuracy": 0.5872396404297303,
+          "perplexity": 6.491762211338446
+        },
+        "finance": {
+          "loss": 2.363509330868721,
+          "token_accuracy": 0.4595436898367282,
+          "perplexity": 10.680255773351314
+        },
+        "general": {
+          "loss": 1.836745480727551,
+          "token_accuracy": 0.5997608163714899,
+          "perplexity": 6.296253395644942
+        },
+        "legal": {
+          "loss": 2.1110435145036694,
+          "token_accuracy": 0.5337777693604288,
+          "perplexity": 8.38979739893118
+        },
+        "math": {
+          "loss": 1.2613378948824745,
+          "token_accuracy": 0.6908061193765921,
+          "perplexity": 3.5450883838601186
+        },
+        "medical": {
+          "loss": 2.0075212639399944,
+          "token_accuracy": 0.5528364864421783,
+          "perplexity": 7.497238658038512
+        }
+      },
+      "lora_expert_stats": {
+        "selected_k": 8,
+        "silhouette": 0.9536278211419977,
+        "candidates": {
+          "2": 0.26839473749153164,
+          "3": 0.3855744326474175,
+          "4": 0.5029824888781712,
+          "5": 0.6504721650110186,
+          "6": 0.7802314647919473,
+          "7": 0.8198358084818815,
+          "8": 0.9536278211419977
+        },
+        "cluster_mode": "b_subspace_auto",
+        "mean_pair_angle_deg": 73.4860390807811,
+        "mean_pair_cos": 0.25052041384012474,
+        "cluster_sizes": {
+          "0": 5,
+          "1": 5,
+          "2": 5,
+          "3": 4,
+          "4": 1,
+          "5": 5,
+          "6": 5,
+          "7": 5
+        },
+        "domain_nmi": 0.9819630242940854,
+        "domain_ari": 0.966796875,
+        "b_mode": "mean",
+        "expert_top_m": 1,
+        "expert_router_temperature": 0.2,
+        "hilora_leaf_blend": 0.0,
+        "num_b_layers": 210,
+        "upload_scope": "a_b",
+        "freeze_a": false,
+        "algorithm": "fedplora_v11a_relaxed_a",
+        "v11_branch": "A_relaxation",
+        "v11_a_payload": "true_lowrank_delta",
+        "v11_b_branch": "b_subspace_auto",
+        "v11_training_rule": "train_A+B_with_configurable_A_anchor_B_prox",
+        "v11_a_corrected_layers": 210,
+        "v11_a_correction_alpha": 0.5,
+        "v11_a_sketch_rank": 2,
+        "v11_a_mean_rel_update_norm": 0.013932293887373841,
+        "v11_a_mean_row_cos_to_ref": 0.9998899496382191,
+        "v11_a_clipped_row_frac": 0.0,
+        "v10_a_corrected_layers": 210,
+        "v10_a_correction_alpha": 0.5,
+        "v10_a_sketch_rank": 2,
+        "v10_a_mean_rel_update_norm": 0.013932293887373841,
+        "v10_a_mean_row_cos_to_ref": 0.9998899496382191,
+        "v10_a_clipped_row_frac": 0.0
+      },
+      "lora_expert_client_clusters": {
+        "0": 0,
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "4": 0,
+        "5": 1,
+        "6": 1,
+        "7": 1,
+        "8": 1,
+        "9": 1,
+        "10": 2,
+        "11": 2,
+        "12": 2,
+        "13": 2,
+        "14": 2,
+        "15": 3,
+        "16": 3,
+        "17": 3,
+        "18": 4,
+        "19": 3,
+        "20": 5,
+        "21": 5,
+        "22": 5,
+        "23": 5,
+        "24": 5,
+        "25": 6,
+        "26": 6,
+        "27": 6,
+        "28": 6,
+        "29": 6,
+        "30": 7,
+        "31": 7,
+        "32": 7,
+        "33": 7,
+        "34": 7
+      },
+      "lora_expert_cluster_domain_hist": {
+        "0": {
+          "code": 5
+        },
+        "1": {
+          "education": 5
+        },
+        "2": {
+          "finance": 5
+        },
+        "3": {
+          "general": 4
+        },
+        "4": {
+          "general": 1
+        },
+        "5": {
+          "legal": 5
+        },
+        "6": {
+          "math": 5
+        },
+        "7": {
+          "medical": 5
+        }
+      },
+      "lora_expert_client_routes": {
+        "0": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "1": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "2": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "3": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "4": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "5": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "6": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "7": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "8": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "9": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "10": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "11": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "12": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "13": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "14": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "15": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "16": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "17": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "18": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "19": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "20": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "21": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "22": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "23": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "24": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "25": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "26": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "27": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "28": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "29": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "30": [
+          [
+            7,
+            1.0
+          ]
+        ],
+        "31": [
+          [
+            7,
+            1.0
+          ]
+        ],
+        "32": [
+          [
+            7,
+            1.0
+          ]
+        ],
+        "33": [
+          [
+            7,
+            1.0
+          ]
+        ],
+        "34": [
+          [
+            7,
+            1.0
+          ]
+        ]
+      },
+      "client_local_macro_token_accuracy": 0.6360918741092221,
+      "client_local_macro_perplexity": 4.996814099723856,
+      "client_local_macro_loss": 1.5217754821597615,
+      "off_domain_macro_token_accuracy": 0.5805450698077741,
+      "off_domain_macro_perplexity": 6.941046782035773,
+      "off_domain_macro_loss": 1.8682236568107171,
+      "in_domain_domain_test_macro_token_accuracy": 0.6241452368487121,
+      "in_domain_domain_test_macro_perplexity": 5.102133378631909,
+      "in_domain_domain_test_macro_loss": 1.5702686747034595,
+      "personalization_gap_token_accuracy": 0.05554680430144798,
+      "personalization_gap_perplexity": 1.9442326823119167,
+      "personalization_gap_loss": 0.34644817465095556,
+      "v11": {
+        "branch": "A_relaxation",
+        "a_correction_alpha": 0.5,
+        "a_anchor_lambda": 0.0,
+        "a_prox_lambda": 0.0,
+        "b_prox_lambda": 0.0001,
+        "a_sketch_rank": 2,
+        "a_norm_clip_ratio": 0.0,
+        "global_b_mix_mu": 0.4,
+        "upload_scope": "true_a_sketch_b"
+      }
+    }
+  ],
+  "recommended_kpis": {
+    "token_accuracy": [
+      "domain_macro_token_accuracy",
+      "worst_domain_token_accuracy",
+      "client_local_macro_token_accuracy",
+      "in_domain_domain_test_macro_token_accuracy",
+      "off_domain_macro_token_accuracy"
+    ],
+    "perplexity": [
+      "domain_macro_perplexity",
+      "worst_domain_perplexity",
+      "client_local_macro_perplexity",
+      "in_domain_domain_test_macro_perplexity",
+      "off_domain_macro_perplexity"
+    ],
+    "communication": {
+      "path": "communication",
+      "fields": [
+        "down_bytes_per_client",
+        "up_bytes_per_client",
+        "agg_type"
+      ]
+    },
+    "fedplora_oneshot_conflict": {
+      "path": "rounds[i].fedplora_oneshot_conflict",
+      "note": "Present after FedPLoRA-Oneshot server aggregation; typically mean_conflict, max_conflict, high_conflict_row_frac, mean_init_gate. Other agg_type: omit or {}. Eval-only reload uses checkpoint meta when available."
+    },
+    "personalization_gaps": [
+      "personalization_gap_token_accuracy",
+      "personalization_gap_perplexity"
+    ]
+  },
+  "recommended_primary_personalization_metrics": [
+    "client_local_macro_token_accuracy",
+    "client_local_macro_perplexity",
+    "off_domain_macro_token_accuracy",
+    "off_domain_macro_perplexity",
+    "personalization_gap_token_accuracy",
+    "personalization_gap_perplexity"
+  ]
+}
