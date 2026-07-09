@@ -18,6 +18,9 @@ downlinked LoRA state per client:
   - fedplora_v11a_relaxed_a / v11c_gmix: true sketch A-correction payloads
     plus routed/global-mixed B (implemented in methods.v11; listed here for
     shared helpers).
+  - fedplora_v12a_sched_gmix / v12b_nmi_guard_gmix: v11-style true sketch
+    payloads plus scheduled/adaptive global-routed B mixing (implemented in
+    methods.v12; listed here for shared helpers).
   - fedlease: adaptive B-subspace expert allocation plus top-M expert blending.
   - hilora: root shared A, cluster B, and a local leaf residual folded into B.
   - hydralora: shared A plus multiple B experts with hard/soft routing.
@@ -41,6 +44,7 @@ from methods import common as M
 from utilities.utils import (
     FEDPLORA_V8_FAMILY_AGGS,
     FEDPLORA_V11_FAMILY_AGGS,
+    FEDPLORA_V12_FAMILY_AGGS,
     get_trainable_param_names,
     is_lora_a_param_name,
     is_lora_b_param_name,
@@ -85,6 +89,14 @@ SUPPORTED_LORA_EXPERT_AGGS = {
     "fedplora_v11_gmix",
     "v11c_gmix",
     "v11_gmix",
+    "fedplora_v12a_sched_gmix",
+    "fedplora_v12_sched_gmix",
+    "v12a_sched_gmix",
+    "v12_sched_gmix",
+    "fedplora_v12b_nmi_guard_gmix",
+    "fedplora_v12_adaptive_gmix",
+    "v12b_nmi_guard_gmix",
+    "v12_adaptive_gmix",
     "fedlease",
     "hilora",
     "ecolora",
@@ -103,6 +115,8 @@ def _canonical_agg(agg_type) -> str:
     if t in FEDPLORA_V8_FAMILY_AGGS:
         return "fedplora_v8"
     if t in FEDPLORA_V11_FAMILY_AGGS:
+        return t
+    if t in FEDPLORA_V12_FAMILY_AGGS:
         return t
     return t
 
@@ -794,6 +808,14 @@ def aggregate_models_lora_expert_baseline(global_model, client_uploads, args):
             "fedplora_v11_gmix",
             "v11c_gmix",
             "v11_gmix",
+            "fedplora_v12a_sched_gmix",
+            "fedplora_v12_sched_gmix",
+            "v12a_sched_gmix",
+            "v12_sched_gmix",
+            "fedplora_v12b_nmi_guard_gmix",
+            "fedplora_v12_adaptive_gmix",
+            "v12b_nmi_guard_gmix",
+            "v12_adaptive_gmix",
         }:
             route = [(int(assign[i]), 1.0)]
         else:
