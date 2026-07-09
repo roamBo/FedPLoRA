@@ -567,7 +567,7 @@ GPU=1 run_sft_full baseline_feddat feddat
 ### 4.14 全部 baseline（跨域 seed=42）
 
 ```bash
-GPU=1 run_sft_full baseline_normal normal
+GPU=1 run_sft_full baseline_normal normal 
 GPU=1 run_sft_full baseline_ffa ffa
 GPU=1 run_sft_full baseline_flora flora
 GPU=1 run_sft_full baseline_flexlora flexlora
