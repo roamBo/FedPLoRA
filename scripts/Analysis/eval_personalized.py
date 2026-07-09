@@ -9,6 +9,8 @@ eval_personalized.py — per-domain 个性化评测 + v7 方案对比。
   fedsa  : (A_global, B_i)                      共享A，本地B（FedSA/FedPLoRA 范式）
   global : (A_global, B_global)                全局平均 A+B（FedAvg 通才）
   v7     : (A_global, B_domain)                v7：全局A + 按域池化B（跨域隔离）
+  v11c   : (A_global, μB_global+(1-μ)B_domain) global-routed B mixing
+  select : 按每客户端 validation loss 从候选菜单选择部署状态
 
 输出：每方案的 per-domain 个性化 macro_acc / worst_acc / 各域 acc，便于判定
 "域特异 B" 在个性化目标下是否反超通才。
@@ -39,7 +41,7 @@ if _ROOT not in sys.path:
 
 from utilities.data_utils import (  # noqa: E402
     load_domain_sft_benchmark, create_domain_client_dataloaders,
-    create_domain_eval_dataloader, group_rows_by_domain,
+    create_domain_eval_dataloader, group_rows_by_domain, group_rows_by_client,
 )
 from utilities.models import create_peft_causal_lm_model, init_fedplora_adapters  # noqa: E402
 from utilities.utils import is_lora_a_param_name, is_lora_b_param_name  # noqa: E402
@@ -191,7 +193,11 @@ def main():
     ap.add_argument("--max_train_samples_per_client", type=int, default=0)
     ap.add_argument("--eval_max_batches", type=int, default=30)
     ap.add_argument("--v7_b_mode", type=str, default="mean", choices=["mean", "rep", "svd"])
+    ap.add_argument("--v11c_mu", type=float, default=0.4,
+                    help="v11c/v12-style global-routed B mixing weight for eval-only schemes.")
     ap.add_argument("--schemes", type=str, default="local,fedsa,global,v7")
+    ap.add_argument("--select_candidates", type=str, default="local,v7,global,v11c",
+                    help="Comma-separated candidate schemes for select; evaluated on each client's val split.")
     ap.add_argument("--cold_start", action="store_true",
                     help="额外评测冷启动：base(B=0 无适配下界) + coldstart(同域留一池化B，模拟新客户端零样本)")
     ap.add_argument("--eval_on_local", action="store_true",
@@ -231,6 +237,12 @@ def main():
         print(f"[eval] eval_on_local=ON: {len(local_eval_loaders)} 个客户端有本地测试集"
               f"（{n_missing} 个缺失将回退域测试）", flush=True)
 
+    val_eval_loaders = {}
+    val_by_client = group_rows_by_client(bench.get("val", []) or [])
+    for cid, rows in val_by_client.items():
+        if rows:
+            val_eval_loaders[int(cid)] = create_domain_eval_dataloader(rows, tok, args)
+
     model = create_peft_causal_lm_model(args)
     init_fedplora_adapters(model)
     A0 = _snapshot(model, is_lora_a_param_name)
@@ -257,7 +269,7 @@ def main():
     if bool(getattr(args, "cold_start", False)):
         # 冷启动：模拟"新客户端无本地数据"。base=无适配(B=0) 下界；
         # coldstart=用同域其它客户端池化的 B（留一法），这是新机构能零样本拿到的。
-        for s in ("base", "coldstart"):
+        for s in ("base", "coldstart", "v11c_coldstart"):
             if s not in schemes:
                 schemes.append(s)
 
@@ -271,6 +283,28 @@ def main():
                 out[bk] = _consolidate_B(Bs, args.v7_b_mode)
         return out
 
+    def _global_B_loo(exclude_cid):
+        """Global B pool excluding one client, used for true cold-start simulation."""
+        cids = [c for c in client_ids if c != exclude_cid]
+        out = {}
+        for bk in b_keys:
+            Bs = [B_by[c][bk] for c in cids if bk in B_by[c]]
+            if Bs:
+                out[bk] = torch.stack([B.float() for B in Bs], 0).mean(0)
+        return out
+
+    def _mix_b(global_b, routed_b):
+        mu = min(1.0, max(0.0, float(getattr(args, "v11c_mu", 0.4) or 0.0)))
+        out = {}
+        for bk in b_keys:
+            if bk in global_b and bk in routed_b:
+                out[bk] = (
+                    mu * global_b[bk].float() + (1.0 - mu) * routed_b[bk].float()
+                ).detach().cpu()
+        return out
+
+    selected_choice_by_client = {}
+
     def client_state(scheme, cid):
         d = domain_of[cid]
         if scheme == "local":
@@ -281,6 +315,10 @@ def main():
             return {**A_global, **B_global}
         if scheme == "v7":
             return build_v7_client_state(A_global, B_per_domain, d)
+        if scheme == "v11c":
+            # v11c/v12-style state for eval-only analysis:
+            # global A + explicit global/routed B mixture.
+            return {**A_global, **_mix_b(B_global, B_per_domain.get(d, {}))}
         if scheme == "base":
             # 无 LoRA 适配：B=0 → ΔW=0，等价冻结基座（冷启动下界）
             zb = {bk: torch.zeros_like(B_by[cid][bk]) for bk in b_keys if bk in B_by[cid]}
@@ -288,7 +326,48 @@ def main():
         if scheme == "coldstart":
             # 新客户端：全局 A + 同域其它客户端池化的 B（不含自己）
             return {**A_global, **_domain_B_loo(d, cid)}
+        if scheme == "v11c_coldstart":
+            # 新客户端：全局 A + global/domain pools both exclude the target client.
+            return {
+                **A_global,
+                **_mix_b(_global_B_loo(cid), _domain_B_loo(d, cid)),
+            }
+        if scheme == "select":
+            chosen = selected_choice_by_client.get(int(cid), "local")
+            return client_state(chosen, cid)
         raise ValueError(scheme)
+
+    if "select" in schemes:
+        raw_candidates = [
+            s.strip()
+            for s in str(getattr(args, "select_candidates", "") or "").split(",")
+            if s.strip()
+        ]
+        candidates = [
+            s
+            for s in raw_candidates
+            if s not in {"select"} and (s in schemes or s in {"local", "fedsa", "global", "v7", "v11c", "base", "coldstart", "v11c_coldstart"})
+        ]
+        if not candidates:
+            candidates = ["local", "v7", "global", "v11c"]
+        for cid in client_ids:
+            d = domain_of[cid]
+            dl = val_eval_loaders.get(int(cid)) or eval_loaders.get(d)
+            if dl is None:
+                selected_choice_by_client[int(cid)] = candidates[0]
+                continue
+            best = None
+            for cand in candidates:
+                _install(model, client_state(cand, cid))
+                loss, acc = _eval(model, dl, device, args.eval_max_batches)
+                score = loss if math.isfinite(loss) else float("inf")
+                if best is None or score < best[0]:
+                    best = (score, cand, acc)
+            selected_choice_by_client[int(cid)] = best[1] if best else candidates[0]
+        counts = defaultdict(int)
+        for choice in selected_choice_by_client.values():
+            counts[choice] += 1
+        print(f"[select] candidates={candidates} selected_counts={dict(sorted(counts.items()))}", flush=True)
 
     # --- per-domain personalized eval ---
     results = {}
@@ -313,12 +392,21 @@ def main():
         worst = float(min(dom_acc.values())) if dom_acc else float("nan")
         results[scheme] = {"macro_acc": macro, "worst_acc": worst,
                            "per_domain_acc": dom_acc, "per_domain_loss": dom_loss}
+        if scheme == "select":
+            counts = defaultdict(int)
+            for choice in selected_choice_by_client.values():
+                counts[choice] += 1
+            results[scheme]["selected_counts"] = dict(sorted(counts.items()))
+            results[scheme]["selected_choice_by_client"] = {
+                str(k): v for k, v in sorted(selected_choice_by_client.items())
+            }
         print(f"[scheme {scheme:7s}] per-domain macro_acc={macro:.4f} worst={worst:.4f}", flush=True)
 
     report = {"config": {k: getattr(args, k) for k in
                          ["model", "benchmark_dir", "target_modules", "max_steps",
                           "eval_max_batches", "v7_b_mode", "local_epochs",
-                          "max_train_samples_per_client", "cold_start", "eval_on_local"]},
+                          "max_train_samples_per_client", "cold_start", "eval_on_local",
+                          "v11c_mu", "select_candidates"]},
               "eval_objective": ("per_client_local_test" if bool(getattr(args, "eval_on_local", False))
                                  else "per_domain_shared_test"),
               "results": results}
@@ -365,6 +453,12 @@ def main():
         if "local" in results:
             print(f"  [参考] base={results['base']['macro_acc']:.4f} coldstart={results['coldstart']['macro_acc']:.4f} "
                   f"local(有数据上界)={results['local']['macro_acc']:.4f}")
+    if "v11c_coldstart" in results and "base" in results:
+        dv = results["v11c_coldstart"]["macro_acc"] - results["base"]["macro_acc"]
+        print(f"[判读] v11c_coldstart − base(无适配): macro {dv:+.4f} (μ={args.v11c_mu:.2f})")
+    if "select" in results and "local" in results:
+        ds = results["select"]["macro_acc"] - results["local"]["macro_acc"]
+        print(f"[判读] select − local(孤立部署): macro {ds:+.4f}; selected={results['select'].get('selected_counts', {})}")
     print(f"\n[eval] 已保存: {args.out}", flush=True)
 
 

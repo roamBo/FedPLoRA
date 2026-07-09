@@ -88,10 +88,19 @@ def _load_rows(root: Path) -> List[Dict[str, Any]]:
             + (comm.get("effective_up_bytes_per_client", 0) or 0),
             "raw_comm": (comm.get("down_bytes_per_client", 0) or 0)
             + (comm.get("up_bytes_per_client", 0) or 0),
+            "raw_eq_eff": comm.get("raw_comm_equals_effective_comm"),
             "nmi": expert.get("domain_nmi"),
             "ari": expert.get("domain_ari"),
             "selected_k": expert.get("selected_k"),
             "cluster_mode": expert.get("cluster_mode"),
+            "v11_branch": expert.get("v11_branch"),
+            "v12_branch": expert.get("v12_branch"),
+            "v12_current_mu": expert.get("v12_current_mu"),
+            "v12_mu_policy": expert.get("v12_mu_policy"),
+            "v12_pre_mix_domain_nmi": expert.get("v12_pre_mix_domain_nmi"),
+            "v12_post_mix_domain_nmi": expert.get("v12_post_mix_domain_nmi"),
+            "v12_pre_mix_selected_k": expert.get("v12_pre_mix_selected_k"),
+            "v12_post_mix_selected_k": expert.get("v12_post_mix_selected_k"),
             "domain_metrics": final.get("domain_metrics") or {},
         }
         for key in (
@@ -154,7 +163,7 @@ def build_report(rows: List[Dict[str, Any]], root: Path, compare: List[str]) -> 
             "## Main final-round ranking",
             "",
             _table(
-                ["method", "agg", "Macro", "Worst", "PPL", "Local", "Off", "Gap", "InDom", "EffMiB", "RawMiB", "NMI", "ARI"],
+                ["method", "agg", "Macro", "Worst", "PPL", "Local", "Off", "Gap", "InDom", "EffMiB", "RawMiB", "Raw=Eff", "NMI", "ARI"],
                 [
                     [
                         r["method"],
@@ -168,6 +177,7 @@ def build_report(rows: List[Dict[str, Any]], root: Path, compare: List[str]) -> 
                         _f(r["indom"]),
                         _mib(r["eff_comm"]),
                         _mib(r["raw_comm"]),
+                        "" if r.get("raw_eq_eff") is None else str(bool(r.get("raw_eq_eff"))),
                         _f(r["nmi"]),
                         _f(r["ari"]),
                     ]
@@ -178,10 +188,28 @@ def build_report(rows: List[Dict[str, Any]], root: Path, compare: List[str]) -> 
             "## Geometry and A-correction",
             "",
             _table(
-                ["method", "K", "cluster_mode", "NMI", "ARI", "v10_A_rel", "v10_A_row_cos", "v10_clip", "v11_mu", "v11_A_rel"],
+                [
+                    "method",
+                    "branch",
+                    "K",
+                    "cluster_mode",
+                    "NMI",
+                    "ARI",
+                    "v10_A_rel",
+                    "v10_A_row_cos",
+                    "v10_clip",
+                    "v11/v12_mu",
+                    "v11_A_rel",
+                    "v12_policy",
+                    "v12_preNMI",
+                    "v12_postNMI",
+                    "v12_preK",
+                    "v12_postK",
+                ],
                 [
                     [
                         r["method"],
+                        r.get("v12_branch") or r.get("v11_branch") or "",
                         r.get("selected_k", ""),
                         r.get("cluster_mode", ""),
                         _f(r.get("nmi")),
@@ -189,11 +217,19 @@ def build_report(rows: List[Dict[str, Any]], root: Path, compare: List[str]) -> 
                         _f(r.get("v10_a_mean_rel_update_norm")),
                         _f(r.get("v10_a_mean_row_cos_to_ref")),
                         _f(r.get("v10_a_clipped_row_frac")),
-                        _f(r.get("v11_global_b_mix_mu")),
+                        _f(r.get("v12_current_mu") if r.get("v12_current_mu") is not None else r.get("v11_global_b_mix_mu")),
                         _f(r.get("v11_a_mean_rel_update_norm")),
+                        r.get("v12_mu_policy", ""),
+                        _f(r.get("v12_pre_mix_domain_nmi")),
+                        _f(r.get("v12_post_mix_domain_nmi")),
+                        r.get("v12_pre_mix_selected_k", ""),
+                        r.get("v12_post_mix_selected_k", ""),
                     ]
                     for r in ranked
-                    if r.get("nmi") is not None or r.get("v10_a_mean_rel_update_norm") is not None or r.get("v11_a_mean_rel_update_norm") is not None
+                    if r.get("nmi") is not None
+                    or r.get("v10_a_mean_rel_update_norm") is not None
+                    or r.get("v11_a_mean_rel_update_norm") is not None
+                    or r.get("v12_post_mix_domain_nmi") is not None
                 ],
             ),
             "",
@@ -285,4 +321,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
