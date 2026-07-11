@@ -55,6 +55,7 @@ from utilities.utils import (
     is_fedplora_v10_family_agg,
     is_fedplora_v11_family_agg,
     is_fedplora_v12_family_agg,
+    is_fedplora_v13_a_sketch_agg,
     is_yoco_agg,
 )
 
@@ -262,6 +263,7 @@ def _add_fedplora_v10_geometry_regularizer(loss, model, args):
         is_fedplora_v10_family_agg(getattr(args, "agg_type", None))
         or is_fedplora_v11_family_agg(getattr(args, "agg_type", None))
         or is_fedplora_v12_family_agg(getattr(args, "agg_type", None))
+        or is_fedplora_v13_a_sketch_agg(getattr(args, "agg_type", None))
     ):
         return loss
 
@@ -348,6 +350,7 @@ def _fedplora_refresh_reg_tensor_gpu_cache(model, args):
         is_fedplora_v10_family_agg(getattr(args, "agg_type", None))
         or is_fedplora_v11_family_agg(getattr(args, "agg_type", None))
         or is_fedplora_v12_family_agg(getattr(args, "agg_type", None))
+        or is_fedplora_v13_a_sketch_agg(getattr(args, "agg_type", None))
     ):
         sd = model.state_dict()
         Ag = getattr(args, "_fedplora_global_A", None)
