@@ -104,6 +104,26 @@ FEDPLORA_V12_FAMILY_AGGS = (
     FEDPLORA_V12A_SCHED_GMIX_AGGS | FEDPLORA_V12B_NMI_GUARD_GMIX_AGGS
 )
 
+FEDPLORA_V13A_OS_AGGS = {
+    "fedplora_v13a_os",
+    "fedplora_v13a_oneshot",
+    "v13a_os",
+    "v13a_oneshot",
+    "fedplora_os",
+    "os_alpha100",
+}
+
+FEDPLORA_V13B_OS_BONLY_AGGS = {
+    "fedplora_v13b_os_bonly",
+    "fedplora_v13b_bonly",
+    "v13b_os_bonly",
+    "v13b_bonly",
+    "fedplora_os_bonly",
+    "os_bonly",
+}
+
+FEDPLORA_V13_FAMILY_AGGS = FEDPLORA_V13A_OS_AGGS | FEDPLORA_V13B_OS_BONLY_AGGS
+
 
 def is_fedplora_v8_family_agg(agg_type):
     return _norm_agg_type(agg_type) in FEDPLORA_V8_FAMILY_AGGS
@@ -135,6 +155,18 @@ def is_fedplora_v12_family_agg(agg_type):
 
 def is_fedplora_v12_gmix_agg(agg_type):
     return _norm_agg_type(agg_type) in FEDPLORA_V12_FAMILY_AGGS
+
+
+def is_fedplora_v13_family_agg(agg_type):
+    return _norm_agg_type(agg_type) in FEDPLORA_V13_FAMILY_AGGS
+
+
+def is_fedplora_v13_a_sketch_agg(agg_type):
+    return _norm_agg_type(agg_type) in FEDPLORA_V13A_OS_AGGS
+
+
+def is_fedplora_v13_os_bonly_agg(agg_type):
+    return _norm_agg_type(agg_type) in FEDPLORA_V13B_OS_BONLY_AGGS
 
 
 def is_fedplora_v8_warma_agg(agg_type):
@@ -226,7 +258,7 @@ def is_fedplora_v6_dcr_agg(agg_type):
 
 
 def is_lora_expert_agg(agg_type):
-    """Shared-A / B-expert baselines: v7/v8/v9/v10/v11/v12, FedLEASE, HiLoRA, EcoLoRA, HydraLoRA."""
+    """Shared-A / B-expert baselines: v7/v8/v9/v10/v11/v12/v13, FedLEASE, HiLoRA, EcoLoRA, HydraLoRA."""
     return _norm_agg_type(agg_type) in {
         "fedplora_v7",
         "fedplora_v7_bonly",
@@ -236,7 +268,7 @@ def is_lora_expert_agg(agg_type):
         "hilora",
         "ecolora",
         "hydralora",
-    } or is_fedplora_v8_family_agg(agg_type) or is_fedplora_v9_family_agg(agg_type) or is_fedplora_v10_family_agg(agg_type) or is_fedplora_v11_family_agg(agg_type) or is_fedplora_v12_family_agg(agg_type)
+    } or is_fedplora_v8_family_agg(agg_type) or is_fedplora_v9_family_agg(agg_type) or is_fedplora_v10_family_agg(agg_type) or is_fedplora_v11_family_agg(agg_type) or is_fedplora_v12_family_agg(agg_type) or is_fedplora_v13_family_agg(agg_type)
 
 
 def is_lora_expert_b_only_agg(agg_type):
@@ -245,7 +277,7 @@ def is_lora_expert_b_only_agg(agg_type):
         "fedplora_v7_bonly",
         "v7_bonly",
     } or _norm_agg_type(agg_type) in (
-        FEDPLORA_V8_B_ONLY_AGGS | FEDPLORA_V9_B_ONLY_AGGS
+        FEDPLORA_V8_B_ONLY_AGGS | FEDPLORA_V9_B_ONLY_AGGS | FEDPLORA_V13B_OS_BONLY_AGGS
     )
 
 
@@ -510,7 +542,11 @@ def estimate_round_communication_bytes(
         v8_refresh_rounds = max(1, int(rounds or 1))
     if is_fedplora_v10_family_agg(agg_type):
         v8_refresh_rounds = max(1, int(rounds or 1))
-    if is_fedplora_v11_family_agg(agg_type) or is_fedplora_v12_family_agg(agg_type):
+    if (
+        is_fedplora_v11_family_agg(agg_type)
+        or is_fedplora_v12_family_agg(agg_type)
+        or is_fedplora_v13_a_sketch_agg(agg_type)
+    ):
         v8_refresh_rounds = max(1, int(rounds or 1))
 
     if is_fedplora_v8_scheduled_a_agg(agg_type):
@@ -519,6 +555,12 @@ def estimate_round_communication_bytes(
         # shared A on clients for B-only rounds.
         down = lora_all + task_head
         up = lora_all + task_head
+    elif is_fedplora_v13_os_bonly_agg(agg_type):
+        # v13b is the explicit one-shot/cached-A routed-B attribution branch:
+        # only routed B (+ task head) is paid in the measured round, both raw
+        # and effective.  Historical v8 accounting is intentionally unchanged.
+        down = lora_b + task_head
+        up = lora_b + task_head
     elif is_lora_expert_b_only_agg(agg_type) or (
         is_lora_expert_agg(agg_type) and not has_trainable_lora_a
     ):
@@ -528,8 +570,12 @@ def estimate_round_communication_bytes(
     elif is_fedplora_v10_family_agg(agg_type):
         down = lora_all + task_head
         up = lora_all + task_head
-    elif is_fedplora_v11_family_agg(agg_type) or is_fedplora_v12_family_agg(agg_type):
-        # v11/v12 use the real sketch payload: B + task head + rank-k A-delta
+    elif (
+        is_fedplora_v11_family_agg(agg_type)
+        or is_fedplora_v12_family_agg(agg_type)
+        or is_fedplora_v13_a_sketch_agg(agg_type)
+    ):
+        # v11/v12/v13a use the real sketch payload: B + task head + rank-k A-delta
         # sketch.  Unlike v10, raw and effective uplink are intentionally the
         # same accounting object for the A-correction branch.
         rank = max(1, int(v10_a_sketch_rank or 1))
@@ -591,7 +637,11 @@ def estimate_round_communication_bytes(
             v10_a_correction_bytes += int((r_dim * rank + rank + rank * in_dim) * elem)
     elif is_fedplora_v10_family_agg(agg_type):
         v10_a_correction_bytes = lora_a
-    elif is_fedplora_v11_family_agg(agg_type) or is_fedplora_v12_family_agg(agg_type):
+    elif (
+        is_fedplora_v11_family_agg(agg_type)
+        or is_fedplora_v12_family_agg(agg_type)
+        or is_fedplora_v13_a_sketch_agg(agg_type)
+    ):
         rank = max(1, int(v10_a_sketch_rank or 1))
         for k, v in sd.items():
             if not is_lora_a_param_name(k) or v.ndim != 2:
@@ -623,18 +673,30 @@ def estimate_round_communication_bytes(
         else:
             effective_down = int(round(lora_all + task_head))
             downlink_policy = "raw_full_lora"
-    elif is_fedplora_v11_family_agg(agg_type) or is_fedplora_v12_family_agg(agg_type):
+    elif (
+        is_fedplora_v11_family_agg(agg_type)
+        or is_fedplora_v12_family_agg(agg_type)
+        or is_fedplora_v13_a_sketch_agg(agg_type)
+    ):
         effective_up = int(round(lora_b + task_head + v11_a_correction_bytes))
         if bool(v8_cache_shared_a_downlink):
             effective_down = int(round(lora_b + task_head + v11_a_correction_bytes))
             downlink_policy = (
                 "cache_shared_a_plus_true_v12_a_sketch"
                 if is_fedplora_v12_family_agg(agg_type)
-                else "cache_shared_a_plus_true_v11_a_sketch"
+                else (
+                    "cache_shared_a_plus_true_v13_a_sketch"
+                    if is_fedplora_v13_a_sketch_agg(agg_type)
+                    else "cache_shared_a_plus_true_v11_a_sketch"
+                )
             )
         else:
             effective_down = int(round(lora_all + task_head))
             downlink_policy = "raw_full_lora"
+    elif is_fedplora_v13_os_bonly_agg(agg_type):
+        effective_up = int(round(lora_b + task_head))
+        effective_down = int(round(lora_b + task_head))
+        downlink_policy = "one_shot_cached_shared_a_routed_b"
     else:
         downlink_policy = "raw"
 
@@ -647,7 +709,7 @@ def estimate_round_communication_bytes(
         "v8_a_refresh_rounds": int(v8_refresh_rounds),
         "v8_a_refresh_fraction": (
             float(v8_refresh_rounds) / float(max(1, int(rounds or 1)))
-            if is_fedplora_v8_family_agg(agg_type) or is_fedplora_v9_family_agg(agg_type) or is_fedplora_v10_family_agg(agg_type) or is_fedplora_v11_family_agg(agg_type) or is_fedplora_v12_family_agg(agg_type)
+            if is_fedplora_v8_family_agg(agg_type) or is_fedplora_v9_family_agg(agg_type) or is_fedplora_v10_family_agg(agg_type) or is_fedplora_v11_family_agg(agg_type) or is_fedplora_v12_family_agg(agg_type) or is_fedplora_v13_family_agg(agg_type)
             else 0.0
         ),
         "v10_a_correction_bytes_per_client": int(v10_a_correction_bytes),
@@ -658,7 +720,7 @@ def estimate_round_communication_bytes(
             else ("anchored_full_delta" if is_fedplora_v10_family_agg(agg_type) else "")
         ),
         "v11_a_correction_mode": (
-            "true_lowrank_delta" if (is_fedplora_v11_family_agg(agg_type) or is_fedplora_v12_family_agg(agg_type)) else ""
+            "true_lowrank_delta" if (is_fedplora_v11_family_agg(agg_type) or is_fedplora_v12_family_agg(agg_type) or is_fedplora_v13_a_sketch_agg(agg_type)) else ""
         ),
         "v11_global_b_mix_mu": (
             float(v11_global_b_mix_mu) if (is_fedplora_v11_gmix_agg(agg_type) or is_fedplora_v12_gmix_agg(agg_type)) else 0.0

@@ -77,6 +77,12 @@ from methods.v12 import (
     build_fedplora_v12_upload_package,
     is_fedplora_v12_agg,
 )
+from methods.v13 import (
+    aggregate_models_fedplora_v13,
+    apply_fedplora_v13_runtime_defaults,
+    build_fedplora_v13_upload_package,
+    is_fedplora_v13_agg,
+)
 from utilities.models import (
     create_peft_causal_lm_model,
     create_peft_causal_lm_ffa_model,
@@ -104,6 +110,9 @@ from utilities.utils import (
     is_fedplora_v11_gmix_agg,
     is_fedplora_v12_family_agg,
     is_fedplora_v12_gmix_agg,
+    is_fedplora_v13_a_sketch_agg,
+    is_fedplora_v13_family_agg,
+    is_fedplora_v13_os_bonly_agg,
     v8_train_a_this_round,
     get_fedplora_shared_param_names,
     get_trainable_param_names,
@@ -1321,10 +1330,21 @@ def _configure_v8_round_a_schedule(args, model, round_idx: int) -> bool:
         or is_fedplora_v10_family_agg(args.agg_type)
         or is_fedplora_v11_family_agg(args.agg_type)
         or is_fedplora_v12_family_agg(args.agg_type)
+        or is_fedplora_v13_family_agg(args.agg_type)
     ):
         args._v8_current_train_a = None
         args._v8_current_b_only_upload = None
         return True
+    if is_fedplora_v13_os_bonly_agg(args.agg_type):
+        _set_lora_a_trainable(model, False)
+        args._v8_current_train_a = False
+        args._v8_current_b_only_upload = True
+        print(
+            f"[v13-schedule] round={round_idx + 1} train_upload_A=no "
+            f"upload_scope=B-only",
+            flush=True,
+        )
+        return False
     if is_fedplora_v9_family_agg(args.agg_type):
         train_a = (args.agg_type or "").strip().lower().replace("-", "_") in {
             "fedplora_v9_mix_ab",
@@ -1338,14 +1358,19 @@ def _configure_v8_round_a_schedule(args, model, round_idx: int) -> bool:
         is_fedplora_v10_family_agg(args.agg_type)
         or is_fedplora_v11_family_agg(args.agg_type)
         or is_fedplora_v12_family_agg(args.agg_type)
+        or is_fedplora_v13_a_sketch_agg(args.agg_type)
     ):
         _set_lora_a_trainable(model, True)
         args._v8_current_train_a = True
         args._v8_current_b_only_upload = False
         label = (
-            "v12"
-            if is_fedplora_v12_family_agg(args.agg_type)
-            else ("v11" if is_fedplora_v11_family_agg(args.agg_type) else "v10")
+            "v13"
+            if is_fedplora_v13_a_sketch_agg(args.agg_type)
+            else (
+                "v12"
+                if is_fedplora_v12_family_agg(args.agg_type)
+                else ("v11" if is_fedplora_v11_family_agg(args.agg_type) else "v10")
+            )
         )
         print(
             f"[{label}-schedule] round={round_idx + 1} train_upload_A=yes "
@@ -1416,7 +1441,7 @@ def _communication_metrics_payload(args, comm_info):
             payload[key] = comm_info[key]
     if is_fedplora_v8_family_agg(args.agg_type) or is_fedplora_v9_family_agg(
         args.agg_type
-    ) or is_fedplora_v10_family_agg(args.agg_type) or is_fedplora_v11_family_agg(args.agg_type) or is_fedplora_v12_family_agg(args.agg_type):
+    ) or is_fedplora_v10_family_agg(args.agg_type) or is_fedplora_v11_family_agg(args.agg_type) or is_fedplora_v12_family_agg(args.agg_type) or is_fedplora_v13_family_agg(args.agg_type):
         payload["v8_a_warmup_rounds"] = int(getattr(args, "v8_a_warmup_rounds", 1) or 0)
         payload["v8_a_refresh_interval"] = int(
             getattr(args, "v8_a_refresh_interval", 5) or 0
@@ -1449,7 +1474,7 @@ def _communication_metrics_payload(args, comm_info):
         ):
             if key in comm_info:
                 payload[key] = comm_info[key]
-    if is_fedplora_v11_family_agg(args.agg_type) or is_fedplora_v12_family_agg(args.agg_type):
+    if is_fedplora_v11_family_agg(args.agg_type) or is_fedplora_v12_family_agg(args.agg_type) or is_fedplora_v13_a_sketch_agg(args.agg_type):
         payload["v10_a_correction_alpha"] = float(
             getattr(args, "v10_a_correction_alpha", 0.35) or 0.0
         )
@@ -1501,6 +1526,22 @@ def _communication_metrics_payload(args, comm_info):
                 ),
             }
         )
+    if is_fedplora_v13_family_agg(args.agg_type):
+        payload["v13_branch"] = str(
+            getattr(args, "_fedplora_v13_branch", "v13_unknown")
+        )
+        payload["v13_global_b_mix_mu"] = 0.0
+        payload["v13_forced_defaults"] = getattr(
+            args, "_fedplora_v13_forced_defaults", {}
+        )
+        if is_fedplora_v13_os_bonly_agg(args.agg_type):
+            payload["v13_comm_accounting"] = "B_plus_head_downlink_and_uplink"
+            payload["raw_comm_equals_effective_comm"] = (
+                int(payload.get("down_bytes_per_client", 0) or 0)
+                == int(payload.get("effective_down_bytes_per_client", -1) or -1)
+                and int(payload.get("up_bytes_per_client", 0) or 0)
+                == int(payload.get("effective_up_bytes_per_client", -1) or -1)
+            )
     return payload
 
 
@@ -1601,6 +1642,7 @@ def _resume_meta_matches(meta: dict, args, split_dir: str, client_ids) -> bool:
             is_fedplora_v10_family_agg(args.agg_type)
             or is_fedplora_v11_family_agg(args.agg_type)
             or is_fedplora_v12_family_agg(args.agg_type)
+            or is_fedplora_v13_family_agg(args.agg_type)
         ):
             v10_float_fields = [
                 "v10_a_correction_alpha",
@@ -1644,6 +1686,11 @@ def _resume_meta_matches(meta: dict, args, split_dir: str, client_ids) -> bool:
                 getattr(args, "v12_mu_schedule", "")
             ):
                 return _bad("v12_mu_schedule")
+        if is_fedplora_v13_family_agg(args.agg_type):
+            if str(cfg.get("v13_branch", "")) != str(
+                getattr(args, "_fedplora_v13_branch", "")
+            ):
+                return _bad("v13_branch")
     return True
 
 
@@ -2253,6 +2300,7 @@ def _save_run_checkpoint(
                 is_fedplora_v10_family_agg(args.agg_type)
                 or is_fedplora_v11_family_agg(args.agg_type)
                 or is_fedplora_v12_family_agg(args.agg_type)
+                or is_fedplora_v13_family_agg(args.agg_type)
             ):
                 meta["lora_expert_config"].update(
                     {
@@ -2303,6 +2351,18 @@ def _save_run_checkpoint(
                         ),
                         "v12_nmi_guard_high_mu": float(
                             getattr(args, "v12_nmi_guard_high_mu", 0.55) or 0.0
+                        ),
+                    }
+                )
+            if is_fedplora_v13_family_agg(args.agg_type):
+                meta["lora_expert_config"].update(
+                    {
+                        "v13_branch": str(
+                            getattr(args, "_fedplora_v13_branch", "")
+                        ),
+                        "v13_global_b_mix_mu": 0.0,
+                        "v13_forced_defaults": getattr(
+                            args, "_fedplora_v13_forced_defaults", {}
                         ),
                     }
                 )
@@ -2432,6 +2492,8 @@ def eval_only_from_checkpoint(args):
             flush=True,
         )
         args.agg_type = meta["agg_type"]
+    if is_fedplora_v13_agg(args.agg_type):
+        apply_fedplora_v13_runtime_defaults(args)
 
     args.rounds = int(meta.get("train_rounds", args.rounds))
     args.local_epochs = int(meta.get("train_local_epochs", args.local_epochs))
@@ -2568,6 +2630,15 @@ def federated_sft(args):
     benchmark, split_dir = build_or_load_benchmark(args)
     print(f"[benchmark] loaded from {split_dir}")
     print(f"[benchmark] domains={sorted(benchmark['domain_stats'].keys())}")
+    if is_fedplora_v13_agg(args.agg_type):
+        apply_fedplora_v13_runtime_defaults(args)
+        forced = getattr(args, "_fedplora_v13_forced_defaults", {}) or {}
+        if forced:
+            print(
+                f"[setup] v13 runtime defaults applied: "
+                f"{json.dumps(forced, ensure_ascii=False, sort_keys=True)}",
+                flush=True,
+            )
 
     from transformers import AutoTokenizer
 
@@ -2640,17 +2711,26 @@ def federated_sft(args):
         or is_fedplora_v10_family_agg(args.agg_type)
         or is_fedplora_v11_family_agg(args.agg_type)
         or is_fedplora_v12_family_agg(args.agg_type)
+        or is_fedplora_v13_family_agg(args.agg_type)
     ):
         label = (
-            "v12"
-            if is_fedplora_v12_family_agg(args.agg_type)
+            "v13"
+            if is_fedplora_v13_family_agg(args.agg_type)
             else (
-                "v11"
-                if is_fedplora_v11_family_agg(args.agg_type)
+                "v12"
+                if is_fedplora_v12_family_agg(args.agg_type)
                 else (
-                    "v10"
-                    if is_fedplora_v10_family_agg(args.agg_type)
-                    else ("v9" if is_fedplora_v9_family_agg(args.agg_type) else "v8")
+                    "v11"
+                    if is_fedplora_v11_family_agg(args.agg_type)
+                    else (
+                        "v10"
+                        if is_fedplora_v10_family_agg(args.agg_type)
+                        else (
+                            "v9"
+                            if is_fedplora_v9_family_agg(args.agg_type)
+                            else "v8"
+                        )
+                    )
                 )
             )
         )
@@ -2671,6 +2751,7 @@ def federated_sft(args):
             is_fedplora_v10_family_agg(args.agg_type)
             or is_fedplora_v11_family_agg(args.agg_type)
             or is_fedplora_v12_family_agg(args.agg_type)
+            or is_fedplora_v13_a_sketch_agg(args.agg_type)
         ):
             print(
                 f"[setup] {label}_a_correction_alpha="
@@ -2702,6 +2783,13 @@ def federated_sft(args):
                     f"{float(getattr(args, 'v12_nmi_guard_threshold', 0.75) or 0.0):.3f},"
                     f"low:{float(getattr(args, 'v12_nmi_guard_low_mu', 0.4) or 0.0):.3f},"
                     f"high:{float(getattr(args, 'v12_nmi_guard_high_mu', 0.55) or 0.0):.3f}",
+                    flush=True,
+                )
+            if is_fedplora_v13_family_agg(args.agg_type):
+                print(
+                    f"[setup] v13_branch={getattr(args, '_fedplora_v13_branch', 'na')} "
+                    f"v13_no_mu=1 forced_defaults="
+                    f"{json.dumps(getattr(args, '_fedplora_v13_forced_defaults', {}) or {}, ensure_ascii=False, sort_keys=True)}",
                     flush=True,
                 )
 
@@ -2815,6 +2903,7 @@ def federated_sft(args):
                     is_fedplora_v10_family_agg(args.agg_type)
                     or is_fedplora_v11_family_agg(args.agg_type)
                     or is_fedplora_v12_family_agg(args.agg_type)
+                    or is_fedplora_v13_a_sketch_agg(args.agg_type)
                 ):
                     args._fedplora_round_start_B = {
                         k: v.detach().cpu().clone()
@@ -2835,7 +2924,9 @@ def federated_sft(args):
                 cid = int(client_ids[i])
                 dom = (getattr(args, "_fedplora_client_domains", {}) or {}).get(cid, "unknown")
                 if is_lora_expert_agg(args.agg_type):
-                    if is_fedplora_v12_agg(args.agg_type):
+                    if is_fedplora_v13_agg(args.agg_type):
+                        build_expert_payload = build_fedplora_v13_upload_package
+                    elif is_fedplora_v12_agg(args.agg_type):
                         build_expert_payload = build_fedplora_v12_upload_package
                     elif is_fedplora_v11_agg(args.agg_type):
                         build_expert_payload = build_fedplora_v11_upload_package
@@ -2923,7 +3014,11 @@ def federated_sft(args):
             global_model = aggregate_models_ffa(global_model, client_states_for_agg)
         elif is_lora_expert_agg(args.agg_type):
             args._aggregate_client_sizes = client_sizes
-            if is_fedplora_v12_agg(args.agg_type):
+            if is_fedplora_v13_agg(args.agg_type):
+                global_model = aggregate_models_fedplora_v13(
+                    global_model, lora_expert_uploads, args
+                )
+            elif is_fedplora_v12_agg(args.agg_type):
                 global_model = aggregate_models_fedplora_v12(
                     global_model, lora_expert_uploads, args
                 )
@@ -3007,6 +3102,17 @@ def federated_sft(args):
                         f"{expert_summ.get('v12_post_mix_domain_nmi', float('nan')):.4f} "
                         f"a_rel_update="
                         f"{expert_summ.get('v11_a_mean_rel_update_norm', float('nan')):.4f}",
+                        flush=True,
+                    )
+                if is_fedplora_v13_agg(args.agg_type):
+                    print(
+                        f"[fedplora-v13] branch="
+                        f"{expert_summ.get('v13_branch', 'na')} "
+                        f"protocol={expert_summ.get('v13_protocol', 'na')} "
+                        f"mu={expert_summ.get('v13_global_b_mix_mu', 0.0):.3f} "
+                        f"a_payload={expert_summ.get('v13_a_payload', 'na')} "
+                        f"a_alpha={expert_summ.get('v13_a_correction_alpha', float('nan')):.3f} "
+                        f"domain_nmi={expert_summ.get('domain_nmi', float('nan')):.4f}",
                         flush=True,
                     )
                 if is_fedplora_v10_agg(args.agg_type):
@@ -3269,6 +3375,42 @@ def federated_sft(args):
                 "pre_mix_selected_k": expert_summ.get("v12_pre_mix_selected_k"),
                 "post_mix_selected_k": expert_summ.get("v12_post_mix_selected_k"),
                 "upload_scope": "true_a_sketch_b",
+            }
+        if is_fedplora_v13_family_agg(args.agg_type):
+            expert_summ = getattr(args, "_lora_expert_stats", {}).get("_summary", {})
+            round_payload["v13"] = {
+                "branch": str(expert_summ.get("v13_branch", "")),
+                "protocol": str(expert_summ.get("v13_protocol", "")),
+                "a_payload": str(expert_summ.get("v13_a_payload", "")),
+                "a_correction_alpha": float(
+                    getattr(args, "v10_a_correction_alpha", 0.0) or 0.0
+                )
+                if is_fedplora_v13_a_sketch_agg(args.agg_type)
+                else 0.0,
+                "a_anchor_lambda": float(
+                    getattr(args, "v10_a_anchor_lambda", 0.0) or 0.0
+                ),
+                "a_prox_lambda": float(
+                    getattr(args, "v10_a_prox_lambda", 0.0) or 0.0
+                ),
+                "b_prox_lambda": float(
+                    getattr(args, "v10_b_prox_lambda", 0.0) or 0.0
+                ),
+                "global_b_mix_mu": 0.0,
+                "a_sketch_rank": int(getattr(args, "v10_a_sketch_rank", 2) or 0)
+                if is_fedplora_v13_a_sketch_agg(args.agg_type)
+                else 0,
+                "upload_scope": (
+                    "true_a_sketch_b"
+                    if is_fedplora_v13_a_sketch_agg(args.agg_type)
+                    else "b_only_cached_a"
+                ),
+                "forced_defaults": getattr(
+                    args, "_fedplora_v13_forced_defaults", {}
+                ),
+                "comm_accounting": str(
+                    expert_summ.get("v13_comm_accounting", "")
+                ),
             }
         if is_lora_expert_agg(args.agg_type) and "lora_expert_stats" not in round_payload:
             expert_stats = getattr(args, "_lora_expert_stats", {}) or {}

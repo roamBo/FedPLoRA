@@ -21,6 +21,8 @@ downlinked LoRA state per client:
   - fedplora_v12a_sched_gmix / v12b_nmi_guard_gmix: v11-style true sketch
     payloads plus scheduled/adaptive global-routed B mixing (implemented in
     methods.v12; listed here for shared helpers).
+  - fedplora_v13a_os / v13b_os_bonly: 2026-07-11 one-shot protocol branches
+    (implemented in methods.v13; listed here for shared helper compatibility).
   - fedlease: adaptive B-subspace expert allocation plus top-M expert blending.
   - hilora: root shared A, cluster B, and a local leaf residual folded into B.
   - hydralora: shared A plus multiple B experts with hard/soft routing.
@@ -45,6 +47,7 @@ from utilities.utils import (
     FEDPLORA_V8_FAMILY_AGGS,
     FEDPLORA_V11_FAMILY_AGGS,
     FEDPLORA_V12_FAMILY_AGGS,
+    FEDPLORA_V13_FAMILY_AGGS,
     get_trainable_param_names,
     is_lora_a_param_name,
     is_lora_b_param_name,
@@ -97,6 +100,18 @@ SUPPORTED_LORA_EXPERT_AGGS = {
     "fedplora_v12_adaptive_gmix",
     "v12b_nmi_guard_gmix",
     "v12_adaptive_gmix",
+    "fedplora_v13a_os",
+    "fedplora_v13a_oneshot",
+    "v13a_os",
+    "v13a_oneshot",
+    "fedplora_os",
+    "os_alpha100",
+    "fedplora_v13b_os_bonly",
+    "fedplora_v13b_bonly",
+    "v13b_os_bonly",
+    "v13b_bonly",
+    "fedplora_os_bonly",
+    "os_bonly",
     "fedlease",
     "hilora",
     "ecolora",
@@ -117,6 +132,8 @@ def _canonical_agg(agg_type) -> str:
     if t in FEDPLORA_V11_FAMILY_AGGS:
         return t
     if t in FEDPLORA_V12_FAMILY_AGGS:
+        return t
+    if t in FEDPLORA_V13_FAMILY_AGGS:
         return t
     return t
 
@@ -816,6 +833,18 @@ def aggregate_models_lora_expert_baseline(global_model, client_uploads, args):
             "fedplora_v12_adaptive_gmix",
             "v12b_nmi_guard_gmix",
             "v12_adaptive_gmix",
+            "fedplora_v13a_os",
+            "fedplora_v13a_oneshot",
+            "v13a_os",
+            "v13a_oneshot",
+            "fedplora_os",
+            "os_alpha100",
+            "fedplora_v13b_os_bonly",
+            "fedplora_v13b_bonly",
+            "v13b_os_bonly",
+            "v13b_bonly",
+            "fedplora_os_bonly",
+            "os_bonly",
         }:
             route = [(int(assign[i]), 1.0)]
         else:

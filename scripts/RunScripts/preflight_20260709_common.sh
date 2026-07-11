@@ -58,6 +58,10 @@ case "$FEDPLORA_PREFLIGHT_ROLE" in
       methods/v12/v12_common.py
       methods/v12/v12a_sched_gmix.py
       methods/v12/v12b_nmi_guard_gmix.py
+      methods/v13/__init__.py
+      methods/v13/v13_common.py
+      methods/v13/v13a_os.py
+      methods/v13/v13b_os_bonly.py
       scripts/Analysis/eval_personalized.py
       scripts/Analysis/summarize_fedplora_results.py
       scripts/DataProcessScripts/build_mixed_richness_benchmark.py
@@ -286,6 +290,7 @@ required = [
     "methods.v10",
     "methods.v11",
     "methods.v12",
+    "methods.v13",
     "methods.lora_expert_baselines",
     "utilities.utils",
     "utilities.train_eval",
@@ -300,10 +305,10 @@ if missing:
     print("[preflight][error] required Python modules/packages are missing:")
     for name in missing:
         print(f"  - {name}")
-    print("[preflight][hint] 服务器代码同步不完整；请同步 methods/v10、v11、v12 以及相关 tasks/utilities/scripts 后再 source preflight。")
+    print("[preflight][hint] 服务器代码同步不完整；请同步 methods/v10、v11、v12、v13 以及相关 tasks/utilities/scripts 后再 source preflight。")
     raise SystemExit(2)
 
-print("[preflight] module_path_ok modules=v8,v9,v10,v11,v12,lora_expert,utils,train_eval")
+print("[preflight] module_path_ok modules=v8,v9,v10,v11,v12,v13,lora_expert,utils,train_eval")
 PY
 }
 
@@ -345,7 +350,7 @@ assert_role_run () {
     esac
   else
     case "$agg" in
-      fedplora_v8|fedplora_v11c_gmix|fedplora_v11a_relaxed_a|fedplora_v12a_sched_gmix|fedplora_v12b_nmi_guard_gmix)
+      fedplora_v8|fedplora_v11c_gmix|fedplora_v11a_relaxed_a|fedplora_v12a_sched_gmix|fedplora_v12b_nmi_guard_gmix|fedplora_v13a_os|fedplora_v13b_os_bonly|fedplora_os|fedplora_os_bonly)
         ;;
       *)
         echo "[guard][main][error] agg=$agg 不属于主算法白名单；baseline 请 source preflight_20260709_baseline.sh。" >&2
@@ -353,7 +358,7 @@ assert_role_run () {
         ;;
     esac
     case "$method" in
-      smoke_v8*|smoke_v11*|smoke_v12*|X1*|X2*|OS1_v8*|OS1_v11*|X3_v11*|X3_v12*|M3_mixrich_v8*|M3_mixrich_v11*|M3_mixrich_v12*|M3_os_mixrich_v8*|M3_os_mixrich_v11*|N7_ours_*)
+      smoke_v8*|smoke_v11*|smoke_v12*|smoke_v13*|X1*|X2*|NX1*|NX2*|NX3*|NX4*|NX5*|NX6*|OS1_v8*|OS1_v11*|OS1_v13*|X3_v11*|X3_v12*|M3_mixrich_v8*|M3_mixrich_v11*|M3_mixrich_v12*|M3_os_mixrich_v8*|M3_os_mixrich_v11*|M3_os_mixrich_v13*|N7_ours_*)
         ;;
       *)
         echo "[guard][main][error] method=$method 命名不像主算法任务；为防误跑已拒绝。" >&2
@@ -471,7 +476,7 @@ if [ "$FEDPLORA_PREFLIGHT_ROLE" = "main" ]; then
       --cold_start --eval_on_local \
       "$@" \
       --out "$RUN_ROOT/result_logs/${name}_seed${SEED}.json" \
-      > "$RUN_ROOT/run_logs/test20260709_main_${name}_seed${SEED}.log" 2>&1 &
+      > "$RUN_ROOT/run_logs/${_FEDPLORA_LOG_PREFIX}_${name}_seed${SEED}.log" 2>&1 &
   }
 fi
 

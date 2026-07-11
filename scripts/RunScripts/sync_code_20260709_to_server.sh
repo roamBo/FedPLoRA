@@ -42,6 +42,7 @@ mods = [
     'methods.v10',
     'methods.v11',
     'methods.v12',
+    'methods.v13',
     'methods.lora_expert_baselines',
     'utilities.utils',
     'utilities.train_eval',
