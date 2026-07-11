@@ -75,16 +75,18 @@ summary:
 
 【路径对照（minghao → gb）】
 
-| 项 | order_20260709_baseline.md | order_gb_0709.md |
-|----|----------------------------|------------------|
-| conda | `FedRepo2` | `fedplora` |
-| 代码 | `/data2/minghao/code/FedPLoRA-main` | `/data/yaominghao/gb/FedPLoRA` |
-| 模型 | `/data2/minghao/model/SmolLM2-135M` | `/data/yaominghao/gb/models/SmolLM2-135M` |
-| 主数据 | `.../domain_benchmark_35c_dir05/seed_*` | `$CODE_DIR/data/domain_benchmark_35c_dir05/seed_*` |
-| 7c 上界 | `/data/yaominghao/gb/FedPLoRA/data/domain_benchmark_7c/seed_42` | 同左（已在 gb 上） |
-| 结果 | `/data2/minghao/result/FedPLoRA/` | `/data/yaominghao/gb/result/FedPLoRA/` |
-| checkpoint | `/data2/minghao/model/trained_models_LW/` | `/data/yaominghao/gb/models/trained_models_LW/` |
-| GPU 默认 | `0`（OS1 段 0–3 四卡并行） | `1`（单卡串行） |
+
+| 项          | order_20260709_baseline.md                                      | order_gb_0709.md                                   |
+| ---------- | --------------------------------------------------------------- | -------------------------------------------------- |
+| conda      | `FedRepo2`                                                      | `fedplora`                                         |
+| 代码         | `/data2/minghao/code/FedPLoRA-main`                             | `/data/yaominghao/gb/FedPLoRA`                     |
+| 模型         | `/data2/minghao/model/SmolLM2-135M`                             | `/data/yaominghao/gb/models/SmolLM2-135M`          |
+| 主数据        | `.../domain_benchmark_35c_dir05/seed_*`                         | `$CODE_DIR/data/domain_benchmark_35c_dir05/seed_*` |
+| 7c 上界      | `/data/yaominghao/gb/FedPLoRA/data/domain_benchmark_7c/seed_42` | 同左（已在 gb 上）                                        |
+| 结果         | `/data2/minghao/result/FedPLoRA/`                               | `/data/yaominghao/gb/result/FedPLoRA/`             |
+| checkpoint | `/data2/minghao/model/trained_models_LW/`                       | `/data/yaominghao/gb/models/trained_models_LW/`    |
+| GPU 默认     | `0`（OS1 段 0–3 四卡并行）                                             | `1`（单卡串行）                                          |
+
 
 【实验前置命令：推荐脚本版】
 
@@ -114,7 +116,9 @@ export BENCHMARK_DIR_MAIN=/abs/path/to/domain_benchmark_35c_dir05/seed_42
 source "$CODE_DIR/scripts/RunScripts/preflight_20260709_baseline.sh"
 ```
 
-【1. baseline smoke】
+【
+
+1. baseline smoke】
 
 说明：gb 单卡，以下命令逐条串行执行；每条 smoke 跑完再跑下一条。
 
@@ -142,7 +146,9 @@ find "$SMOKE_ROOT/result_logs" -name '*.json' | sort
 tail -n 40 "$SMOKE_ROOT"/run_logs/test20260709_baseline_smoke_*_seed42.log
 ```
 
-【2. P0-OS1：one-shot baseline 主表】
+【
+
+1. P0-OS1：one-shot baseline 主表】
 
 说明：minghao 侧跑 OS1_v8 / OS1_v11c / OS1_v11a；gb 这边只跑 baseline。gb 单卡，每个 seed 内 12 个方法串行；等上一轮全部结束再切 seed。
 
@@ -152,6 +158,15 @@ export RUN_ID_PREFIX=os_20260709_baseline_35c_dir05_r1_finaleval
 
 for s in 42 43 44; do
   set_run_paths "$s"
+
+set_run_paths 43
+export BENCHMARK_DIR="$CODE_DIR/data/domain_benchmark_35c_dir05/seed_43"
+echo "[check] SEED=$SEED BENCHMARK_DIR=$BENCHMARK_DIR RUN_ROOT=$RUN_ROOT"
+
+set_run_paths 44
+export BENCHMARK_DIR="$CODE_DIR/data/domain_benchmark_35c_dir05/seed_44"
+echo "[check] SEED=$SEED BENCHMARK_DIR=$BENCHMARK_DIR RUN_ROOT=$RUN_ROOT"
+
   GPU=1 run_sft_full OS1_normal normal
   GPU=1 run_sft_full OS1_ecolora ecolora --ecolora_keep_ratio 0.25 --ecolora_mask_mode round_robin
   GPU=1 run_sft_full OS1_fedalt fedalt
@@ -166,13 +181,16 @@ for s in 42 43 44; do
   GPU=1 run_sft_full OS1_feddat feddat --feddat_teacher_lambda 0.01
   GPU=1 run_sft_full OS1_fedplora_oneshot fedplora_oneshot
 done
+一个seed18个g
 
 export ROUNDS=10
 export RUN_ID_PREFIX=baseline_20260709_35c_dir05_r10_finaleval
 set_run_paths 42
 ```
 
-【3. P1-X3：r=10 baseline 最小多 seed】
+【
+
+1. P1-X3：r=10 baseline 最小多 seed】
 
 ```bash
 for s in 42 43 44; do
@@ -183,7 +201,9 @@ for s in 42 43 44; do
 done
 ```
 
-【4. P2：缺失 baseline 补表】
+【
+
+1. P2：缺失 baseline 补表】
 
 ```bash
 set_run_paths 42
@@ -191,7 +211,9 @@ GPU=1 run_sft_full P2_yoco yoco --yoco_aggregate_mode conflict --yoco_conflict_m
 GPU=1 run_sft_full P2_feddat feddat --feddat_teacher_lambda 0.01
 ```
 
-【5. P1-M3：mixed-richness baseline 子集】
+【
+
+1. P1-M3：mixed-richness baseline 子集】
 
 如果已经构建 `BENCHMARK_DIR_MIXRICH`，直接跑；否则这里也给 builder，注意两边不要同时构建同一路径。
 
@@ -240,7 +262,9 @@ export RUN_ID_PREFIX=baseline_20260709_35c_dir05_r10_finaleval
 set_run_paths 42
 ```
 
-【6. P1-N6：local 公平对比 + centralized-per-domain 上界】
+【
+
+1. P1-N6：local 公平对比 + centralized-per-domain 上界】
 
 local-only @ 10 epochs：
 
@@ -285,7 +309,9 @@ export RUN_ID_PREFIX=baseline_20260709_35c_dir05_r10_finaleval
 set_run_paths 42
 ```
 
-【7. 可选：N7 1–3B baseline 点】
+【
+
+1. 可选：N7 1–3B baseline 点】
 
 ```bash
 export MODEL_PATH_ORIG="$MODEL_PATH"
@@ -303,7 +329,9 @@ export RUN_ID_PREFIX=baseline_20260709_35c_dir05_r10_finaleval
 set_run_paths 42
 ```
 
-【8. 可选：N9 FlowerTune-Mixed baseline】
+【
+
+1. 可选：N9 FlowerTune-Mixed baseline】
 
 先下载 4 个 FlowerTune 公开训练数据集并构建 4 域 × 5 client = 20c benchmark。第一次运行会从 Hugging Face 下载数据；如果服务器不能联网，先在能联网机器上跑完后把 `data/raw_flowertune_mixed.jsonl` 和 `data/flowertune_mixed_20c/` 同步到服务器。
 
@@ -396,17 +424,22 @@ else
 fi
 ```
 
-【9. 汇总检查】
+【
+
+1. 汇总检查】
 
 ```bash
 python scripts/Analysis/summarize_fedplora_results.py "$RUN_ROOT" --output "$RUN_ROOT/result_logs/summary_baseline_seed${SEED}.md"
 grep -R "\[guard\]\\|\[resume\] Run fully complete\\|Traceback\\|CUDA out of memory\\|nan" "$RUN_ROOT/run_logs" || true
 ```
 
-【10. gb 单卡运行提示】
+【
+
+1. gb 单卡运行提示】
 
 ```text
 1. OS1 主表每个 seed 有 12 个方法，单卡串行预计耗时较长；建议用 nohup 后台跑整段 for 循环，或等上一条 `[resume] Run fully complete` 后再发下一条。
 2. 若物理 1 号卡被占用，可 `export GPU=0` 后重跑；preflight 里 `GPU` 默认在 common.sh 为 0，但 gb 前置块已 `export GPU=1`。
 3. 主算法（v8/v11/v12）请用 `preflight_20260709_main_algorithm.sh`，不要与本 baseline order 混跑。
 ```
+
