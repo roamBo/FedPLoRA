@@ -1,0 +1,802 @@
+{
+  "args": {
+    "model": "/data/yaominghao/gb/models/SmolLM2-135M",
+    "benchmark_dir": "/data/yaominghao/gb/FedPLoRA/data/domain_benchmark_35c_dir05/seed_44",
+    "benchmark_jsonl": "",
+    "build_benchmark": false,
+    "benchmark_output_dir": "data/domain_benchmark",
+    "num_clients_per_domain": 5,
+    "min_samples_per_client": 50,
+    "agg_type": "fedlease",
+    "rounds": 1,
+    "num_clients": 35,
+    "local_epochs": 1,
+    "lr": 0.0002,
+    "lora_r": 8,
+    "lora_alpha": 16,
+    "lora_dropout": 0.05,
+    "rslora": false,
+    "batch_size": 2,
+    "warmup_ratio": 0.03,
+    "max_seq_length": 256,
+    "seed": 44,
+    "gradient_checkpointing": true,
+    "trust_remote_code": false,
+    "torch_dtype": "bfloat16",
+    "target_modules": "q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj",
+    "client_state_dir": "/data/yaominghao/gb/result/FedPLoRA/os_20260709_baseline_35c_dir05_r1_finaleval_seed44/result_files/client_states/OS1_fedlease",
+    "save_client_state_to_disk": true,
+    "metrics_output_dir": "/data/yaominghao/gb/result/FedPLoRA/os_20260709_baseline_35c_dir05_r1_finaleval_seed44/result_logs/OS1_fedlease",
+    "save_run_checkpoint_dir": "/data/yaominghao/gb/models/trained_models_LW/os_20260709_baseline_35c_dir05_r1_finaleval_seed44/OS1_fedlease_SmolLM2-135M_dir05_r1_e1_lr0.0002_seed44",
+    "skip_post_agg_snapshots": true,
+    "trained_models_root": "/data/yaominghao/gb/models/trained_models_LW/os_20260709_baseline_35c_dir05_r1_finaleval_seed44",
+    "no_auto_save_run_checkpoint": false,
+    "force_retrain": false,
+    "eval_only_from_checkpoint": "",
+    "gp_align_lambda": 0.01,
+    "gp_prox_lambda": 0.001,
+    "gp_orth_lambda": 0.0001,
+    "gp_consensus_power": 2.0,
+    "gp_agg_momentum": 0.5,
+    "yoco_sparse_lambda": 0.0001,
+    "yoco_pcwa_components": 3,
+    "yoco_aggregate_mode": "conflict",
+    "yoco_conflict_method": "avgm",
+    "yoco_sign_lambda": 0.01,
+    "yoco_eval_use_local_clients": false,
+    "memory_agg_eval_use_local_clients": false,
+    "flora_svd_device": "auto",
+    "oneshot_consensus_power": 2.0,
+    "oneshot_importance_power": 1.0,
+    "oneshot_importance_clip": 5.0,
+    "oneshot_conflict_threshold": 0.35,
+    "oneshot_conflict_blend": 1.0,
+    "oneshot_scale_clip_ratio": 0.0,
+    "oneshot_anchor_lambda": 0.0001,
+    "oneshot_prox_lambda": 0.0,
+    "oneshot_no_keep_init_on_conflict": false,
+    "oneshot_orthogonalize": false,
+    "oneshot_ablation_plain_fedavg": false,
+    "v3_conflict_quantile": 0.8,
+    "v3_gate_temperature": 0.05,
+    "v3_conflict_blend": 1.0,
+    "v3_residual_norm_power": 1.0,
+    "v3_residual_eps": 1e-07,
+    "v3_cluster_mode": "domain_prior",
+    "v3_cluster_lambda_min": 0.2,
+    "v3_cluster_lambda_max": 1.0,
+    "v3_rpca_rank": 1,
+    "v3_sparse_quantile": 0.8,
+    "v3_domain_cluster_map": "",
+    "v6_dcr_mode": "",
+    "v6_dcr_rc_policy": "auto",
+    "v6_dcr_shared_rank": 0,
+    "v6_dcr_min_shared_rank": 1,
+    "v6_dcr_max_shared_rank": 0,
+    "v6_dcr_energy_tau": 0.8,
+    "v6_dcr_conflict_strength": 1.0,
+    "v6_dcr_importance_power": 0.0,
+    "v6_dcr_importance_clip": 5.0,
+    "v7_b_mode": "mean",
+    "expert_cluster_mode": "auto",
+    "expert_cluster_k": 0,
+    "expert_max_clusters": 0,
+    "expert_b_mode": "",
+    "expert_top_m": 0,
+    "expert_router_temperature": 0.2,
+    "expert_freeze_a": false,
+    "v8_a_warmup_rounds": 1,
+    "v8_a_refresh_interval": 5,
+    "v8_cache_shared_a_downlink": true,
+    "v9_mix_lambda": 0.5,
+    "v10_a_correction_alpha": 0.35,
+    "v10_a_anchor_lambda": 0.001,
+    "v10_a_prox_lambda": 0.0005,
+    "v10_b_prox_lambda": 0.0001,
+    "v10_a_sketch_rank": 2,
+    "v10_a_norm_clip_ratio": 1.5,
+    "v11_global_b_mix_mu": 0.4,
+    "v12_mu_start": 0.4,
+    "v12_mu_end": 0.6,
+    "v12_mu_schedule": "linear",
+    "v12_mu_warmup_rounds": 0,
+    "v12_nmi_guard_threshold": 0.75,
+    "v12_nmi_guard_low_mu": 0.4,
+    "v12_nmi_guard_high_mu": 0.55,
+    "hilora_leaf_blend": 0.25,
+    "ecolora_keep_ratio": 0.25,
+    "ecolora_mask_mode": "round_robin",
+    "feddat_teacher_lambda": 0.01,
+    "v5m_keep_ratio": 0.2,
+    "v5m_dare_p": 0.3,
+    "v5m_rank_policy": "fixed",
+    "v5m_rank_cap": 64,
+    "v5m_energy_tau": 0.95,
+    "v5m_knots_normalize": 1,
+    "v5m_basis_energy_tau": 0.9999,
+    "v5m_chunk_rows": 2048,
+    "v5m_device": "auto",
+    "eval_max_batches": 0,
+    "eval_batch_size": 0,
+    "eval_interval": 1,
+    "eval_final_only": true,
+    "train_max_steps_per_client": 0,
+    "max_train_samples_per_client": 0,
+    "dataloader_num_workers": 0,
+    "eval_dataloader_num_workers": 0,
+    "dataloader_pin_memory": true,
+    "dataloader_persistent_workers": false,
+    "attn_implementation": "",
+    "tokenizer_use_fast": true,
+    "eval_personalization_metrics": true,
+    "fedplora_ablation_no_consensus": false,
+    "fedplora_ablation_no_momentum": false,
+    "_runtime_client_sizes": [
+      195,
+      289,
+      463,
+      409,
+      90,
+      60,
+      40,
+      79,
+      86,
+      81,
+      305,
+      275,
+      152,
+      145,
+      569,
+      136,
+      539,
+      363,
+      180,
+      224,
+      232,
+      1020,
+      40,
+      40,
+      110,
+      388,
+      408,
+      278,
+      192,
+      180,
+      385,
+      249,
+      347,
+      158,
+      305
+    ],
+    "_fedplora_client_domains": {
+      "0": "code",
+      "1": "code",
+      "2": "code",
+      "3": "code",
+      "4": "code",
+      "5": "education",
+      "6": "education",
+      "7": "education",
+      "8": "education",
+      "9": "education",
+      "10": "finance",
+      "11": "finance",
+      "12": "finance",
+      "13": "finance",
+      "14": "finance",
+      "15": "general",
+      "16": "general",
+      "17": "general",
+      "18": "general",
+      "19": "general",
+      "20": "legal",
+      "21": "legal",
+      "22": "legal",
+      "23": "legal",
+      "24": "legal",
+      "25": "math",
+      "26": "math",
+      "27": "math",
+      "28": "math",
+      "29": "math",
+      "30": "medical",
+      "31": "medical",
+      "32": "medical",
+      "33": "medical",
+      "34": "medical"
+    },
+    "_fedplora_round_client_ids": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      30,
+      31,
+      32,
+      33,
+      34
+    ]
+  },
+  "benchmark_dir": "/data/yaominghao/gb/FedPLoRA/data/domain_benchmark_35c_dir05/seed_44",
+  "recommended_primary_metrics": [
+    "domain_macro_token_accuracy",
+    "domain_macro_perplexity",
+    "worst_domain_token_accuracy",
+    "worst_domain_perplexity"
+  ],
+  "communication": {
+    "agg_type": "fedlease",
+    "down_bytes_per_client": 9768960,
+    "up_bytes_per_client": 9768960,
+    "effective_down_bytes_per_client": 9768960,
+    "effective_up_bytes_per_client": 9768960,
+    "downlink_policy": "raw",
+    "v8_a_refresh_rounds": 0,
+    "v8_a_refresh_fraction": 0.0
+  },
+  "rounds": [
+    {
+      "round": 1,
+      "domain_macro_token_accuracy": 0.5943722062447138,
+      "best_domain_macro_token_accuracy": 0.5943722062447138,
+      "worst_domain_token_accuracy": 0.47010219341974074,
+      "best_worst_domain_token_accuracy": 0.47010219341974074,
+      "domain_macro_perplexity": 6.644936557574978,
+      "best_domain_macro_perplexity": 6.644936557574978,
+      "worst_domain_perplexity": 10.792434968125866,
+      "best_worst_domain_perplexity": 10.792434968125866,
+      "domain_macro_loss": 1.824100802312611,
+      "best_domain_macro_loss": 1.824100802312611,
+      "worst_domain_loss": 2.3783004282883233,
+      "best_worst_domain_loss": 2.3783004282883233,
+      "domain_metrics": {
+        "code": {
+          "loss": 1.2828053240265167,
+          "token_accuracy": 0.7005922984790561,
+          "perplexity": 3.6070179565396043
+        },
+        "education": {
+          "loss": 1.8710639205778612,
+          "token_accuracy": 0.5976373762815282,
+          "perplexity": 6.500189844088033
+        },
+        "finance": {
+          "loss": 2.3783004282883233,
+          "token_accuracy": 0.47010219341974074,
+          "perplexity": 10.792434968125866
+        },
+        "general": {
+          "loss": 1.9718201347949011,
+          "token_accuracy": 0.6020029605804199,
+          "perplexity": 7.186117050275273
+        },
+        "legal": {
+          "loss": 2.041173222974481,
+          "token_accuracy": 0.5383527907807419,
+          "perplexity": 7.723205764863788
+        },
+        "math": {
+          "loss": 1.2459074662242617,
+          "token_accuracy": 0.6952129567464661,
+          "perplexity": 3.4764908615240158
+        },
+        "medical": {
+          "loss": 1.9776351193019321,
+          "token_accuracy": 0.5567048674250433,
+          "perplexity": 7.229099457608272
+        }
+      },
+      "lora_expert_stats": {
+        "selected_k": 4,
+        "silhouette": 0.10200369759904758,
+        "candidates": {
+          "2": 0.08047430292412579,
+          "3": 0.08772416740364168,
+          "4": 0.10200369759904758
+        },
+        "cluster_mode": "b_subspace_auto",
+        "mean_pair_angle_deg": 79.31083044103751,
+        "mean_pair_cos": 0.18514195363299282,
+        "cluster_sizes": {
+          "0": 15,
+          "1": 5,
+          "2": 10,
+          "3": 5
+        },
+        "domain_nmi": 0.792464341668237,
+        "domain_ari": 0.5,
+        "b_mode": "mean",
+        "expert_top_m": 2,
+        "expert_router_temperature": 0.2,
+        "hilora_leaf_blend": 0.0,
+        "num_b_layers": 210,
+        "upload_scope": "a_b",
+        "freeze_a": false
+      },
+      "lora_expert_client_clusters": {
+        "0": 0,
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "4": 0,
+        "5": 1,
+        "6": 1,
+        "7": 1,
+        "8": 1,
+        "9": 1,
+        "10": 2,
+        "11": 2,
+        "12": 2,
+        "13": 2,
+        "14": 2,
+        "15": 0,
+        "16": 0,
+        "17": 0,
+        "18": 0,
+        "19": 0,
+        "20": 3,
+        "21": 3,
+        "22": 3,
+        "23": 3,
+        "24": 3,
+        "25": 0,
+        "26": 0,
+        "27": 0,
+        "28": 0,
+        "29": 0,
+        "30": 2,
+        "31": 2,
+        "32": 2,
+        "33": 2,
+        "34": 2
+      },
+      "lora_expert_cluster_domain_hist": {
+        "0": {
+          "code": 5,
+          "general": 5,
+          "math": 5
+        },
+        "1": {
+          "education": 5
+        },
+        "2": {
+          "finance": 5,
+          "medical": 5
+        },
+        "3": {
+          "legal": 5
+        }
+      },
+      "lora_expert_client_routes": {
+        "0": [
+          [
+            0,
+            0.5491282223560582
+          ],
+          [
+            2,
+            0.45087177764394176
+          ]
+        ],
+        "1": [
+          [
+            0,
+            0.5538303418226944
+          ],
+          [
+            2,
+            0.4461696581773057
+          ]
+        ],
+        "2": [
+          [
+            0,
+            0.5370085979193453
+          ],
+          [
+            2,
+            0.46299140208065465
+          ]
+        ],
+        "3": [
+          [
+            0,
+            0.5365989045738216
+          ],
+          [
+            2,
+            0.46340109542617836
+          ]
+        ],
+        "4": [
+          [
+            0,
+            0.5338566950035414
+          ],
+          [
+            1,
+            0.4661433049964586
+          ]
+        ],
+        "5": [
+          [
+            1,
+            0.6903141299708921
+          ],
+          [
+            0,
+            0.30968587002910786
+          ]
+        ],
+        "6": [
+          [
+            1,
+            0.6508505196901154
+          ],
+          [
+            0,
+            0.34914948030988463
+          ]
+        ],
+        "7": [
+          [
+            1,
+            0.685087092803325
+          ],
+          [
+            0,
+            0.31491290719667486
+          ]
+        ],
+        "8": [
+          [
+            1,
+            0.6855508031250623
+          ],
+          [
+            0,
+            0.3144491968749377
+          ]
+        ],
+        "9": [
+          [
+            1,
+            0.6890389305828906
+          ],
+          [
+            0,
+            0.3109610694171094
+          ]
+        ],
+        "10": [
+          [
+            2,
+            0.5343624006638753
+          ],
+          [
+            0,
+            0.4656375993361247
+          ]
+        ],
+        "11": [
+          [
+            2,
+            0.550470822583069
+          ],
+          [
+            0,
+            0.44952917741693094
+          ]
+        ],
+        "12": [
+          [
+            2,
+            0.5444501356202552
+          ],
+          [
+            0,
+            0.45554986437974476
+          ]
+        ],
+        "13": [
+          [
+            2,
+            0.5439816777742381
+          ],
+          [
+            0,
+            0.4560183222257618
+          ]
+        ],
+        "14": [
+          [
+            2,
+            0.5533888982128998
+          ],
+          [
+            0,
+            0.44661110178710023
+          ]
+        ],
+        "15": [
+          [
+            0,
+            0.5176762592847812
+          ],
+          [
+            2,
+            0.4823237407152187
+          ]
+        ],
+        "16": [
+          [
+            0,
+            0.5382101057739604
+          ],
+          [
+            2,
+            0.46178989422603955
+          ]
+        ],
+        "17": [
+          [
+            0,
+            0.547124170393886
+          ],
+          [
+            2,
+            0.452875829606114
+          ]
+        ],
+        "18": [
+          [
+            0,
+            0.5449454232980484
+          ],
+          [
+            1,
+            0.45505457670195165
+          ]
+        ],
+        "19": [
+          [
+            0,
+            0.5443139455009302
+          ],
+          [
+            1,
+            0.45568605449906974
+          ]
+        ],
+        "20": [
+          [
+            3,
+            0.7419043248342143
+          ],
+          [
+            2,
+            0.25809567516578574
+          ]
+        ],
+        "21": [
+          [
+            3,
+            0.7249259254514253
+          ],
+          [
+            2,
+            0.27507407454857474
+          ]
+        ],
+        "22": [
+          [
+            3,
+            0.6954889095477766
+          ],
+          [
+            2,
+            0.30451109045222335
+          ]
+        ],
+        "23": [
+          [
+            3,
+            0.7012937882947057
+          ],
+          [
+            2,
+            0.2987062117052944
+          ]
+        ],
+        "24": [
+          [
+            3,
+            0.7343233556450139
+          ],
+          [
+            2,
+            0.2656766443549861
+          ]
+        ],
+        "25": [
+          [
+            0,
+            0.5863653290039119
+          ],
+          [
+            1,
+            0.41363467099608814
+          ]
+        ],
+        "26": [
+          [
+            0,
+            0.5862686584739877
+          ],
+          [
+            1,
+            0.41373134152601226
+          ]
+        ],
+        "27": [
+          [
+            0,
+            0.5809778429305678
+          ],
+          [
+            1,
+            0.41902215706943235
+          ]
+        ],
+        "28": [
+          [
+            0,
+            0.576036638385377
+          ],
+          [
+            1,
+            0.423963361614623
+          ]
+        ],
+        "29": [
+          [
+            0,
+            0.5676207958639381
+          ],
+          [
+            1,
+            0.43237920413606185
+          ]
+        ],
+        "30": [
+          [
+            2,
+            0.5866420096286459
+          ],
+          [
+            0,
+            0.4133579903713541
+          ]
+        ],
+        "31": [
+          [
+            2,
+            0.616631334802136
+          ],
+          [
+            0,
+            0.3833686651978639
+          ]
+        ],
+        "32": [
+          [
+            2,
+            0.6097523420584697
+          ],
+          [
+            0,
+            0.3902476579415302
+          ]
+        ],
+        "33": [
+          [
+            2,
+            0.6125276713887122
+          ],
+          [
+            0,
+            0.38747232861128783
+          ]
+        ],
+        "34": [
+          [
+            2,
+            0.6163917245156951
+          ],
+          [
+            0,
+            0.383608275484305
+          ]
+        ]
+      },
+      "client_local_macro_token_accuracy": 0.5967001686734374,
+      "client_local_macro_perplexity": 6.580425846376247,
+      "client_local_macro_loss": 1.7972150910077502,
+      "off_domain_macro_token_accuracy": 0.5930736064516605,
+      "off_domain_macro_perplexity": 6.703643355724601,
+      "off_domain_macro_loss": 1.8322822290967469,
+      "in_domain_domain_test_macro_token_accuracy": 0.6021638050030335,
+      "in_domain_domain_test_macro_perplexity": 6.292695768677241,
+      "in_domain_domain_test_macro_loss": 1.7750122416077951,
+      "personalization_gap_token_accuracy": 0.00362656222177693,
+      "personalization_gap_perplexity": 0.12321750934835407,
+      "personalization_gap_loss": 0.03506713808899664
+    }
+  ],
+  "recommended_kpis": {
+    "token_accuracy": [
+      "domain_macro_token_accuracy",
+      "worst_domain_token_accuracy",
+      "client_local_macro_token_accuracy",
+      "in_domain_domain_test_macro_token_accuracy",
+      "off_domain_macro_token_accuracy"
+    ],
+    "perplexity": [
+      "domain_macro_perplexity",
+      "worst_domain_perplexity",
+      "client_local_macro_perplexity",
+      "in_domain_domain_test_macro_perplexity",
+      "off_domain_macro_perplexity"
+    ],
+    "communication": {
+      "path": "communication",
+      "fields": [
+        "down_bytes_per_client",
+        "up_bytes_per_client",
+        "agg_type"
+      ]
+    },
+    "fedplora_oneshot_conflict": {
+      "path": "rounds[i].fedplora_oneshot_conflict",
+      "note": "Present after FedPLoRA-Oneshot server aggregation; typically mean_conflict, max_conflict, high_conflict_row_frac, mean_init_gate. Other agg_type: omit or {}. Eval-only reload uses checkpoint meta when available."
+    },
+    "personalization_gaps": [
+      "personalization_gap_token_accuracy",
+      "personalization_gap_perplexity"
+    ]
+  },
+  "recommended_primary_personalization_metrics": [
+    "client_local_macro_token_accuracy",
+    "client_local_macro_perplexity",
+    "off_domain_macro_token_accuracy",
+    "off_domain_macro_perplexity",
+    "personalization_gap_token_accuracy",
+    "personalization_gap_perplexity"
+  ]
+}
