@@ -88,16 +88,8 @@ if [ -f "$CONDA_BASE/etc/profile.d/conda.sh" ]; then
   source "$CONDA_BASE/etc/profile.d/conda.sh"
 fi
 
-# CLI --run-id-prefix must survive preflight; v12 main preflight used to clobber it.
-_CLI_RUN_ID_PREFIX="${RUN_ID_PREFIX:-}"
-export FEDPLORA_SKIP_DEFAULT_SET_RUN_PATHS=1
-
 # shellcheck disable=SC1091
-source "$SCRIPT_DIR/preflight_20260711_main_algorithm.sh"
-
-if [ -n "$_CLI_RUN_ID_PREFIX" ]; then
-  export RUN_ID_PREFIX="$_CLI_RUN_ID_PREFIX"
-fi
+source "$SCRIPT_DIR/preflight_20260709_main_algorithm.sh"
 
 export RUN_TAG_DATASET=${RUN_TAG_DATASET:-dir05}
 export ROUNDS=${PIPELINE_ROUNDS:-1}
@@ -156,13 +148,12 @@ fi
 if [ -z "$RUN_ID_PREFIX" ]; then
   case "$KIND" in
     sft) RUN_ID_PREFIX="v13_20260711_manual_35c_dir05_r1_finaleval" ;;
-    personalized_eval) RUN_ID_PREFIX="v13_20260711_nx4_personalized_eval" ;;
+    personalized_eval) RUN_ID_PREFIX="v13_20260711_manual_personalized_eval" ;;
   esac
 fi
 export RUN_ID_PREFIX
 set_run_paths "$SEED"
 mkdir -p "$RUN_ROOT/pids"
-echo "[one-exp] RUN_ID_PREFIX=$RUN_ID_PREFIX RUN_ID=$RUN_ID RUN_ROOT=$RUN_ROOT BENCHMARK_DIR=$BENCHMARK_DIR"
 
 if [ "$KIND" = "personalized_eval" ]; then
   case "$METHOD" in

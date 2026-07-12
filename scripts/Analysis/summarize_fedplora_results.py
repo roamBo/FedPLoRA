@@ -71,11 +71,17 @@ def _load_rows(root: Path) -> List[Dict[str, Any]]:
         final = _final_round(data)
         comm = data.get("communication") or {}
         expert = final.get("lora_expert_stats") or {}
+        bench_dir = data.get("benchmark_dir") or (data.get("args") or {}).get("benchmark_dir", "")
+        bench_fp = data.get("benchmark_fingerprint") or (data.get("checkpoint_meta") or {}).get("benchmark_fingerprint") or {}
         row = {
             "path": path,
             "method": _method_name(path, data),
             "agg": comm.get("agg_type") or (data.get("args") or {}).get("agg_type", ""),
-            "benchmark_dir": data.get("benchmark_dir") or (data.get("args") or {}).get("benchmark_dir", ""),
+            "benchmark_dir": bench_dir,
+            "split_tag": Path(str(bench_dir)).name if bench_dir else "",
+            "benchmark_fingerprint": bench_fp,
+            "benchmark_sha256": bench_fp.get("combined_sha256") if isinstance(bench_fp, dict) else None,
+            "effective_hparams": data.get("effective_hparams") or (data.get("checkpoint_meta") or {}).get("effective_hparams") or {},
             "rounds": len(data.get("rounds") or []),
             "macro": final.get("domain_macro_token_accuracy"),
             "worst": final.get("worst_domain_token_accuracy"),
@@ -117,6 +123,21 @@ def _load_rows(root: Path) -> List[Dict[str, Any]]:
     return rows
 
 
+def _fingerprint_conflicts(rows: List[Dict[str, Any]]) -> Dict[str, List[str]]:
+    by_split: Dict[str, set] = {}
+    for r in rows:
+        tag = str(r.get("split_tag") or "")
+        sha = str(r.get("benchmark_sha256") or "")
+        if not tag or not sha:
+            continue
+        by_split.setdefault(tag, set()).add(sha)
+    return {
+        tag: sorted(vals)
+        for tag, vals in sorted(by_split.items())
+        if len(vals) > 1
+    }
+
+
 def _table(headers: List[str], rows: Iterable[Iterable[str]]) -> str:
     out = ["| " + " | ".join(headers) + " |"]
     out.append("|" + "|".join(["---"] * len(headers)) + "|")
@@ -136,6 +157,7 @@ def build_report(rows: List[Dict[str, Any]], root: Path, compare: List[str]) -> 
     parsed = [r for r in rows if "parse_error" not in r]
     errors = [r for r in rows if "parse_error" in r]
     splits = sorted({str(r.get("benchmark_dir", "")) for r in parsed if r.get("benchmark_dir")})
+    fp_conflicts = _fingerprint_conflicts(parsed)
 
     lines = [
         f"# FedPLoRA result summary",
@@ -145,12 +167,18 @@ def build_report(rows: List[Dict[str, Any]], root: Path, compare: List[str]) -> 
         f"- parsed: {len(parsed)}",
         f"- parse_errors: {len(errors)}",
         f"- benchmark_splits: {len(splits)}",
+        f"- benchmark_fingerprint_conflicts_by_split_tag: {len(fp_conflicts)}",
     ]
     for split in splits:
         lines.append(f"  - `{split}`")
     if len(splits) > 1:
         lines.append("")
         lines.append("> WARNING: multiple benchmark splits detected; do not merge these rows into one paper table.")
+    if fp_conflicts:
+        lines.append("")
+        lines.append("> DANGER: same split tag has multiple benchmark fingerprints; paired tables are unsafe until fixed.")
+        for tag, vals in fp_conflicts.items():
+            lines.append(f"  - {tag}: {', '.join(v[:16] for v in vals)}")
     lines.append("")
 
     ranked = sorted(
@@ -236,6 +264,29 @@ def build_report(rows: List[Dict[str, Any]], root: Path, compare: List[str]) -> 
         ]
     )
 
+    if parsed:
+        lines.extend(
+            [
+                "## Benchmark fingerprints",
+                "",
+                _table(
+                    ["method", "split", "sha256", "train_rows", "clients", "path"],
+                    [
+                        [
+                            r["method"],
+                            r.get("split_tag", ""),
+                            str(r.get("benchmark_sha256") or "")[:16],
+                            (((r.get("benchmark_fingerprint") or {}).get("split_counts") or {}).get("train", "")),
+                            (((r.get("benchmark_fingerprint") or {}).get("clients") or {}).get("num_clients", "")),
+                            r.get("benchmark_dir", ""),
+                        ]
+                        for r in ranked
+                    ],
+                ),
+                "",
+            ]
+        )
+
     domains = sorted(
         {
             d
@@ -291,6 +342,50 @@ def build_report(rows: List[Dict[str, Any]], root: Path, compare: List[str]) -> 
                 ]
             )
 
+            paired_rows = []
+            by_method_split = {}
+            for r in parsed:
+                by_method_split[(r["method"], r.get("split_tag", ""))] = r
+            for r in sorted(parsed, key=lambda x: (x.get("method", ""), x.get("split_tag", ""))):
+                for base in bases:
+                    if r["method"] == base["method"]:
+                        continue
+                    b = by_method_split.get((base["method"], r.get("split_tag", "")))
+                    if not b:
+                        continue
+                    if (
+                        r.get("benchmark_sha256")
+                        and b.get("benchmark_sha256")
+                        and r.get("benchmark_sha256") != b.get("benchmark_sha256")
+                    ):
+                        safe = "NO:fingerprint"
+                    else:
+                        safe = "YES"
+                    paired_rows.append(
+                        [
+                            r.get("split_tag", ""),
+                            r["method"],
+                            base["method"],
+                            safe,
+                            _safe_delta(r.get("macro"), b.get("macro")),
+                            _safe_delta(r.get("local"), b.get("local")),
+                            _safe_delta(r.get("gap"), b.get("gap")),
+                            _safe_delta(r.get("raw_comm"), b.get("raw_comm")),
+                        ]
+                    )
+            if paired_rows:
+                lines.extend(
+                    [
+                        "## Paired split deltas",
+                        "",
+                        _table(
+                            ["split", "method", "minus", "safe", "ΔMacro", "ΔLocal", "ΔGap", "ΔRawBytes"],
+                            paired_rows,
+                        ),
+                        "",
+                    ]
+                )
+
     if errors:
         lines.extend(["## Parse errors", ""])
         for err in errors:
@@ -309,8 +404,18 @@ def main() -> None:
         default="baseline_normal_dir05,baseline_ecolora_dir05,fedplora_v8",
         help="Comma-separated method directory names for pairwise delta table.",
     )
+    ap.add_argument(
+        "--strict_fingerprint",
+        action="store_true",
+        help="Exit non-zero if the same split tag appears with multiple benchmark fingerprints.",
+    )
     args = ap.parse_args()
     rows = _load_rows(args.root)
+    if args.strict_fingerprint:
+        conflicts = _fingerprint_conflicts([r for r in rows if "parse_error" not in r])
+        if conflicts:
+            print("[summary][error] benchmark fingerprint conflicts detected:", conflicts)
+            raise SystemExit(2)
     compare = [x.strip() for x in str(args.compare or "").split(",") if x.strip()]
     report = build_report(rows, args.root, compare)
     if args.output:

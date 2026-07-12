@@ -100,6 +100,7 @@ from utilities.state_dict_ops import (
 )
 from utilities.sft_checkpoint_paths import default_save_run_checkpoint_dir, run_bundle_stem
 from utilities.train_eval import train_client
+from utilities.benchmark_fingerprint import compute_benchmark_fingerprint
 from utilities.utils import (
     estimate_round_communication_bytes,
     is_fedplora_v8_family_agg,
@@ -1545,6 +1546,90 @@ def _communication_metrics_payload(args, comm_info):
     return payload
 
 
+def _effective_hparams_payload(args):
+    """Only record hparams consumed by the active aggregation branch.
+
+    The argparse namespace contains many defaults that are dead for a given
+    agg_type (e.g. v11_global_b_mix_mu on v11a).  This block prevents result
+    parsers from treating inactive defaults as real experimental settings.
+    """
+
+    payload = {
+        "agg_type": str(getattr(args, "agg_type", "")),
+        "rounds": int(getattr(args, "rounds", 0) or 0),
+        "local_epochs": int(getattr(args, "local_epochs", 0) or 0),
+        "lr": float(getattr(args, "lr", 0.0) or 0.0),
+        "seed": int(getattr(args, "seed", 0) or 0),
+        "lora_r": int(getattr(args, "lora_r", 0) or 0),
+        "lora_alpha": int(getattr(args, "lora_alpha", 0) or 0),
+        "lora_dropout": float(getattr(args, "lora_dropout", 0.0) or 0.0),
+        "target_modules": str(getattr(args, "target_modules", "")),
+    }
+    if is_lora_expert_agg(getattr(args, "agg_type", "")):
+        payload.update(
+            {
+                "expert_cluster_mode": str(
+                    getattr(args, "expert_cluster_mode", "auto")
+                ),
+                "expert_cluster_k": int(
+                    getattr(args, "expert_cluster_k", 0) or 0
+                ),
+                "expert_b_mode": str(getattr(args, "expert_b_mode", "")),
+                "expert_freeze_a": bool(getattr(args, "expert_freeze_a", False)),
+            }
+        )
+    if (
+        is_fedplora_v10_family_agg(getattr(args, "agg_type", ""))
+        or is_fedplora_v11_family_agg(getattr(args, "agg_type", ""))
+        or is_fedplora_v12_family_agg(getattr(args, "agg_type", ""))
+        or is_fedplora_v13_a_sketch_agg(getattr(args, "agg_type", ""))
+    ):
+        payload.update(
+            {
+                "a_correction_alpha": float(
+                    getattr(args, "v10_a_correction_alpha", 0.0) or 0.0
+                ),
+                "a_anchor_lambda": float(
+                    getattr(args, "v10_a_anchor_lambda", 0.0) or 0.0
+                ),
+                "a_prox_lambda": float(
+                    getattr(args, "v10_a_prox_lambda", 0.0) or 0.0
+                ),
+                "b_prox_lambda": float(
+                    getattr(args, "v10_b_prox_lambda", 0.0) or 0.0
+                ),
+                "a_sketch_rank": int(getattr(args, "v10_a_sketch_rank", 0) or 0),
+                "a_norm_clip_ratio": float(
+                    getattr(args, "v10_a_norm_clip_ratio", 0.0) or 0.0
+                ),
+            }
+        )
+    if is_fedplora_v11_gmix_agg(getattr(args, "agg_type", "")):
+        payload["global_b_mix_mu"] = float(
+            getattr(args, "v11_global_b_mix_mu", 0.0) or 0.0
+        )
+    elif is_fedplora_v12_gmix_agg(getattr(args, "agg_type", "")):
+        payload.update(
+            {
+                "mu_start": float(getattr(args, "v12_mu_start", 0.0) or 0.0),
+                "mu_end": float(getattr(args, "v12_mu_end", 0.0) or 0.0),
+                "mu_schedule": str(getattr(args, "v12_mu_schedule", "")),
+                "nmi_guard_threshold": float(
+                    getattr(args, "v12_nmi_guard_threshold", 0.0) or 0.0
+                ),
+            }
+        )
+    else:
+        payload["global_b_mix_mu"] = 0.0
+        payload["global_b_mix_mu_note"] = "inactive_for_this_agg"
+    if is_fedplora_v13_family_agg(getattr(args, "agg_type", "")):
+        payload["v13_branch"] = str(getattr(args, "_fedplora_v13_branch", ""))
+        payload["v13_forced_defaults"] = getattr(
+            args, "_fedplora_v13_forced_defaults", {}
+        )
+    return payload
+
+
 def _load_checkpoint_ok(bundle_dir: str):
     p = os.path.join(bundle_dir, "checkpoint_ok.json")
     if not os.path.isfile(p):
@@ -1569,6 +1654,13 @@ def _resume_meta_matches(meta: dict, args, split_dir: str, client_ids) -> bool:
         return _bad("train_local_epochs")
     if _norm_path(str(meta.get("benchmark_dir", ""))) != _norm_path(split_dir):
         return _bad("benchmark_dir")
+    meta_fp = meta.get("benchmark_fingerprint") or {}
+    cur_fp = getattr(args, "_benchmark_fingerprint", {}) or {}
+    if meta_fp and cur_fp:
+        if str(meta_fp.get("combined_sha256", "")) != str(
+            cur_fp.get("combined_sha256", "")
+        ):
+            return _bad("benchmark_fingerprint")
     if _norm_path(str(meta.get("model", ""))) != _norm_path(args.model):
         return _bad("model")
     if int(meta.get("seed", -1)) != int(args.seed):
@@ -2251,6 +2343,8 @@ def _save_run_checkpoint(
             "trust_remote_code": bool(args.trust_remote_code),
             "gradient_checkpointing": bool(args.gradient_checkpointing),
             "metrics_path": os.path.abspath(metrics_path) if metrics_path else "",
+            "benchmark_fingerprint": getattr(args, "_benchmark_fingerprint", {}),
+            "effective_hparams": _effective_hparams_payload(args),
         }
         if is_lora_expert_agg(args.agg_type):
             meta["lora_expert_config"] = {
@@ -2455,6 +2549,7 @@ def eval_only_from_checkpoint(args):
     split_dir = os.path.abspath(os.path.expanduser(split_dir))
     benchmark = load_domain_sft_benchmark(split_dir)
     print(f"[benchmark] loaded from {split_dir} (eval-only)", flush=True)
+    args._benchmark_fingerprint = compute_benchmark_fingerprint(split_dir, benchmark)
 
     from transformers import AutoTokenizer
 
@@ -2572,6 +2667,8 @@ def eval_only_from_checkpoint(args):
         "benchmark_dir": split_dir,
         "eval_only_from_checkpoint": ckpt,
         "checkpoint_meta": meta,
+        "benchmark_fingerprint": getattr(args, "_benchmark_fingerprint", {}),
+        "effective_hparams": _effective_hparams_payload(args),
         "recommended_primary_metrics": [
             "domain_macro_token_accuracy",
             "domain_macro_perplexity",
@@ -2630,6 +2727,14 @@ def federated_sft(args):
     benchmark, split_dir = build_or_load_benchmark(args)
     print(f"[benchmark] loaded from {split_dir}")
     print(f"[benchmark] domains={sorted(benchmark['domain_stats'].keys())}")
+    args._benchmark_fingerprint = compute_benchmark_fingerprint(split_dir, benchmark)
+    fp = args._benchmark_fingerprint
+    print(
+        f"[benchmark] fingerprint={fp.get('combined_sha256', '')[:16]} "
+        f"train_rows={fp.get('split_counts', {}).get('train')} "
+        f"clients={fp.get('clients', {}).get('num_clients')}",
+        flush=True,
+    )
     if is_fedplora_v13_agg(args.agg_type):
         apply_fedplora_v13_runtime_defaults(args)
         forced = getattr(args, "_fedplora_v13_forced_defaults", {}) or {}
@@ -2824,6 +2929,8 @@ def federated_sft(args):
     metrics_history = {
         "args": vars(args).copy(),
         "benchmark_dir": split_dir,
+        "benchmark_fingerprint": getattr(args, "_benchmark_fingerprint", {}),
+        "effective_hparams": _effective_hparams_payload(args),
         "recommended_primary_metrics": [
             "domain_macro_token_accuracy",
             "domain_macro_perplexity",
