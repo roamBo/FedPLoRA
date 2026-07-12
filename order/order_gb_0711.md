@@ -15,6 +15,8 @@
 
 **gb 与 minghao 的关键差异**：gb 单卡内存有限，默认 **串行**（`MAX_PARALLEL=1`，`GPU_LIST` 只设一张卡）；不要用 minghao 文档里的 `--gpu 0/1/2/3` 四路并行。
 
+**v13 路径修复（20260712）**：旧版 `run_20260711_one_experiment.sh` 在 source preflight 后会把 CLI 的 `--run-id-prefix` 覆盖成 **v12**，导致 NX1 产物误写入 `v12_20260709_main_..._seed42`，pipeline 检查 `v13_20260711_nx1_...` 失败。现已修复：使用 `preflight_20260711_main_algorithm.sh`（v13 角色）并保留 CLI 前缀。**重跑前务必 git pull 同步最新脚本。**
+
 【命令目的】
 
 本轮优先验证：
@@ -85,11 +87,13 @@ pipeline 控制日志 / PID / gate:
 minghao 侧用 `sync_code_20260709_to_server.sh` 推到 minghao 服务器；**gb 需单独 git pull / rsync 到 `/data/yaominghao/gb/FedPLoRA`**，确保含以下脚本：
 
 ```text
+scripts/RunScripts/preflight_20260711_main_algorithm.sh   # v13 专用，必含
 scripts/RunScripts/run_20260711_one_experiment.sh
 scripts/RunScripts/run_20260711_oneshot_pipeline.sh
-scripts/RunScripts/preflight_20260709_main_algorithm.sh
 methods/v13/
 ```
+
+**重跑前在 gb 上执行**：`cd /data/yaominghao/gb/FedPLoRA && git pull`（或 rsync 同步上述文件）。
 
 ## 0.2 gb 环境变量（每次开新 shell 先执行）
 
@@ -111,10 +115,11 @@ export GB_GPU=1
 conda activate fedplora
 ```
 
-可选 preflight 自检（不跑实验，只验证 benchmark / import）：
+可选 preflight 自检（不跑实验，只验证 benchmark / v13 import）：
 
 ```bash
-source scripts/RunScripts/preflight_20260709_main_algorithm.sh
+source scripts/RunScripts/preflight_20260711_main_algorithm.sh
+# 应看到 [preflight][ok] v13 preflight loaded. 且不应出现 v12_20260709_main 的 RUN_ROOT
 ```
 
 ## 0.3 gb 串行 helper（推荐）
@@ -136,7 +141,14 @@ run_one_exp () {
 
 # 第一部分：每个实验一个命令（gb 串行版）
 
-说明：`run_20260711_one_experiment.sh` 内部 `exec python`，`nohup ... &; wait $!` 会等该实验完整结束。`--split-seed` 会自动把 `BENCHMARK_DIR` 切到 `seed_${split-seed}`，不会出现 seed43 仍用 seed42 数据的问题。
+说明：`run_20260711_one_experiment.sh` 内部 `exec python`，`nohup ... &; wait $!` 会等该实验完整结束。`--split-seed` 会自动把 `BENCHMARK_DIR` 切到 `seed_${split-seed}`。修复后 `[one-exp] log=` 必须落在 **v13** 目录，例如：
+
+```text
+NX1: .../v13_20260711_nx1_35c_dir05_r1_finaleval_seed43/run_logs/...
+NX4: .../v13_20260711_nx4_personalized_eval_seed43/run_logs/...
+```
+
+若仍出现 `v12_20260709_main_...`，说明脚本未同步，停止并重拉代码。
 
 ## 1. Smoke：正式流水前单独运行
 
@@ -170,12 +182,13 @@ Smoke 主日志：
 /data/yaominghao/gb/result/FedPLoRA/v13_20260711_smoke_seed42/run_logs/test20260711_main_smoke_smoke_v13b_os_bonly_seed42.log
 ```
 
-Smoke 检查：
+Smoke 检查（确认路径在 v13 smoke 目录）：
 
 ```bash
 grep -E "Traceback|CUDA out of memory|error" \
   /data/yaominghao/gb/result/FedPLoRA/v13_20260711_smoke_seed42/run_logs/*.log || true
 find /data/yaominghao/gb/result/FedPLoRA/v13_20260711_smoke_seed42/result_logs -name '*.json' | sort
+grep "\[one-exp\] log=" /data/yaominghao/gb/result/FedPLoRA/v13_20260711_smoke_seed42/pipeline_logs/*.launch.log
 ```
 
 ## 2. NX1：protocol-aligned 主复核（最高优先级）
@@ -436,10 +449,35 @@ pipeline 自己的 nohup 日志:
 # gb 运行提示
 
 ```text
-1. 默认 1 号卡：export GB_GPU=1；若 1 号卡被占用可 export GB_GPU=0。所有 --gpu 用 "${GB_GPU:-1}"，不要在命令行前写 GPU=0/1 前缀覆盖 export。
-2. split-seed：NX1 用 run_20260711_one_experiment.sh 的 --split-seed，会自动切 benchmark；不要再用旧版 set_run_paths 手改 BENCHMARK_DIR。
-3. 杀误跑进程：pkill -u "$USER" -f "run_20260711_one_experiment.sh" ; pkill -u "$USER" -f "fed_train_sft.py.*v13"
-4. 若 pipeline 报 smoke 未通过，先跑完 §1 再重试 pipeline（REQUIRE_SMOKE_OK=1）。
-5. baseline 实验请继续用 order_gb_0709.md，不要与本 v13 order 混跑同一 GPU。
+1. 默认 1 号卡：export GB_GPU=1；若 1 号卡被占用可 export GB_GPU=0。所有 --gpu 用 "${GB_GPU:-1}"。
+2. v13 路径：每条实验 launch 日志里必须有 [one-exp] RUN_ID_PREFIX=v13_... 且 log= 指向 v13 目录；禁止 v12_20260709_main。
+3. 误写入 v12 的旧 NX1 结果不可用；修复后请重跑 smoke + pipeline（或 §2 NX1 + §3 NX4）。
+4. 杀误跑进程：pkill -u "$USER" -f "run_20260711_one_experiment.sh" ; pkill -u "$USER" -f "run_20260711_oneshot_pipeline.sh" ; pkill -u "$USER" -f "fed_train_sft.py"
+5. 若 pipeline 报 smoke 未通过，先跑完 §1 再重试 pipeline（REQUIRE_SMOKE_OK=1）。
+6. baseline 实验请继续用 order_gb_0709.md，不要与本 v13 order 混跑同一 GPU。
+```
+
+---
+
+# 重跑全流程（修复后推荐顺序）
+
+旧 pipeline 因路径错误已停；**同步代码后按此顺序从头重跑**：
+
+```bash
+# 0) 同步 + 环境（§0.1 + §0.2 全部复制）
+# 1) §1 smoke 两条（--force_retrain）
+# 2) 确认 [one-exp] log= 在 v13_20260711_smoke_seed42 下
+# 3) §5 启动 pipeline（MAX_PARALLEL=1, GPU_LIST="${GB_GPU:-1}"）
+# 4) tail -f pipeline.log；NX1 通过后应出现 gates/nx1_gate.json 且 ok=true
+# 5) 自动进入 NX4；最终检查：
+find $RESULT_ROOT/v13_20260711_nx1_35c_dir05_r1_finaleval_seed*/result_logs/NX1_* -name '*.json'
+find $RESULT_ROOT/v13_20260711_nx4_personalized_eval_seed*/result_logs -name '*.json'
+```
+
+NX1 期望目录（修复后）：
+
+```text
+/data/yaominghao/gb/result/FedPLoRA/v13_20260711_nx1_35c_dir05_r1_finaleval_seed43/
+/data/yaominghao/gb/result/FedPLoRA/v13_20260711_nx1_35c_dir05_r1_finaleval_seed44/
 ```
 
