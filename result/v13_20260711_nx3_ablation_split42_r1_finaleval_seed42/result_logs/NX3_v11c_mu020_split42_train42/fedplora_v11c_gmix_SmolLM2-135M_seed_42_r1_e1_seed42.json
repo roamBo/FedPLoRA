@@ -1,0 +1,724 @@
+{
+  "args": {
+    "model": "/data/yaominghao/gb/models/SmolLM2-135M",
+    "benchmark_dir": "/data/yaominghao/gb/FedPLoRA/data/domain_benchmark_35c_dir05/seed_42",
+    "benchmark_jsonl": "",
+    "build_benchmark": false,
+    "benchmark_output_dir": "data/domain_benchmark",
+    "num_clients_per_domain": 5,
+    "min_samples_per_client": 50,
+    "agg_type": "fedplora_v11c_gmix",
+    "rounds": 1,
+    "num_clients": 35,
+    "local_epochs": 1,
+    "lr": 0.0002,
+    "lora_r": 8,
+    "lora_alpha": 16,
+    "lora_dropout": 0.05,
+    "rslora": false,
+    "batch_size": 2,
+    "warmup_ratio": 0.03,
+    "max_seq_length": 256,
+    "seed": 42,
+    "gradient_checkpointing": true,
+    "trust_remote_code": false,
+    "torch_dtype": "bfloat16",
+    "target_modules": "q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj",
+    "client_state_dir": "/data/yaominghao/gb/result/FedPLoRA/v13_20260711_nx3_ablation_split42_r1_finaleval_seed42/result_files/client_states/NX3_v11c_mu020_split42_train42",
+    "save_client_state_to_disk": true,
+    "metrics_output_dir": "/data/yaominghao/gb/result/FedPLoRA/v13_20260711_nx3_ablation_split42_r1_finaleval_seed42/result_logs/NX3_v11c_mu020_split42_train42",
+    "save_run_checkpoint_dir": "/data/yaominghao/gb/models/trained_models_LW/v13_20260711_nx3_ablation_split42_r1_finaleval_seed42/NX3_v11c_mu020_split42_train42_SmolLM2-135M_dir05_r1_e1_lr0.0002_seed42",
+    "skip_post_agg_snapshots": true,
+    "trained_models_root": "/data/yaominghao/gb/models/trained_models_LW/v13_20260711_nx3_ablation_split42_r1_finaleval_seed42",
+    "no_auto_save_run_checkpoint": false,
+    "force_retrain": true,
+    "eval_only_from_checkpoint": "",
+    "gp_align_lambda": 0.01,
+    "gp_prox_lambda": 0.001,
+    "gp_orth_lambda": 0.0001,
+    "gp_consensus_power": 2.0,
+    "gp_agg_momentum": 0.5,
+    "yoco_sparse_lambda": 0.0001,
+    "yoco_pcwa_components": 3,
+    "yoco_aggregate_mode": "conflict",
+    "yoco_conflict_method": "avgm",
+    "yoco_sign_lambda": 0.01,
+    "yoco_eval_use_local_clients": false,
+    "memory_agg_eval_use_local_clients": false,
+    "flora_svd_device": "auto",
+    "oneshot_consensus_power": 2.0,
+    "oneshot_importance_power": 1.0,
+    "oneshot_importance_clip": 5.0,
+    "oneshot_conflict_threshold": 0.35,
+    "oneshot_conflict_blend": 1.0,
+    "oneshot_scale_clip_ratio": 0.0,
+    "oneshot_anchor_lambda": 0.0001,
+    "oneshot_prox_lambda": 0.0,
+    "oneshot_no_keep_init_on_conflict": false,
+    "oneshot_orthogonalize": false,
+    "oneshot_ablation_plain_fedavg": false,
+    "v3_conflict_quantile": 0.8,
+    "v3_gate_temperature": 0.05,
+    "v3_conflict_blend": 1.0,
+    "v3_residual_norm_power": 1.0,
+    "v3_residual_eps": 1e-07,
+    "v3_cluster_mode": "domain_prior",
+    "v3_cluster_lambda_min": 0.2,
+    "v3_cluster_lambda_max": 1.0,
+    "v3_rpca_rank": 1,
+    "v3_sparse_quantile": 0.8,
+    "v3_domain_cluster_map": "",
+    "v6_dcr_mode": "",
+    "v6_dcr_rc_policy": "auto",
+    "v6_dcr_shared_rank": 0,
+    "v6_dcr_min_shared_rank": 1,
+    "v6_dcr_max_shared_rank": 0,
+    "v6_dcr_energy_tau": 0.8,
+    "v6_dcr_conflict_strength": 1.0,
+    "v6_dcr_importance_power": 0.0,
+    "v6_dcr_importance_clip": 5.0,
+    "v7_b_mode": "mean",
+    "expert_cluster_mode": "auto",
+    "expert_cluster_k": 0,
+    "expert_max_clusters": 0,
+    "expert_b_mode": "",
+    "expert_top_m": 0,
+    "expert_router_temperature": 0.2,
+    "expert_freeze_a": false,
+    "v8_a_warmup_rounds": 1,
+    "v8_a_refresh_interval": 5,
+    "v8_cache_shared_a_downlink": true,
+    "v9_mix_lambda": 0.5,
+    "v10_a_correction_alpha": 1.0,
+    "v10_a_anchor_lambda": 0.0,
+    "v10_a_prox_lambda": 0.0,
+    "v10_b_prox_lambda": 0.0,
+    "v10_a_sketch_rank": 2,
+    "v10_a_norm_clip_ratio": 0.0,
+    "v11_global_b_mix_mu": 0.2,
+    "v12_mu_start": 0.4,
+    "v12_mu_end": 0.6,
+    "v12_mu_schedule": "linear",
+    "v12_mu_warmup_rounds": 0,
+    "v12_nmi_guard_threshold": 0.75,
+    "v12_nmi_guard_low_mu": 0.4,
+    "v12_nmi_guard_high_mu": 0.55,
+    "hilora_leaf_blend": 0.25,
+    "ecolora_keep_ratio": 0.25,
+    "ecolora_mask_mode": "round_robin",
+    "feddat_teacher_lambda": 0.01,
+    "v5m_keep_ratio": 0.2,
+    "v5m_dare_p": 0.3,
+    "v5m_rank_policy": "fixed",
+    "v5m_rank_cap": 64,
+    "v5m_energy_tau": 0.95,
+    "v5m_knots_normalize": 1,
+    "v5m_basis_energy_tau": 0.9999,
+    "v5m_chunk_rows": 2048,
+    "v5m_device": "auto",
+    "eval_max_batches": 0,
+    "eval_batch_size": 0,
+    "eval_interval": 1,
+    "eval_final_only": true,
+    "train_max_steps_per_client": 0,
+    "max_train_samples_per_client": 0,
+    "dataloader_num_workers": 0,
+    "eval_dataloader_num_workers": 0,
+    "dataloader_pin_memory": true,
+    "dataloader_persistent_workers": false,
+    "attn_implementation": "",
+    "tokenizer_use_fast": true,
+    "eval_personalization_metrics": true,
+    "fedplora_ablation_no_consensus": false,
+    "fedplora_ablation_no_momentum": false,
+    "_runtime_client_sizes": [
+      225,
+      175,
+      368,
+      392,
+      286,
+      40,
+      59,
+      64,
+      77,
+      104,
+      203,
+      296,
+      258,
+      295,
+      392,
+      305,
+      504,
+      201,
+      273,
+      161,
+      145,
+      352,
+      77,
+      240,
+      632,
+      674,
+      126,
+      243,
+      268,
+      133,
+      305,
+      276,
+      256,
+      393,
+      214
+    ],
+    "_fedplora_client_domains": {
+      "0": "code",
+      "1": "code",
+      "2": "code",
+      "3": "code",
+      "4": "code",
+      "5": "education",
+      "6": "education",
+      "7": "education",
+      "8": "education",
+      "9": "education",
+      "10": "finance",
+      "11": "finance",
+      "12": "finance",
+      "13": "finance",
+      "14": "finance",
+      "15": "general",
+      "16": "general",
+      "17": "general",
+      "18": "general",
+      "19": "general",
+      "20": "legal",
+      "21": "legal",
+      "22": "legal",
+      "23": "legal",
+      "24": "legal",
+      "25": "math",
+      "26": "math",
+      "27": "math",
+      "28": "math",
+      "29": "math",
+      "30": "medical",
+      "31": "medical",
+      "32": "medical",
+      "33": "medical",
+      "34": "medical"
+    },
+    "_fedplora_round_client_ids": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      30,
+      31,
+      32,
+      33,
+      34
+    ]
+  },
+  "benchmark_dir": "/data/yaominghao/gb/FedPLoRA/data/domain_benchmark_35c_dir05/seed_42",
+  "recommended_primary_metrics": [
+    "domain_macro_token_accuracy",
+    "domain_macro_perplexity",
+    "worst_domain_token_accuracy",
+    "worst_domain_perplexity"
+  ],
+  "communication": {
+    "agg_type": "fedplora_v11c_gmix",
+    "down_bytes_per_client": 6189840,
+    "up_bytes_per_client": 6189840,
+    "effective_down_bytes_per_client": 6189840,
+    "effective_up_bytes_per_client": 6189840,
+    "downlink_policy": "cache_shared_a_plus_true_v11_a_sketch",
+    "v8_a_refresh_rounds": 1,
+    "v8_a_refresh_fraction": 1.0,
+    "v8_a_warmup_rounds": 1,
+    "v8_a_refresh_interval": 5,
+    "v8_cache_shared_a_downlink": true,
+    "v10_a_correction_alpha": 1.0,
+    "v10_a_anchor_lambda": 0.0,
+    "v10_a_prox_lambda": 0.0,
+    "v10_b_prox_lambda": 0.0,
+    "v10_a_sketch_rank": 2,
+    "v10_a_norm_clip_ratio": 0.0,
+    "v11_global_b_mix_mu": 0.2,
+    "v11_a_correction_bytes_per_client": 1213200,
+    "v11_a_correction_mode": "true_lowrank_delta",
+    "raw_comm_equals_effective_comm": true
+  },
+  "rounds": [
+    {
+      "round": 1,
+      "domain_macro_token_accuracy": 0.5855887701734331,
+      "best_domain_macro_token_accuracy": 0.5855887701734331,
+      "worst_domain_token_accuracy": 0.4588477522583782,
+      "best_worst_domain_token_accuracy": 0.4588477522583782,
+      "domain_macro_perplexity": 6.65168364361576,
+      "best_domain_macro_perplexity": 6.65168364361576,
+      "worst_domain_perplexity": 10.531645084951954,
+      "best_worst_domain_perplexity": 10.531645084951954,
+      "domain_macro_loss": 1.8290278902574253,
+      "best_domain_macro_loss": 1.8290278902574253,
+      "worst_domain_loss": 2.3538904010568347,
+      "best_worst_domain_loss": 2.3538904010568347,
+      "domain_metrics": {
+        "code": {
+          "loss": 1.32911714120787,
+          "token_accuracy": 0.6876965580752851,
+          "perplexity": 3.778156654722707
+        },
+        "education": {
+          "loss": 1.8989028404865946,
+          "token_accuracy": 0.5884611770601685,
+          "perplexity": 6.682832353074813
+        },
+        "finance": {
+          "loss": 2.3538904010568347,
+          "token_accuracy": 0.4588477522583782,
+          "perplexity": 10.531645084951954
+        },
+        "general": {
+          "loss": 1.8425337704234819,
+          "token_accuracy": 0.600390246972832,
+          "perplexity": 6.313794842878163
+        },
+        "legal": {
+          "loss": 2.0698592486767264,
+          "token_accuracy": 0.5270544118482605,
+          "perplexity": 7.94276903130032
+        },
+        "math": {
+          "loss": 1.255919271894864,
+          "token_accuracy": 0.6934901570945865,
+          "perplexity": 3.512353081381289
+        },
+        "medical": {
+          "loss": 2.0529725580556053,
+          "token_accuracy": 0.5431810879045214,
+          "perplexity": 7.800234457001068
+        }
+      },
+      "lora_expert_stats": {
+        "selected_k": 8,
+        "silhouette": 0.17421261895484702,
+        "candidates": {
+          "2": 0.08546429092328033,
+          "3": 0.09765422121168434,
+          "4": 0.11158396436389355,
+          "5": 0.12149754292691975,
+          "6": 0.14085956990154455,
+          "7": 0.1495681659126208,
+          "8": 0.17421261895484702
+        },
+        "cluster_mode": "b_subspace_auto",
+        "mean_pair_angle_deg": 79.26495920334193,
+        "mean_pair_cos": 0.18589892986978518,
+        "cluster_sizes": {
+          "0": 5,
+          "1": 5,
+          "2": 5,
+          "3": 4,
+          "4": 1,
+          "5": 5,
+          "6": 5,
+          "7": 5
+        },
+        "domain_nmi": 0.9819630242940854,
+        "domain_ari": 0.966796875,
+        "b_mode": "mean",
+        "expert_top_m": 1,
+        "expert_router_temperature": 0.2,
+        "hilora_leaf_blend": 0.0,
+        "num_b_layers": 210,
+        "upload_scope": "a_b",
+        "freeze_a": false,
+        "algorithm": "fedplora_v11c_gmix",
+        "v11_branch": "global_B_mixing",
+        "v11_a_payload": "true_lowrank_delta",
+        "v11_global_b_mix_mu": 0.2,
+        "v11_global_branch": "sample_size_weighted_b_mean",
+        "v11_routed_branch": "b_subspace_auto",
+        "v11_mixing_rule": "B_client=mu*B_global+(1-mu)*B_routed",
+        "v11_mean_mix_delta_norm_ratio": 0.1781424209696952,
+        "v11_mean_global_delta_norm_ratio": 0.8907121553752552,
+        "v11_a_corrected_layers": 210,
+        "v11_a_correction_alpha": 1.0,
+        "v11_a_sketch_rank": 2,
+        "v11_a_mean_rel_update_norm": 0.09239629099320815,
+        "v11_a_mean_row_cos_to_ref": 0.9948208980617069,
+        "v11_a_clipped_row_frac": 0.0,
+        "v10_a_corrected_layers": 210,
+        "v10_a_correction_alpha": 1.0,
+        "v10_a_sketch_rank": 2,
+        "v10_a_mean_rel_update_norm": 0.09239629099320815,
+        "v10_a_mean_row_cos_to_ref": 0.9948208980617069,
+        "v10_a_clipped_row_frac": 0.0
+      },
+      "lora_expert_client_clusters": {
+        "0": 0,
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "4": 0,
+        "5": 1,
+        "6": 1,
+        "7": 1,
+        "8": 1,
+        "9": 1,
+        "10": 2,
+        "11": 2,
+        "12": 2,
+        "13": 2,
+        "14": 2,
+        "15": 3,
+        "16": 3,
+        "17": 3,
+        "18": 4,
+        "19": 3,
+        "20": 5,
+        "21": 5,
+        "22": 5,
+        "23": 5,
+        "24": 5,
+        "25": 6,
+        "26": 6,
+        "27": 6,
+        "28": 6,
+        "29": 6,
+        "30": 7,
+        "31": 7,
+        "32": 7,
+        "33": 7,
+        "34": 7
+      },
+      "lora_expert_cluster_domain_hist": {
+        "0": {
+          "code": 5
+        },
+        "1": {
+          "education": 5
+        },
+        "2": {
+          "finance": 5
+        },
+        "3": {
+          "general": 4
+        },
+        "4": {
+          "general": 1
+        },
+        "5": {
+          "legal": 5
+        },
+        "6": {
+          "math": 5
+        },
+        "7": {
+          "medical": 5
+        }
+      },
+      "lora_expert_client_routes": {
+        "0": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "1": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "2": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "3": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "4": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "5": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "6": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "7": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "8": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "9": [
+          [
+            1,
+            1.0
+          ]
+        ],
+        "10": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "11": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "12": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "13": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "14": [
+          [
+            2,
+            1.0
+          ]
+        ],
+        "15": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "16": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "17": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "18": [
+          [
+            4,
+            1.0
+          ]
+        ],
+        "19": [
+          [
+            3,
+            1.0
+          ]
+        ],
+        "20": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "21": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "22": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "23": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "24": [
+          [
+            5,
+            1.0
+          ]
+        ],
+        "25": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "26": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "27": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "28": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "29": [
+          [
+            6,
+            1.0
+          ]
+        ],
+        "30": [
+          [
+            7,
+            1.0
+          ]
+        ],
+        "31": [
+          [
+            7,
+            1.0
+          ]
+        ],
+        "32": [
+          [
+            7,
+            1.0
+          ]
+        ],
+        "33": [
+          [
+            7,
+            1.0
+          ]
+        ],
+        "34": [
+          [
+            7,
+            1.0
+          ]
+        ]
+      },
+      "client_local_macro_token_accuracy": 0.6050219174615935,
+      "client_local_macro_perplexity": 6.126004418634756,
+      "client_local_macro_loss": 1.724635678973237,
+      "off_domain_macro_token_accuracy": 0.5837786387982604,
+      "off_domain_macro_perplexity": 6.7381168971389185,
+      "off_domain_macro_loss": 1.8413532390514802,
+      "in_domain_domain_test_macro_token_accuracy": 0.5964495584244698,
+      "in_domain_domain_test_macro_perplexity": 6.1330841224768005,
+      "in_domain_domain_test_macro_loss": 1.7550757974930975,
+      "personalization_gap_token_accuracy": 0.021243278663333087,
+      "personalization_gap_perplexity": 0.6121124785041623,
+      "personalization_gap_loss": 0.11671756007824308,
+      "v11": {
+        "branch": "global_B_mixing",
+        "a_correction_alpha": 1.0,
+        "a_anchor_lambda": 0.0,
+        "a_prox_lambda": 0.0,
+        "b_prox_lambda": 0.0,
+        "a_sketch_rank": 2,
+        "a_norm_clip_ratio": 0.0,
+        "global_b_mix_mu": 0.2,
+        "upload_scope": "true_a_sketch_b"
+      }
+    }
+  ],
+  "recommended_kpis": {
+    "token_accuracy": [
+      "domain_macro_token_accuracy",
+      "worst_domain_token_accuracy",
+      "client_local_macro_token_accuracy",
+      "in_domain_domain_test_macro_token_accuracy",
+      "off_domain_macro_token_accuracy"
+    ],
+    "perplexity": [
+      "domain_macro_perplexity",
+      "worst_domain_perplexity",
+      "client_local_macro_perplexity",
+      "in_domain_domain_test_macro_perplexity",
+      "off_domain_macro_perplexity"
+    ],
+    "communication": {
+      "path": "communication",
+      "fields": [
+        "down_bytes_per_client",
+        "up_bytes_per_client",
+        "agg_type"
+      ]
+    },
+    "fedplora_oneshot_conflict": {
+      "path": "rounds[i].fedplora_oneshot_conflict",
+      "note": "Present after FedPLoRA-Oneshot server aggregation; typically mean_conflict, max_conflict, high_conflict_row_frac, mean_init_gate. Other agg_type: omit or {}. Eval-only reload uses checkpoint meta when available."
+    },
+    "personalization_gaps": [
+      "personalization_gap_token_accuracy",
+      "personalization_gap_perplexity"
+    ]
+  },
+  "recommended_primary_personalization_metrics": [
+    "client_local_macro_token_accuracy",
+    "client_local_macro_perplexity",
+    "off_domain_macro_token_accuracy",
+    "off_domain_macro_perplexity",
+    "personalization_gap_token_accuracy",
+    "personalization_gap_perplexity"
+  ]
+}

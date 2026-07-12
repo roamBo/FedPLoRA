@@ -1,0 +1,236 @@
+{
+  "config": {
+    "model": "/data/yaominghao/gb/models/SmolLM2-135M",
+    "benchmark_dir": "/data/yaominghao/gb/FedPLoRA/data/domain_benchmark_35c_dir05/seed_42",
+    "target_modules": "q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj",
+    "max_steps": 0,
+    "eval_max_batches": 0,
+    "v7_b_mode": "mean",
+    "local_epochs": 1,
+    "max_train_samples_per_client": 0,
+    "cold_start": true,
+    "eval_on_local": true,
+    "v11c_mu": 0.4,
+    "select_candidates": "local,v7,global,v11c"
+  },
+  "eval_objective": "per_client_local_test",
+  "results": {
+    "local": {
+      "macro_acc": 0.6183106271544336,
+      "worst_acc": 0.4727670782312865,
+      "per_domain_acc": {
+        "code": 0.7014289956293448,
+        "education": 0.6381327705964356,
+        "finance": 0.4727670782312865,
+        "general": 0.6234471832108804,
+        "legal": 0.5941554328018561,
+        "math": 0.7047783948775604,
+        "medical": 0.5934645347336719
+      },
+      "per_domain_loss": {
+        "code": 1.1805558488551917,
+        "education": 1.5010986882772588,
+        "finance": 2.4153840724500943,
+        "general": 1.6819670561261912,
+        "legal": 1.758550231491601,
+        "math": 1.1502509668415726,
+        "medical": 1.7659134912529146
+      }
+    },
+    "global": {
+      "macro_acc": 0.5956144425282843,
+      "worst_acc": 0.45317271096716744,
+      "per_domain_acc": {
+        "code": 0.6940862320996233,
+        "education": 0.6167531399858495,
+        "finance": 0.45317271096716744,
+        "general": 0.6108237428764342,
+        "legal": 0.5428749831996733,
+        "math": 0.6923796740209613,
+        "medical": 0.559210614548281
+      },
+      "per_domain_loss": {
+        "code": 1.2212265941195661,
+        "education": 1.6911265833402982,
+        "finance": 2.4931793651418603,
+        "general": 1.756179267268439,
+        "legal": 1.9943185346057148,
+        "math": 1.2613640998712505,
+        "medical": 1.9482968152066575
+      }
+    },
+    "v7": {
+      "macro_acc": 0.6122493347304657,
+      "worst_acc": 0.4663374223182881,
+      "per_domain_acc": {
+        "code": 0.7005682363737586,
+        "education": 0.631072433545866,
+        "finance": 0.4663374223182881,
+        "general": 0.6173790297354992,
+        "legal": 0.5889541820043971,
+        "math": 0.6996108204095943,
+        "medical": 0.5818232187258562
+      },
+      "per_domain_loss": {
+        "code": 1.1899508571644546,
+        "education": 1.5567534384205395,
+        "finance": 2.4325350185261656,
+        "general": 1.7132847061116139,
+        "legal": 1.8063033556214176,
+        "math": 1.180322918596823,
+        "medical": 1.8209388447107595
+      }
+    },
+    "v11c": {
+      "macro_acc": 0.6061893356792994,
+      "worst_acc": 0.4599339414085323,
+      "per_domain_acc": {
+        "code": 0.6977707631018427,
+        "education": 0.6271285848097757,
+        "finance": 0.4599339414085323,
+        "general": 0.6154261592403827,
+        "legal": 0.5739690362497722,
+        "math": 0.6970086218693746,
+        "medical": 0.5720882430754161
+      },
+      "per_domain_loss": {
+        "code": 1.2006925645760314,
+        "education": 1.6027954469479284,
+        "finance": 2.4504318165978405,
+        "general": 1.7293948255731357,
+        "legal": 1.8618485210393554,
+        "math": 1.2071111331914381,
+        "medical": 1.865908738756162
+      }
+    },
+    "select": {
+      "macro_acc": 0.6190723233517742,
+      "worst_acc": 0.4727670782312865,
+      "per_domain_acc": {
+        "code": 0.7021171676723554,
+        "education": 0.6377532639550694,
+        "finance": 0.4727670782312865,
+        "general": 0.6228474098527608,
+        "legal": 0.6000033860182303,
+        "math": 0.7045534229990452,
+        "medical": 0.5934645347336719
+      },
+      "per_domain_loss": {
+        "code": 1.1763590209769574,
+        "education": 1.4953865388761678,
+        "finance": 2.4153840724500943,
+        "general": 1.678788231884586,
+        "legal": 1.7498252915987371,
+        "math": 1.1510887876434523,
+        "medical": 1.7659134912529146
+      },
+      "selected_counts": {
+        "local": 29,
+        "v7": 6
+      },
+      "selected_choice_by_client": {
+        "0": "local",
+        "1": "v7",
+        "2": "local",
+        "3": "local",
+        "4": "local",
+        "5": "v7",
+        "6": "local",
+        "7": "local",
+        "8": "local",
+        "9": "local",
+        "10": "local",
+        "11": "local",
+        "12": "local",
+        "13": "local",
+        "14": "local",
+        "15": "local",
+        "16": "local",
+        "17": "v7",
+        "18": "local",
+        "19": "v7",
+        "20": "local",
+        "21": "local",
+        "22": "v7",
+        "23": "local",
+        "24": "local",
+        "25": "local",
+        "26": "v7",
+        "27": "local",
+        "28": "local",
+        "29": "local",
+        "30": "local",
+        "31": "local",
+        "32": "local",
+        "33": "local",
+        "34": "local"
+      }
+    },
+    "base": {
+      "macro_acc": 0.5893355595459394,
+      "worst_acc": 0.44975494758257806,
+      "per_domain_acc": {
+        "code": 0.689796725599304,
+        "education": 0.6104814739470521,
+        "finance": 0.44975494758257806,
+        "general": 0.6047982741715678,
+        "legal": 0.534314446470624,
+        "math": 0.68677996932568,
+        "medical": 0.5494230797247697
+      },
+      "per_domain_loss": {
+        "code": 1.267618607706676,
+        "education": 1.7695306051408823,
+        "finance": 2.5477985995530723,
+        "general": 1.8259677012017115,
+        "legal": 2.064038967747994,
+        "math": 1.3202325529479009,
+        "medical": 2.0496839521492567
+      }
+    },
+    "coldstart": {
+      "macro_acc": 0.610835694690581,
+      "worst_acc": 0.4655169484706077,
+      "per_domain_acc": {
+        "code": 0.6990385657839648,
+        "education": 0.6284898114981494,
+        "finance": 0.4655169484706077,
+        "general": 0.6162567239188372,
+        "legal": 0.5850927784981469,
+        "math": 0.699458676846772,
+        "medical": 0.5819963578175886
+      },
+      "per_domain_loss": {
+        "code": 1.1910592604285497,
+        "education": 1.56335320848228,
+        "finance": 2.435292722539112,
+        "general": 1.7196021891112214,
+        "legal": 1.8077952642204866,
+        "math": 1.1823723020427437,
+        "medical": 1.8209153628563588
+      }
+    },
+    "v11c_coldstart": {
+      "macro_acc": 0.6051999359224636,
+      "worst_acc": 0.4594866797616259,
+      "per_domain_acc": {
+        "code": 0.6975737769720964,
+        "education": 0.6250335888469757,
+        "finance": 0.4594866797616259,
+        "general": 0.6135226716817324,
+        "legal": 0.5726779137013797,
+        "math": 0.6972185533590521,
+        "medical": 0.5708863671343828
+      },
+      "per_domain_loss": {
+        "code": 1.2018887809684666,
+        "education": 1.6098107394074694,
+        "finance": 2.4530767324733214,
+        "general": 1.7343219995548858,
+        "legal": 1.863162662461137,
+        "math": 1.2095756656766476,
+        "medical": 1.8680814390612768
+      }
+    }
+  }
+}
