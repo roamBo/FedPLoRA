@@ -46,6 +46,7 @@ mods = [
     'methods.lora_expert_baselines',
     'utilities.utils',
     'utilities.train_eval',
+    'utilities.benchmark_fingerprint',
 ]
 missing = [m for m in mods if importlib.util.find_spec(m) is None]
 if missing:

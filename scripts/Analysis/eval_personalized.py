@@ -34,6 +34,7 @@ from collections import defaultdict
 import numpy as np
 import torch
 import torch.nn.functional as F
+from torch.utils.data import DataLoader, Subset
 
 _ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 if _ROOT not in sys.path:
@@ -42,7 +43,9 @@ if _ROOT not in sys.path:
 from utilities.data_utils import (  # noqa: E402
     load_domain_sft_benchmark, create_domain_client_dataloaders,
     create_domain_eval_dataloader, group_rows_by_domain, group_rows_by_client,
+    DomainSFTDataset,
 )
+from utilities.benchmark_fingerprint import compute_benchmark_fingerprint  # noqa: E402
 from utilities.models import create_peft_causal_lm_model, init_fedplora_adapters  # noqa: E402
 from utilities.utils import is_lora_a_param_name, is_lora_b_param_name  # noqa: E402
 
@@ -143,6 +146,42 @@ def _train_one_client(model, loader, args, device):
             loss.backward(); optim.step(); optim.zero_grad(); step += 1
 
 
+def _parse_int_list(text):
+    out = []
+    for item in str(text or "").replace(";", ",").split(","):
+        item = item.strip()
+        if not item:
+            continue
+        out.append(int(item))
+    return out
+
+
+def _resolve_held_out_clients(spec, client_ids, domain_of):
+    spec = str(spec or "").strip()
+    if not spec:
+        return []
+    if spec.lower() in {"auto", "auto_one_per_domain", "one_per_domain"}:
+        by_dom = defaultdict(list)
+        for cid in client_ids:
+            by_dom[domain_of.get(int(cid), "?")].append(int(cid))
+        return [
+            sorted(cids)[0]
+            for _dom, cids in sorted(by_dom.items())
+            if cids
+        ]
+    return sorted(set(_parse_int_list(spec)))
+
+
+def _make_train_loader_for_rows(rows, tokenizer, args, *, cap=0, seed=42, client_id=0):
+    rows = list(rows or [])
+    if cap and cap > 0 and len(rows) > cap:
+        rng = np.random.default_rng(int(seed) + int(client_id) * 9973 + int(cap))
+        idx = sorted(rng.choice(len(rows), size=int(cap), replace=False).tolist())
+        rows = [rows[i] for i in idx]
+    ds = DomainSFTDataset(rows, tokenizer=tokenizer, max_seq_length=args.max_seq_length)
+    return DataLoader(ds, batch_size=args.batch_size, shuffle=True)
+
+
 @torch.no_grad()
 def _eval(model, loader, device, max_batches):
     """NaN-safe per-domain eval: 手动 fp32 交叉熵，跳过无有效标签的 batch。"""
@@ -200,6 +239,15 @@ def main():
                     help="Comma-separated candidate schemes for select; evaluated on each client's val split.")
     ap.add_argument("--cold_start", action="store_true",
                     help="额外评测冷启动：base(B=0 无适配下界) + coldstart(同域留一池化B，模拟新客户端零样本)")
+    ap.add_argument("--held_out_clients", type=str, default="",
+                    help="Strict held-out protocol: comma-separated client ids, or auto_one_per_domain. "
+                    "Held-out clients are excluded from A/B aggregation and evaluated after training the remaining clients.")
+    ap.add_argument("--held_out_eval_all", action="store_true",
+                    help="With --held_out_clients, evaluate all clients instead of only held-out clients.")
+    ap.add_argument("--few_shot_caps", type=str, default="5,10",
+                    help="Comma-separated caps for held-out local few-shot upper-bound schemes, e.g. 5,10.")
+    ap.add_argument("--held_out_route_probe_samples", type=int, default=10,
+                    help="Few-shot samples used only to infer a held-out client's B-geometry route for coldstart_geom. 0 disables.")
     ap.add_argument("--eval_on_local", action="store_true",
                     help="每客户端用自己的 test_local（不同子分布）评测，而非共享 test_domain；"
                     "配合内容型非IID(--subtopic kmeans) 做 bulletproof 冷启动验证")
@@ -217,10 +265,35 @@ def main():
         tok.pad_token = tok.eos_token
 
     bench = load_domain_sft_benchmark(args.benchmark_dir)
+    benchmark_fingerprint = compute_benchmark_fingerprint(args.benchmark_dir, bench)
     domain_of = {int(c["client_id"]): str(c["domain"]) for c in bench["clients"]}
     client_ids, loaders = create_domain_client_dataloaders(bench["train"], tok, args)
     if args.max_clients and len(client_ids) > args.max_clients:
         client_ids, loaders = client_ids[:args.max_clients], loaders[:args.max_clients]
+    train_rows_by_client = group_rows_by_client(bench["train"])
+    held_out_clients = _resolve_held_out_clients(args.held_out_clients, client_ids, domain_of)
+    held_out_set = set(int(x) for x in held_out_clients)
+    if held_out_set:
+        unknown = sorted(held_out_set - {int(x) for x in client_ids})
+        if unknown:
+            raise ValueError(f"held_out_clients not present in benchmark: {unknown}")
+        print(
+            f"[heldout] strict protocol ON held_out_clients={held_out_clients} "
+            f"domains={{"
+            + ", ".join(f"{cid}:{domain_of.get(cid, '?')}" for cid in held_out_clients)
+            + "}}",
+            flush=True,
+        )
+    train_pairs = [
+        (int(cid), loader)
+        for cid, loader in zip(client_ids, loaders)
+        if int(cid) not in held_out_set
+    ]
+    eval_client_ids = (
+        [int(cid) for cid in client_ids]
+        if (not held_out_set or bool(getattr(args, "held_out_eval_all", False)))
+        else list(held_out_clients)
+    )
 
     test_by_dom = group_rows_by_domain(bench["test_domain"])
     eval_loaders = {d: create_domain_eval_dataloader(rows, tok, args) for d, rows in test_by_dom.items()}
@@ -228,7 +301,6 @@ def main():
     # 可选：每客户端用自己的 test_local（不同子分布），bulletproof 冷启动/onboarding 验证。
     local_eval_loaders = {}
     if bool(getattr(args, "eval_on_local", False)):
-        from utilities.data_utils import group_rows_by_client
         test_by_client = group_rows_by_client(bench.get("test_local", []) or [])
         for cid, rows in test_by_client.items():
             if rows:
@@ -250,28 +322,44 @@ def main():
     b_keys = [k.replace("lora_A", "lora_B") for k in a_keys]
 
     # --- capture per-client A_i, B_i ---
+    # In strict held-out mode, held-out clients are excluded here.  Their A/B
+    # never contribute to A_global, B_global, or domain B pools.
     A_by, B_by = {}, {}
-    for n, cid in enumerate(client_ids):
+    for n, (cid, loader) in enumerate(train_pairs):
         _reset_adapters(model, A0)
-        _train_one_client(model, loaders[n], args, device)
+        _train_one_client(model, loader, args, device)
         sd = model.state_dict()
         A_by[cid] = {k: sd[k].detach().cpu().clone() for k in a_keys}
         B_by[cid] = {bk: sd[bk].detach().cpu().clone() for bk in b_keys if bk in sd}
-        print(f"[cap] {cid} ({domain_of.get(cid,'?')}) [{n+1}/{len(client_ids)}]", flush=True)
+        print(f"[cap] {cid} ({domain_of.get(cid,'?')}) [{n+1}/{len(train_pairs)}]", flush=True)
 
     # --- precompute aggregates ---
     A_global = aggregate_global_A(A_by, a_keys)
-    B_global = {bk: torch.stack([B_by[c][bk].float() for c in client_ids if bk in B_by[c]], 0).mean(0)
+    train_client_ids = [int(cid) for cid, _loader in train_pairs]
+    B_global = {bk: torch.stack([B_by[c][bk].float() for c in train_client_ids if bk in B_by[c]], 0).mean(0)
                 for bk in b_keys}
     B_per_domain = aggregate_per_domain_B(B_by, domain_of, b_keys, mode=args.v7_b_mode)
 
     schemes = [s.strip() for s in args.schemes.split(",") if s.strip()]
+    few_shot_caps = [x for x in _parse_int_list(getattr(args, "few_shot_caps", "")) if x > 0]
+    if held_out_set and args.schemes == "local,fedsa,global,v7":
+        # Safer strict-heldout default: avoid reporting local/fedsa as if the
+        # held-out client had joined training.  local_fewshot* is added below.
+        schemes = ["base", "global", "coldstart", "coldstart_geom", "v11c_coldstart"]
+    if held_out_set:
+        for cap in few_shot_caps:
+            name = f"local_fewshot{cap}"
+            if name not in schemes:
+                schemes.append(name)
     if bool(getattr(args, "cold_start", False)):
         # 冷启动：模拟"新客户端无本地数据"。base=无适配(B=0) 下界；
         # coldstart=用同域其它客户端池化的 B（留一法），这是新机构能零样本拿到的。
         for s in ("base", "coldstart", "v11c_coldstart"):
             if s not in schemes:
                 schemes.append(s)
+    if held_out_set and int(getattr(args, "held_out_route_probe_samples", 0) or 0) > 0:
+        if "coldstart_geom" not in schemes:
+            schemes.append("coldstart_geom")
 
     def _domain_B_loo(domain, exclude_cid):
         """同域 B 池化，排除 exclude_cid（留一法，模拟新客户端）。"""
@@ -303,13 +391,117 @@ def main():
                 ).detach().cpu()
         return out
 
+    def _zero_B_state(cid=None):
+        out = {}
+        for bk in b_keys:
+            ref = None
+            if cid in B_by and bk in B_by[cid]:
+                ref = B_by[cid][bk]
+            elif bk in B_global:
+                ref = B_global[bk]
+            else:
+                for st in B_by.values():
+                    if bk in st:
+                        ref = st[bk]
+                        break
+            if ref is not None:
+                out[bk] = torch.zeros_like(ref)
+        return out
+
+    fewshot_states = defaultdict(dict)
+    route_probe_states = {}
+    if held_out_set and few_shot_caps:
+        for cap in few_shot_caps:
+            for cid in held_out_clients:
+                rows = train_rows_by_client.get(int(cid), [])
+                if not rows:
+                    continue
+                _reset_adapters(model, A0)
+                loader = _make_train_loader_for_rows(
+                    rows,
+                    tok,
+                    args,
+                    cap=cap,
+                    seed=int(args.seed),
+                    client_id=int(cid),
+                )
+                _train_one_client(model, loader, args, device)
+                sd = model.state_dict()
+                fewshot_states[int(cap)][int(cid)] = {
+                    **{k: sd[k].detach().cpu().clone() for k in a_keys},
+                    **{bk: sd[bk].detach().cpu().clone() for bk in b_keys if bk in sd},
+                }
+                print(f"[heldout-fewshot] cid={cid} cap={cap}", flush=True)
+
+    route_probe_cap = int(getattr(args, "held_out_route_probe_samples", 0) or 0)
+    if held_out_set and route_probe_cap > 0:
+        for cid in held_out_clients:
+            if cid in fewshot_states.get(route_probe_cap, {}):
+                route_probe_states[int(cid)] = fewshot_states[route_probe_cap][int(cid)]
+                continue
+            rows = train_rows_by_client.get(int(cid), [])
+            if not rows:
+                continue
+            _reset_adapters(model, A0)
+            loader = _make_train_loader_for_rows(
+                rows,
+                tok,
+                args,
+                cap=route_probe_cap,
+                seed=int(args.seed),
+                client_id=int(cid),
+            )
+            _train_one_client(model, loader, args, device)
+            sd = model.state_dict()
+            route_probe_states[int(cid)] = {
+                bk: sd[bk].detach().cpu().clone() for bk in b_keys if bk in sd
+            }
+
+    def _flat_b(state):
+        vals = [state[bk].float().reshape(-1) for bk in b_keys if bk in state]
+        return torch.cat(vals) if vals else torch.empty(0)
+
+    geom_route_domain_by_client = {}
+    geom_route_scores = {}
+    if held_out_set and route_probe_states:
+        domain_vectors = {
+            dom: _flat_b(st)
+            for dom, st in B_per_domain.items()
+            if _flat_b(st).numel() > 0
+        }
+        for cid, st in route_probe_states.items():
+            q = _flat_b(st)
+            best = None
+            for dom, vec in domain_vectors.items():
+                if q.numel() != vec.numel() or q.numel() == 0:
+                    continue
+                score = float(F.cosine_similarity(q, vec, dim=0).item())
+                if best is None or score > best[0]:
+                    best = (score, dom)
+            if best is not None:
+                geom_route_domain_by_client[int(cid)] = best[1]
+                geom_route_scores[int(cid)] = best[0]
+        print(
+            f"[heldout-route] geom_route_domain_by_client={geom_route_domain_by_client}",
+            flush=True,
+        )
+
     selected_choice_by_client = {}
+    selected_choice_without_local_by_client = {}
 
     def client_state(scheme, cid):
         d = domain_of[cid]
         if scheme == "local":
+            if cid not in A_by:
+                if few_shot_caps:
+                    cap = max(few_shot_caps)
+                    if cid in fewshot_states.get(cap, {}):
+                        return fewshot_states[cap][cid]
+                return {**A_global, **_zero_B_state(cid)}
             return {**A_by[cid], **B_by[cid]}
         if scheme == "fedsa":
+            if cid not in B_by:
+                return {**A_global, **B_global}
             return {**A_global, **B_by[cid]}
         if scheme == "global":
             return {**A_global, **B_global}
@@ -321,40 +513,40 @@ def main():
             return {**A_global, **_mix_b(B_global, B_per_domain.get(d, {}))}
         if scheme == "base":
             # 无 LoRA 适配：B=0 → ΔW=0，等价冻结基座（冷启动下界）
-            zb = {bk: torch.zeros_like(B_by[cid][bk]) for bk in b_keys if bk in B_by[cid]}
-            return {**A_global, **zb}
+            return {**A_global, **_zero_B_state(cid)}
         if scheme == "coldstart":
             # 新客户端：全局 A + 同域其它客户端池化的 B（不含自己）
             return {**A_global, **_domain_B_loo(d, cid)}
+        if scheme == "coldstart_geom":
+            routed_domain = geom_route_domain_by_client.get(int(cid), d)
+            return {**A_global, **B_per_domain.get(routed_domain, {})}
         if scheme == "v11c_coldstart":
             # 新客户端：全局 A + global/domain pools both exclude the target client.
             return {
                 **A_global,
                 **_mix_b(_global_B_loo(cid), _domain_B_loo(d, cid)),
             }
+        if scheme.startswith("local_fewshot"):
+            cap_txt = scheme.replace("local_fewshot", "")
+            cap = int(cap_txt)
+            if cid in fewshot_states.get(cap, {}):
+                return fewshot_states[cap][cid]
+            return {**A_global, **_zero_B_state(cid)}
         if scheme == "select":
             chosen = selected_choice_by_client.get(int(cid), "local")
             return client_state(chosen, cid)
+        if scheme == "select_without_local":
+            chosen = selected_choice_without_local_by_client.get(int(cid), "coldstart")
+            return client_state(chosen, cid)
         raise ValueError(scheme)
 
-    if "select" in schemes:
-        raw_candidates = [
-            s.strip()
-            for s in str(getattr(args, "select_candidates", "") or "").split(",")
-            if s.strip()
-        ]
-        candidates = [
-            s
-            for s in raw_candidates
-            if s not in {"select"} and (s in schemes or s in {"local", "fedsa", "global", "v7", "v11c", "base", "coldstart", "v11c_coldstart"})
-        ]
-        if not candidates:
-            candidates = ["local", "v7", "global", "v11c"]
-        for cid in client_ids:
+    def _select_for_clients(target_clients, candidates):
+        choices = {}
+        for cid in target_clients:
             d = domain_of[cid]
             dl = val_eval_loaders.get(int(cid)) or eval_loaders.get(d)
             if dl is None:
-                selected_choice_by_client[int(cid)] = candidates[0]
+                choices[int(cid)] = candidates[0]
                 continue
             best = None
             for cand in candidates:
@@ -363,18 +555,57 @@ def main():
                 score = loss if math.isfinite(loss) else float("inf")
                 if best is None or score < best[0]:
                     best = (score, cand, acc)
-            selected_choice_by_client[int(cid)] = best[1] if best else candidates[0]
-        counts = defaultdict(int)
-        for choice in selected_choice_by_client.values():
-            counts[choice] += 1
-        print(f"[select] candidates={candidates} selected_counts={dict(sorted(counts.items()))}", flush=True)
+            choices[int(cid)] = best[1] if best else candidates[0]
+        return choices
+
+    if "select" in schemes or "select_without_local" in schemes:
+        raw_candidates = [
+            s.strip()
+            for s in str(getattr(args, "select_candidates", "") or "").split(",")
+            if s.strip()
+        ]
+        known_selectable = {
+            "local", "fedsa", "global", "v7", "v11c", "base",
+            "coldstart", "coldstart_geom", "v11c_coldstart",
+        } | {f"local_fewshot{cap}" for cap in few_shot_caps}
+        candidates = [
+            s
+            for s in raw_candidates
+            if s not in {"select", "select_without_local"} and (s in schemes or s in known_selectable)
+        ]
+        if not candidates:
+            candidates = ["local", "v7", "global", "v11c"]
+        if "select" in schemes:
+            selected_choice_by_client = _select_for_clients(eval_client_ids, candidates)
+            counts = defaultdict(int)
+            for choice in selected_choice_by_client.values():
+                counts[choice] += 1
+            print(f"[select] candidates={candidates} selected_counts={dict(sorted(counts.items()))}", flush=True)
+        if "select_without_local" in schemes:
+            no_local = [
+                c for c in candidates
+                if c != "local" and not c.startswith("local_fewshot") and c != "fedsa"
+            ]
+            if not no_local:
+                no_local = ["coldstart", "global", "base"]
+            selected_choice_without_local_by_client = _select_for_clients(
+                eval_client_ids, no_local
+            )
+            counts = defaultdict(int)
+            for choice in selected_choice_without_local_by_client.values():
+                counts[choice] += 1
+            print(
+                f"[select_without_local] candidates={no_local} selected_counts={dict(sorted(counts.items()))}",
+                flush=True,
+            )
 
     # --- per-domain personalized eval ---
     results = {}
     for scheme in schemes:
         per_dom = defaultdict(list)        # domain -> [acc per client]
         per_dom_loss = defaultdict(list)
-        for cid in client_ids:
+        per_client_acc = {}
+        for cid in eval_client_ids:
             d = domain_of[cid]
             # eval_on_local: 每客户端用自己的 test_local（缺失则回退域测试）
             dl = local_eval_loaders.get(int(cid)) if local_eval_loaders else None
@@ -386,12 +617,14 @@ def main():
             loss, acc = _eval(model, dl, device, args.eval_max_batches)
             if not math.isnan(acc):
                 per_dom[d].append(acc); per_dom_loss[d].append(loss)
+                per_client_acc[str(int(cid))] = float(acc)
         dom_acc = {d: float(np.mean(v)) for d, v in per_dom.items()}
         dom_loss = {d: float(np.mean(v)) for d, v in per_dom_loss.items()}
         macro = float(np.mean(list(dom_acc.values()))) if dom_acc else float("nan")
         worst = float(min(dom_acc.values())) if dom_acc else float("nan")
         results[scheme] = {"macro_acc": macro, "worst_acc": worst,
-                           "per_domain_acc": dom_acc, "per_domain_loss": dom_loss}
+                           "per_domain_acc": dom_acc, "per_domain_loss": dom_loss,
+                           "per_client_acc": per_client_acc}
         if scheme == "select":
             counts = defaultdict(int)
             for choice in selected_choice_by_client.values():
@@ -400,15 +633,43 @@ def main():
             results[scheme]["selected_choice_by_client"] = {
                 str(k): v for k, v in sorted(selected_choice_by_client.items())
             }
+        if scheme == "select_without_local":
+            counts = defaultdict(int)
+            for choice in selected_choice_without_local_by_client.values():
+                counts[choice] += 1
+            results[scheme]["selected_counts"] = dict(sorted(counts.items()))
+            results[scheme]["selected_choice_by_client"] = {
+                str(k): v for k, v in sorted(selected_choice_without_local_by_client.items())
+            }
+        if scheme == "coldstart_geom":
+            results[scheme]["geom_route_domain_by_client"] = {
+                str(k): v for k, v in sorted(geom_route_domain_by_client.items())
+            }
+            results[scheme]["geom_route_score_by_client"] = {
+                str(k): float(v) for k, v in sorted(geom_route_scores.items())
+            }
         print(f"[scheme {scheme:7s}] per-domain macro_acc={macro:.4f} worst={worst:.4f}", flush=True)
 
     report = {"config": {k: getattr(args, k) for k in
                          ["model", "benchmark_dir", "target_modules", "max_steps",
                           "eval_max_batches", "v7_b_mode", "local_epochs",
                           "max_train_samples_per_client", "cold_start", "eval_on_local",
-                          "v11c_mu", "select_candidates"]},
+                          "v11c_mu", "select_candidates", "held_out_clients",
+                          "held_out_eval_all", "few_shot_caps",
+                          "held_out_route_probe_samples"]},
+              "benchmark_fingerprint": benchmark_fingerprint,
               "eval_objective": ("per_client_local_test" if bool(getattr(args, "eval_on_local", False))
                                  else "per_domain_shared_test"),
+              "strict_held_out": {
+                  "enabled": bool(held_out_set),
+                  "held_out_clients": [int(x) for x in held_out_clients],
+                  "train_clients": [int(x) for x in train_client_ids],
+                  "eval_clients": [int(x) for x in eval_client_ids],
+                  "held_out_domains": {
+                      str(int(cid)): domain_of.get(int(cid), "?")
+                      for cid in held_out_clients
+                  },
+              },
               "results": results}
     os.makedirs(os.path.dirname(os.path.abspath(args.out)), exist_ok=True)
     with open(args.out, "w", encoding="utf-8") as f:

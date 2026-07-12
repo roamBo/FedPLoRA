@@ -36,6 +36,7 @@ case "$FEDPLORA_PREFLIGHT_ROLE" in
       tasks/fed_train_sft.py
       utilities/utils.py
       utilities/train_eval.py
+      utilities/benchmark_fingerprint.py
       methods/lora_expert_baselines.py
       scripts/Analysis/eval_personalized.py
       scripts/Analysis/summarize_fedplora_results.py
@@ -51,32 +52,7 @@ case "$FEDPLORA_PREFLIGHT_ROLE" in
       tasks/fed_train_sft.py
       utilities/utils.py
       utilities/train_eval.py
-      methods/lora_expert_baselines.py
-      methods/v11/v11_common.py
-      methods/v11/v11c_gmix.py
-      methods/v12/__init__.py
-      methods/v12/v12_common.py
-      methods/v12/v12a_sched_gmix.py
-      methods/v12/v12b_nmi_guard_gmix.py
-      methods/v13/__init__.py
-      methods/v13/v13_common.py
-      methods/v13/v13a_os.py
-      methods/v13/v13b_os_bonly.py
-      scripts/Analysis/eval_personalized.py
-      scripts/Analysis/summarize_fedplora_results.py
-      scripts/DataProcessScripts/build_mixed_richness_benchmark.py
-    )
-    ;;
-  v13)
-    export FEDPLORA_PREFLIGHT_LABEL=v13
-    export RUN_ID_PREFIX=v13_20260711_manual_35c_dir05_r1_finaleval
-    export SMOKE_RUN_ID=v13_20260711_smoke_seed42
-    _FEDPLORA_LOG_PREFIX=test20260711_main
-    _FEDPLORA_SMOKE_LOG_PREFIX=test20260711_main_smoke
-    _FEDPLORA_PY_COMPILE_FILES=(
-      tasks/fed_train_sft.py
-      utilities/utils.py
-      utilities/train_eval.py
+      utilities/benchmark_fingerprint.py
       methods/lora_expert_baselines.py
       methods/v11/v11_common.py
       methods/v11/v11c_gmix.py
@@ -320,6 +296,7 @@ required = [
     "methods.lora_expert_baselines",
     "utilities.utils",
     "utilities.train_eval",
+    "utilities.benchmark_fingerprint",
 ]
 
 missing = []
@@ -384,7 +361,7 @@ assert_role_run () {
         ;;
     esac
     case "$method" in
-      smoke_v8*|smoke_v11*|smoke_v12*|smoke_v13*|X1*|X2*|NX1*|NX2*|NX3*|NX4*|NX5*|NX6*|OS1_v8*|OS1_v11*|OS1_v13*|X3_v11*|X3_v12*|M3_mixrich_v8*|M3_mixrich_v11*|M3_mixrich_v12*|M3_os_mixrich_v8*|M3_os_mixrich_v11*|M3_os_mixrich_v13*|N7_ours_*)
+      smoke_v8*|smoke_v11*|smoke_v12*|smoke_v13*|X1*|X2*|NX0*|NX1*|NX2*|NX3*|NX4*|NX5*|NX6*|OS1_v8*|OS1_v11*|OS1_v13*|X3_v11*|X3_v12*|M3_mixrich_v8*|M3_mixrich_v11*|M3_mixrich_v12*|M3_os_mixrich_v8*|M3_os_mixrich_v11*|M3_os_mixrich_v13*|N7_ours_*)
         ;;
       *)
         echo "[guard][main][error] method=$method 命名不像主算法任务；为防误跑已拒绝。" >&2
@@ -475,7 +452,7 @@ run_sft_smoke () {
     > "$SMOKE_ROOT/run_logs/${_FEDPLORA_SMOKE_LOG_PREFIX}_${method}_seed42.log" 2>&1 &
 }
 
-if [ "$FEDPLORA_PREFLIGHT_ROLE" = "main" ] || [ "$FEDPLORA_PREFLIGHT_ROLE" = "v13" ]; then
+if [ "$FEDPLORA_PREFLIGHT_ROLE" = "main" ]; then
   run_personalized_eval () {
     local name="$1"
     shift
@@ -509,9 +486,7 @@ fi
 if python -m py_compile "${_FEDPLORA_PY_COMPILE_FILES[@]}" \
   && check_required_imports \
   && check_benchmark "$BENCHMARK_DIR_MAIN"; then
-  if [ "${FEDPLORA_SKIP_DEFAULT_SET_RUN_PATHS:-0}" != "1" ]; then
-    set_run_paths 42
-  fi
+  set_run_paths 42
   echo "[preflight][ok] $FEDPLORA_PREFLIGHT_LABEL preflight loaded."
   echo "[preflight][ok] 后续可直接运行 order 中的 smoke / 正式实验段。"
 else
