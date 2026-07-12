@@ -24,8 +24,10 @@ if [ -f "$CONDA_BASE/etc/profile.d/conda.sh" ]; then
   source "$CONDA_BASE/etc/profile.d/conda.sh"
 fi
 
+export FEDPLORA_SKIP_DEFAULT_SET_RUN_PATHS=1
+
 # shellcheck disable=SC1091
-source "$SCRIPT_DIR/preflight_20260709_main_algorithm.sh"
+source "$SCRIPT_DIR/preflight_20260711_main_algorithm.sh"
 
 export RUN_TAG_DATASET=${RUN_TAG_DATASET:-dir05}
 export PIPELINE_ROUNDS=${PIPELINE_ROUNDS:-1}
