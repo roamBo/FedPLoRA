@@ -336,7 +336,7 @@ def main():
     # --- precompute aggregates ---
     A_global = aggregate_global_A(A_by, a_keys)
     train_client_ids = [int(cid) for cid, _loader in train_pairs]
-    B_global = {bk: torch.stack([B_by[c][bk].float() for c in train_client_ids if bk in B_by[c]], 0).mean(0)
+    B_global = {bk: torch.stack([B_by[c][bk].float() for c in train_client_ids if c in B_by and bk in B_by[c]], 0).mean(0)
                 for bk in b_keys}
     B_per_domain = aggregate_per_domain_B(B_by, domain_of, b_keys, mode=args.v7_b_mode)
 
@@ -363,20 +363,23 @@ def main():
 
     def _domain_B_loo(domain, exclude_cid):
         """同域 B 池化，排除 exclude_cid（留一法，模拟新客户端）。"""
-        cids = [c for c in client_ids if domain_of.get(c) == domain and c != exclude_cid]
+        cids = [
+            c for c in train_client_ids
+            if domain_of.get(c) == domain and c != exclude_cid
+        ]
         out = {}
         for bk in b_keys:
-            Bs = [B_by[c][bk] for c in cids if bk in B_by[c]]
+            Bs = [B_by[c][bk] for c in cids if c in B_by and bk in B_by[c]]
             if Bs:
                 out[bk] = _consolidate_B(Bs, args.v7_b_mode)
         return out
 
     def _global_B_loo(exclude_cid):
         """Global B pool excluding one client, used for true cold-start simulation."""
-        cids = [c for c in client_ids if c != exclude_cid]
+        cids = [c for c in train_client_ids if c != exclude_cid]
         out = {}
         for bk in b_keys:
-            Bs = [B_by[c][bk] for c in cids if bk in B_by[c]]
+            Bs = [B_by[c][bk] for c in cids if c in B_by and bk in B_by[c]]
             if Bs:
                 out[bk] = torch.stack([B.float() for B in Bs], 0).mean(0)
         return out
