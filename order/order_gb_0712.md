@@ -149,9 +149,17 @@ python -m py_compile scripts/Analysis/eval_personalized.py
 路径自检（任意一条 launch 后）：
 
 ```bash
-grep -E '\[one-exp\] (RUN_ID_PREFIX|log)=' "$RESULT_ROOT/manual_launch_logs_20260712/<method>.launch.log"
+grep -E '\[one-exp\] (RUN_ID_PREFIX|RUN_ID|RUN_ROOT|log)=' "$RESULT_ROOT/manual_launch_logs_20260712/<method>.launch.log"
 # 必须含 v13_20260712，禁止 v12_20260709_main
 ```
+
+**若主日志目录未生成**：先看 launch 日志（nohup  stderr 也在这里）：
+
+```bash
+tail -n 80 $RESULT_ROOT/manual_launch_logs_20260712/NX0_v13a_os_split42_train42.launch.log
+```
+
+常见原因：`source preflight` 失败（v13 角色未同步）、benchmark 路径不对、conda 环境名错误。
 
 若旧 pipeline / 误跑进程仍在，先停掉：
 

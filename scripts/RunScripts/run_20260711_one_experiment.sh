@@ -88,8 +88,18 @@ if [ -f "$CONDA_BASE/etc/profile.d/conda.sh" ]; then
   source "$CONDA_BASE/etc/profile.d/conda.sh"
 fi
 
-# shellcheck disable=SC1091
-source "$SCRIPT_DIR/preflight_20260709_main_algorithm.sh"
+_CLI_RUN_ID_PREFIX="$RUN_ID_PREFIX"
+export FEDPLORA_SKIP_DEFAULT_SET_RUN_PATHS=${FEDPLORA_SKIP_DEFAULT_SET_RUN_PATHS:-1}
+if [ -f "$SCRIPT_DIR/preflight_20260711_main_algorithm.sh" ]; then
+  # shellcheck disable=SC1091
+  source "$SCRIPT_DIR/preflight_20260711_main_algorithm.sh"
+else
+  # shellcheck disable=SC1091
+  source "$SCRIPT_DIR/preflight_20260709_main_algorithm.sh"
+fi
+if [ -n "$_CLI_RUN_ID_PREFIX" ]; then
+  export RUN_ID_PREFIX="$_CLI_RUN_ID_PREFIX"
+fi
 
 export RUN_TAG_DATASET=${RUN_TAG_DATASET:-dir05}
 export ROUNDS=${PIPELINE_ROUNDS:-1}
@@ -154,6 +164,7 @@ fi
 export RUN_ID_PREFIX
 set_run_paths "$SEED"
 mkdir -p "$RUN_ROOT/pids"
+echo "[one-exp] RUN_ID_PREFIX=$RUN_ID_PREFIX RUN_ID=$RUN_ID RUN_ROOT=$RUN_ROOT"
 
 if [ "$KIND" = "personalized_eval" ]; then
   case "$METHOD" in

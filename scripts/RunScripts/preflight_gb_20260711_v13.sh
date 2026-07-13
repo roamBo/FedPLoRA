@@ -20,8 +20,8 @@ set -o pipefail
 export CODE_DIR=${CODE_DIR:-/data/yaominghao/gb/FedPLoRA}
 export CODE_ROOT="$CODE_DIR"
 export CONDA_ENV_NAME=${CONDA_ENV_NAME:-fedplora}
-export MODEL_ROOT=${MODEL_ROOT:-/data/yaominghao/gb/models}
-export MODEL_PATH=${MODEL_PATH:-$MODEL_ROOT/SmolLM2-135M}
+export MODEL_ROOT=${MODEL_ROOT:-/data/yaominghao/gb/models/trained_models_LW}
+export MODEL_PATH=${MODEL_PATH:-/data/yaominghao/gb/models/SmolLM2-135M}
 export DATA_ROOT=${DATA_ROOT:-$CODE_DIR/data}
 export RESULT_ROOT=${RESULT_ROOT:-/data/yaominghao/gb/result/FedPLoRA}
 export BENCHMARK_DIR_MAIN=${BENCHMARK_DIR_MAIN:-$DATA_ROOT/domain_benchmark_35c_dir05/seed_42}
