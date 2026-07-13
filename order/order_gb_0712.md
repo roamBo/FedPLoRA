@@ -1,6 +1,6 @@
 # FedPLoRA 20260712：NX0 主表补齐与 strict held-out（gb 服务器）
 
-> 由 `order/order_20260712.md` 适配。超参数、算法与实验设计不变；仅修改路径、conda、**全部 GPU=1**，并改为 **0705/0711 风格后台指令**（`run_v13_*` 后台 nohup，无 `wait`，可逐条粘贴）。
+> 由 `order/order_20260712.md` 适配。超参数、算法与实验设计不变；仅修改路径、conda、**全部 GPU=1**，并改为 **0705/0711 风格后台指令**（`run_v13_`* 后台 nohup，无 `wait`，可逐条粘贴）。
 
 ######### FedPLoRA-v13a one-shot 主表补齐 + strict held-out 能力实验（gb 单卡 GPU1 版） #########
 
@@ -48,15 +48,17 @@ conda: fedplora
 
 【路径对照（minghao → gb）】
 
-| 项 | order_20260712.md | order_gb_0712.md |
-|----|-------------------|------------------|
-| conda | `FedRepo2` | `fedplora` |
-| 代码 | `/data2/minghao/code/FedPLoRA-main` | `/data/yaominghao/gb/FedPLoRA` |
-| 模型 | `/data2/minghao/model/SmolLM2-135M` | `/data/yaominghao/gb/models/SmolLM2-135M` |
-| 结果 | `/data2/minghao/result/FedPLoRA/` | `/data/yaominghao/gb/result/FedPLoRA/` |
+
+| 项          | order_20260712.md                         | order_gb_0712.md                                |
+| ---------- | ----------------------------------------- | ----------------------------------------------- |
+| conda      | `FedRepo2`                                | `fedplora`                                      |
+| 代码         | `/data2/minghao/code/FedPLoRA-main`       | `/data/yaominghao/gb/FedPLoRA`                  |
+| 模型         | `/data2/minghao/model/SmolLM2-135M`       | `/data/yaominghao/gb/models/SmolLM2-135M`       |
+| 结果         | `/data2/minghao/result/FedPLoRA/`         | `/data/yaominghao/gb/result/FedPLoRA/`          |
 | checkpoint | `/data2/minghao/model/trained_models_LW/` | `/data/yaominghao/gb/models/trained_models_LW/` |
-| GPU | `0 1 2 3` 四卡并行 | 全部 `GPU=1`，后台 nohup |
-| split-seed | `--split-seed` 由脚本自动切 benchmark | 同左 |
+| GPU        | `0 1 2 3` 四卡并行                            | 全部 `GPU=1`，后台 nohup                             |
+| split-seed | `--split-seed` 由脚本自动切 benchmark           | 同左                                              |
+
 
 【实验产物位置说明】
 
@@ -110,7 +112,7 @@ cd /data/yaominghao/gb/FedPLoRA && git pull
 
 ## 0.2 加载 preflight（每次开新 shell 先执行）
 
-**source 一次 + `export GPU=1`，后续逐条粘贴 `run_v13_*` 即可后台运行，无需 wait**。单卡 GPU1 同时只跑一个实验，上一条结束或确认 pid 在跑后再贴下一条，避免 OOM。
+**source 一次 + `export GPU=1`，后续逐条粘贴 `run_v13_`* 即可后台运行，无需 wait**。单卡 GPU1 同时只跑一个实验，上一条结束或确认 pid 在跑后再贴下一条，避免 OOM。
 
 ```bash
 exec bash
@@ -136,13 +138,15 @@ python -m py_compile scripts/Analysis/eval_personalized.py
 
 ## 0.3 运行函数说明
 
-| 函数 | 用途 | 示例 |
-|------|------|------|
-| `run_v13_smoke` | v13a/v13b 1-round smoke | `run_v13_smoke smoke_v13a_os fedplora_v13a_os --force_retrain` |
-| `run_v13_heldout_smoke` | strict held-out smoke | `run_v13_heldout_smoke` |
-| `run_v13_fingerprint` | 三 split 指纹审计（0 GPU） | `run_v13_fingerprint` |
-| `run_v13_nx0` | NX0 SFT split42/train42 | `run_v13_nx0 NX0_v13a_os_split42_train42 fedplora_v13a_os --force_retrain` |
-| `run_v13_heldout` | strict held-out 正式 eval | `run_v13_heldout` |
+
+| 函数                      | 用途                      | 示例                                                                         |
+| ----------------------- | ----------------------- | -------------------------------------------------------------------------- |
+| `run_v13_smoke`         | v13a/v13b 1-round smoke | `run_v13_smoke smoke_v13a_os fedplora_v13a_os --force_retrain`             |
+| `run_v13_heldout_smoke` | strict held-out smoke   | `run_v13_heldout_smoke`                                                    |
+| `run_v13_fingerprint`   | 三 split 指纹审计（0 GPU）     | `run_v13_fingerprint`                                                      |
+| `run_v13_nx0`           | NX0 SFT split42/train42 | `run_v13_nx0 NX0_v13a_os_split42_train42 fedplora_v13a_os --force_retrain` |
+| `run_v13_heldout`       | strict held-out 正式 eval | `run_v13_heldout`                                                          |
+
 
 每条命令会 echo `pid=` 和 `main=` 主日志路径。**两层日志**：launch 日志看 preflight；主日志看训练/评测进度。
 
@@ -388,3 +392,4 @@ nohup bash scripts/RunScripts/run_20260712_pipeline.sh \
 7. 查看进度：tail -f <主日志路径>（run_v13_* echo 的 main= 行）
 8. 查看后台任务：jobs -l 或 ps -u "$USER" -f | grep run_20260712_one_experiment
 ```
+
