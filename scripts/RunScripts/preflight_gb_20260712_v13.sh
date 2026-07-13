@@ -21,8 +21,8 @@ set -o pipefail
 export CODE_DIR=${CODE_DIR:-/data/yaominghao/gb/FedPLoRA}
 export CODE_ROOT="$CODE_DIR"
 export CONDA_ENV_NAME=${CONDA_ENV_NAME:-fedplora}
-export MODEL_ROOT=${MODEL_ROOT:-/data/yaominghao/gb/models}
-export MODEL_PATH=${MODEL_PATH:-$MODEL_ROOT/SmolLM2-135M}
+export MODEL_ROOT=${MODEL_ROOT:-/data/yaominghao/gb/models/trained_models_LW}
+export MODEL_PATH=${MODEL_PATH:-/data/yaominghao/gb/models/SmolLM2-135M}
 export DATA_ROOT=${DATA_ROOT:-$CODE_DIR/data}
 export RESULT_ROOT=${RESULT_ROOT:-/data/yaominghao/gb/result/FedPLoRA}
 export BENCHMARK_DIR_MAIN=${BENCHMARK_DIR_MAIN:-$DATA_ROOT/domain_benchmark_35c_dir05/seed_42}
@@ -63,13 +63,33 @@ _v13_run_tag () {
   printf 'SmolLM2-135M_dir05_r1_e1_lr%s' "${LR:-0.0002}"
 }
 
+_v13_nohup_env () {
+  env \
+    CODE_DIR="$CODE_DIR" \
+    CODE_ROOT="$CODE_ROOT" \
+    CONDA_ENV_NAME="$CONDA_ENV_NAME" \
+    MODEL_PATH="$MODEL_PATH" \
+    MODEL_ROOT="$MODEL_ROOT" \
+    DATA_ROOT="$DATA_ROOT" \
+    RESULT_ROOT="$RESULT_ROOT" \
+    BENCHMARK_DIR_MAIN="$BENCHMARK_DIR_MAIN" \
+    TARGET_MODULES="$TARGET_MODULES" \
+    SMOKE_RUN_ID_20260712="$SMOKE_RUN_ID_20260712" \
+    NX0_RUN_ID_PREFIX="$NX0_RUN_ID_PREFIX" \
+    HELDOUT_RUN_ID_PREFIX="$HELDOUT_RUN_ID_PREFIX" \
+    HELDOUT_SMOKE_RUN_ID_PREFIX="$HELDOUT_SMOKE_RUN_ID_PREFIX" \
+    FEDPLORA_SKIP_DEFAULT_SET_RUN_PATHS=1 \
+    "$@"
+}
+
 run_v13_smoke () {
   local method="$1"
   local agg="$2"
   shift 2
   local gpu="${GPU:-1}"
   local launch_log="$LAUNCH_DIR/${method}.launch.log"
-  mkdir -p "$RESULT_ROOT/$SMOKE_RUN_ID_20260712/run_logs" "$RESULT_ROOT/$SMOKE_RUN_ID_20260712/pipeline_logs"
+  mkdir -p "$LAUNCH_DIR" "$RESULT_ROOT/$SMOKE_RUN_ID_20260712/run_logs" "$RESULT_ROOT/$SMOKE_RUN_ID_20260712/pipeline_logs"
+  _v13_nohup_env PIPELINE_EVAL_MAX_BATCHES=1 PIPELINE_ROUNDS=1 \
   nohup bash "$V13_ONE_EXP" \
     --kind smoke --method "$method" --agg "$agg" --gpu "$gpu" \
     -- "$@" \
@@ -83,8 +103,8 @@ run_v13_heldout_smoke () {
   shift "$#" 2>/dev/null || true
   local gpu="${GPU:-1}"
   local launch_log="$LAUNCH_DIR/${method}.launch.log"
-  mkdir -p "$RESULT_ROOT/${HELDOUT_SMOKE_RUN_ID_PREFIX}_seed42/run_logs" "$RESULT_ROOT/$SMOKE_RUN_ID_20260712/pipeline_logs"
-  PIPELINE_EVAL_MAX_BATCHES=1 PIPELINE_ROUNDS=1 \
+  mkdir -p "$LAUNCH_DIR" "$RESULT_ROOT/${HELDOUT_SMOKE_RUN_ID_PREFIX}_seed42/run_logs" "$RESULT_ROOT/$SMOKE_RUN_ID_20260712/pipeline_logs"
+  _v13_nohup_env PIPELINE_EVAL_MAX_BATCHES=1 PIPELINE_ROUNDS=1 \
   nohup bash "$V13_ONE_EXP" \
     --kind personalized_eval --method "$method" \
     --seed 42 --split-seed 42 \
@@ -130,7 +150,8 @@ run_v13_nx0 () {
   local launch_log="$LAUNCH_DIR/${method}.launch.log"
   local run_tag
   run_tag="$(_v13_run_tag)"
-  PIPELINE_EVAL_MAX_BATCHES=0 PIPELINE_ROUNDS=1 \
+  mkdir -p "$LAUNCH_DIR" "$RESULT_ROOT/${NX0_RUN_ID_PREFIX}_seed42/run_logs"
+  _v13_nohup_env PIPELINE_EVAL_MAX_BATCHES=0 PIPELINE_ROUNDS=1 \
   nohup bash "$V13_ONE_EXP" \
     --kind sft --method "$method" --agg "$agg" \
     --seed 42 --split-seed 42 \
@@ -139,6 +160,7 @@ run_v13_nx0 () {
     > "$launch_log" 2>&1 &
   local main_log="$RESULT_ROOT/${NX0_RUN_ID_PREFIX}_seed42/run_logs/test20260712_main_${method}_${run_tag}_seed42.log"
   echo "[run_v13_nx0] method=${method} agg=${agg} gpu=${gpu} pid=$! launch=${launch_log} main=${main_log}"
+  echo "[run_v13_nx0] 若 main 未出现，先看 launch 日志: tail -n 50 ${launch_log}"
 }
 
 run_v13_heldout () {
@@ -146,7 +168,8 @@ run_v13_heldout () {
   shift "$#" 2>/dev/null || true
   local gpu="${GPU:-1}"
   local launch_log="$LAUNCH_DIR/${method}.launch.log"
-  PIPELINE_EVAL_MAX_BATCHES=0 PIPELINE_ROUNDS=1 \
+  mkdir -p "$LAUNCH_DIR"
+  _v13_nohup_env PIPELINE_EVAL_MAX_BATCHES=0 PIPELINE_ROUNDS=1 \
   nohup bash "$V13_ONE_EXP" \
     --kind personalized_eval --method "$method" \
     --seed 42 --split-seed 42 \
