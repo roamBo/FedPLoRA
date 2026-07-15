@@ -4,7 +4,7 @@
 
 【命令介绍】
 
-本文件只放占用 GPU 时间较长、适合服务器或同事多卡运行的命令。覆盖三类实验：
+本文件覆盖三类实验：
 
 1. G1：D1 split42 上 SmolLM2-1.7B 的 CORE-8 scale confirmation。
 2. G2：FlowerTune-Mixed 公开数据三角，CORE-8 × 3 seeds。
@@ -12,7 +12,7 @@
 
 【命令目的】
 
-评审结论：`claude_require_20260715.md` 与 `claude_Experiment_20260715.md` 的主线是“冻结 FedPLoRA-OS/v13a，补齐外部效度与协议可信度”，不是继续改算法。本文件用于补齐投稿主表与外部效度：大模型规模、公开数据、非 IID 鲁棒性。
+本文件用于补齐投稿主表与外部效度：大模型规模、公开数据、非 IID 鲁棒性。
 
 【命令设置】
 
@@ -569,4 +569,3 @@ python scripts/Analysis/summarize_fedplora_results.py /data2/minghao/result/FedP
 2. G2 FlowerTune 的公开数据下载可能失败或慢；失败时先同步 `data/raw_flowertune_mixed.jsonl`，不要改算法。
 3. 当前仓库没有 MMLU 生成式评测脚本；G1 的 MMLU 是另一个评测环节，不能把 token-acc 当作 MMLU。
 4. `summarize_fedplora_results.py --strict_fingerprint` 用于正式出表；如果失败，先补 fingerprint 或排除旧结果，不要手动混表。
-5. 大规模命令中的 `GPU=` 只是建议分配，可按服务器空闲卡调整。
