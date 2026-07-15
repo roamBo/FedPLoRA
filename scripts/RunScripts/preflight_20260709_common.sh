@@ -40,6 +40,9 @@ case "$FEDPLORA_PREFLIGHT_ROLE" in
       methods/lora_expert_baselines.py
       scripts/Analysis/eval_personalized.py
       scripts/Analysis/summarize_fedplora_results.py
+      scripts/Analysis/write_benchmark_fingerprints.py
+      scripts/Analysis/analyze_router_reliability.py
+      scripts/Analysis/build_analysis_ready_manifest.py
     )
     ;;
   main)
@@ -66,33 +69,9 @@ case "$FEDPLORA_PREFLIGHT_ROLE" in
       methods/v13/v13b_os_bonly.py
       scripts/Analysis/eval_personalized.py
       scripts/Analysis/summarize_fedplora_results.py
-      scripts/DataProcessScripts/build_mixed_richness_benchmark.py
-    )
-    ;;
-  v13)
-    export FEDPLORA_PREFLIGHT_LABEL=v13
-    export RUN_ID_PREFIX=${RUN_ID_PREFIX:-v13_20260711_nx1_35c_dir05_r1_finaleval}
-    export SMOKE_RUN_ID=${SMOKE_RUN_ID_20260711:-${SMOKE_RUN_ID_20260712:-v13_20260711_smoke_seed42}}
-    _FEDPLORA_LOG_PREFIX=test20260711_main
-    _FEDPLORA_SMOKE_LOG_PREFIX=test20260711_main_smoke
-    _FEDPLORA_PY_COMPILE_FILES=(
-      tasks/fed_train_sft.py
-      utilities/utils.py
-      utilities/train_eval.py
-      utilities/benchmark_fingerprint.py
-      methods/lora_expert_baselines.py
-      methods/v11/v11_common.py
-      methods/v11/v11c_gmix.py
-      methods/v12/__init__.py
-      methods/v12/v12_common.py
-      methods/v12/v12a_sched_gmix.py
-      methods/v12/v12b_nmi_guard_gmix.py
-      methods/v13/__init__.py
-      methods/v13/v13_common.py
-      methods/v13/v13a_os.py
-      methods/v13/v13b_os_bonly.py
-      scripts/Analysis/eval_personalized.py
-      scripts/Analysis/summarize_fedplora_results.py
+      scripts/Analysis/write_benchmark_fingerprints.py
+      scripts/Analysis/analyze_router_reliability.py
+      scripts/Analysis/build_analysis_ready_manifest.py
       scripts/DataProcessScripts/build_mixed_richness_benchmark.py
     )
     ;;
@@ -147,6 +126,7 @@ export RAW_DOMAIN_JSONL=${RAW_DOMAIN_JSONL:-$CODE_DIR/data/raw/domain_7_all.json
 export DIR05_OUTPUT_DIR=${DIR05_OUTPUT_DIR:-$CODE_DIR/data/domain_benchmark_35c_dir05}
 export BENCHMARK_BUILD_SEEDS=${BENCHMARK_BUILD_SEEDS:-"42 43 44"}
 export BENCHMARK_BUILD_ALPHAS=${BENCHMARK_BUILD_ALPHAS:-"0.5 0.1"}
+export BENCHMARK_REQUIRED_SPLIT_SEEDS=${BENCHMARK_REQUIRED_SPLIT_SEEDS:-"42 43 44"}
 
 benchmark_has_expected_clients () {
   local dir="$1"
@@ -228,11 +208,80 @@ build_dirichlet_benchmarks () {
   return 0
 }
 
+build_one_dir05_seed () {
+  local seed="$1"
+  local output_dir="$2"
+  local raw="$RAW_DOMAIN_JSONL"
+  local builder="$CODE_DIR/scripts/DataProcessScripts/build_domain_benchmark_v2.py"
+  local split="$output_dir/seed_${seed}"
+
+  if [ ! -f "$builder" ]; then
+    echo "[preflight][error] missing builder: $builder" >&2
+    return 2
+  fi
+  if [ ! -f "$raw" ]; then
+    echo "[preflight][error] missing raw data: $raw" >&2
+    echo "[preflight][hint] seed_${seed} 缺失，但无法自动补建；请同步 data/raw/domain_7_all.jsonl，或设置 RAW_DOMAIN_JSONL=/abs/path/domain_7_all.jsonl" >&2
+    return 2
+  fi
+
+  echo "[preflight] building missing dir05 split -> $split"
+  python "$builder" \
+    --input_jsonl "$raw" \
+    --output_dir "$output_dir" \
+    --num_clients_per_domain 5 \
+    --seed "$seed" \
+    --partition dirichlet \
+    --dirichlet_alpha 0.5 \
+    --subtopic kmeans \
+    --n_subtopics 10
+
+  if ! benchmark_has_expected_clients "$split" >/dev/null 2>&1; then
+    echo "[preflight][error] built split is still not 35 clients: $split" >&2
+    return 2
+  fi
+}
+
+ensure_required_dir05_splits () {
+  local root seed split missing=()
+  root="$(dirname "$BENCHMARK_DIR_MAIN")"
+
+  for seed in $BENCHMARK_REQUIRED_SPLIT_SEEDS; do
+    split="$root/seed_${seed}"
+    if ! benchmark_has_expected_clients "$split" >/dev/null 2>&1; then
+      missing+=("$seed")
+    fi
+  done
+
+  if [ "${#missing[@]}" -eq 0 ]; then
+    echo "[preflight] required dir05 splits ok: $BENCHMARK_REQUIRED_SPLIT_SEEDS"
+    return 0
+  fi
+
+  echo "[preflight][warn] missing/invalid dir05 splits under $root: ${missing[*]}" >&2
+  echo "[preflight] 按历史逻辑自动补建缺失的 dir05 split：partition=dirichlet alpha=0.5 subtopic=kmeans n_subtopics=10。" >&2
+
+  for seed in "${missing[@]}"; do
+    build_one_dir05_seed "$seed" "$root" || return 2
+  done
+
+  for seed in $BENCHMARK_REQUIRED_SPLIT_SEEDS; do
+    split="$root/seed_${seed}"
+    if ! benchmark_has_expected_clients "$split" >/dev/null 2>&1; then
+      echo "[preflight][error] required split still invalid after rebuild: $split" >&2
+      return 2
+    fi
+  done
+  echo "[preflight] required dir05 splits ok after rebuild: $BENCHMARK_REQUIRED_SPLIT_SEEDS"
+  return 0
+}
+
 resolve_benchmark_dir () {
   if [ -n "${BENCHMARK_DIR_MAIN:-}" ] && [ -f "$BENCHMARK_DIR_MAIN/clients.json" ]; then
     if benchmark_has_expected_clients "$BENCHMARK_DIR_MAIN" >/dev/null 2>&1; then
       export BENCHMARK_DIR="$BENCHMARK_DIR_MAIN"
       echo "[preflight] use explicit BENCHMARK_DIR_MAIN=$BENCHMARK_DIR_MAIN"
+      ensure_required_dir05_splits || return 2
       return 0
     fi
     echo "[preflight][warn] explicit BENCHMARK_DIR_MAIN exists but is not 35 clients: $BENCHMARK_DIR_MAIN" >&2
@@ -252,6 +301,7 @@ resolve_benchmark_dir () {
         export BENCHMARK_DIR_MAIN="$dir"
         export BENCHMARK_DIR="$dir"
         echo "[preflight] auto-resolved BENCHMARK_DIR_MAIN=$BENCHMARK_DIR_MAIN"
+        ensure_required_dir05_splits || return 2
         return 0
       fi
       echo "[preflight][warn] found invalid 35c_dir05 split; will rebuild: $dir" >&2
@@ -404,7 +454,9 @@ set_run_paths () {
   export RUN_ID="${RUN_ID_PREFIX}_seed${SEED}"
   export RUN_ROOT="$RESULT_ROOT/$RUN_ID"
   export TRAINED_MODELS_ROOT="$MODEL_ROOT/$RUN_ID"
-  export RUN_TAG=SmolLM2-135M_${RUN_TAG_DATASET}_r${ROUNDS}_e${LOCAL_EPOCHS}_lr${LR}
+  local model_tag
+  model_tag="${RUN_TAG_MODEL:-$(basename "$MODEL_PATH")}"
+  export RUN_TAG=${model_tag}_${RUN_TAG_DATASET}_r${ROUNDS}_e${LOCAL_EPOCHS}_lr${LR}
   mkdir -p "$RUN_ROOT/run_logs" "$RUN_ROOT/result_logs" "$RUN_ROOT/result_files/client_states" "$TRAINED_MODELS_ROOT"
   printf '[run][%s] SEED=%s\n[run][%s] BENCHMARK_DIR=%s\n[run][%s] RUN_ID=%s\n[run][%s] RUN_ROOT=%s\n' \
     "$FEDPLORA_PREFLIGHT_LABEL" "$SEED" \
@@ -479,7 +531,7 @@ run_sft_smoke () {
     > "$SMOKE_ROOT/run_logs/${_FEDPLORA_SMOKE_LOG_PREFIX}_${method}_seed42.log" 2>&1 &
 }
 
-if [ "$FEDPLORA_PREFLIGHT_ROLE" = "main" ] || [ "$FEDPLORA_PREFLIGHT_ROLE" = "v13" ]; then
+if [ "$FEDPLORA_PREFLIGHT_ROLE" = "main" ]; then
   run_personalized_eval () {
     local name="$1"
     shift
@@ -513,9 +565,7 @@ fi
 if python -m py_compile "${_FEDPLORA_PY_COMPILE_FILES[@]}" \
   && check_required_imports \
   && check_benchmark "$BENCHMARK_DIR_MAIN"; then
-  if [ "${FEDPLORA_SKIP_DEFAULT_SET_RUN_PATHS:-0}" != "1" ]; then
-    set_run_paths 42
-  fi
+  set_run_paths 42
   echo "[preflight][ok] $FEDPLORA_PREFLIGHT_LABEL preflight loaded."
   echo "[preflight][ok] 后续可直接运行 order 中的 smoke / 正式实验段。"
 else
