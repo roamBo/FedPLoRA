@@ -156,7 +156,7 @@ def _parse_int_list(text):
     return out
 
 
-def _resolve_held_out_clients(spec, client_ids, domain_of):
+def _resolve_held_out_clients(spec, client_ids, domain_of, *, policy="first", offset=0, seed=42):
     spec = str(spec or "").strip()
     if not spec:
         return []
@@ -164,11 +164,26 @@ def _resolve_held_out_clients(spec, client_ids, domain_of):
         by_dom = defaultdict(list)
         for cid in client_ids:
             by_dom[domain_of.get(int(cid), "?")].append(int(cid))
-        return [
-            sorted(cids)[0]
-            for _dom, cids in sorted(by_dom.items())
-            if cids
-        ]
+        out = []
+        policy = str(policy or "first").strip().lower()
+        offset = int(offset or 0)
+        rng = np.random.default_rng(int(seed))
+        for _dom, cids in sorted(by_dom.items()):
+            cids = sorted(int(x) for x in cids)
+            if not cids:
+                continue
+            if policy in {"first", "offset", "offset_mod"}:
+                out.append(cids[offset % len(cids)])
+            elif policy in {"last"}:
+                out.append(cids[-1])
+            elif policy in {"random", "random_one_per_domain"}:
+                out.append(int(rng.choice(cids)))
+            else:
+                raise ValueError(
+                    f"unknown held_out_policy={policy!r}; "
+                    "use first, offset, last, or random"
+                )
+        return out
     return sorted(set(_parse_int_list(spec)))
 
 
@@ -242,6 +257,12 @@ def main():
     ap.add_argument("--held_out_clients", type=str, default="",
                     help="Strict held-out protocol: comma-separated client ids, or auto_one_per_domain. "
                     "Held-out clients are excluded from A/B aggregation and evaluated after training the remaining clients.")
+    ap.add_argument("--held_out_policy", type=str, default="first",
+                    choices=["first", "offset", "offset_mod", "last", "random", "random_one_per_domain"],
+                    help="Selection policy used when --held_out_clients=auto_one_per_domain.")
+    ap.add_argument("--held_out_offset", type=int, default=0,
+                    help="Per-domain sorted-client offset for --held_out_policy=offset/first. "
+                    "offset=1 selects the second client in each domain.")
     ap.add_argument("--held_out_eval_all", action="store_true",
                     help="With --held_out_clients, evaluate all clients instead of only held-out clients.")
     ap.add_argument("--few_shot_caps", type=str, default="5,10",
@@ -271,7 +292,16 @@ def main():
     if args.max_clients and len(client_ids) > args.max_clients:
         client_ids, loaders = client_ids[:args.max_clients], loaders[:args.max_clients]
     train_rows_by_client = group_rows_by_client(bench["train"])
-    held_out_clients = _resolve_held_out_clients(args.held_out_clients, client_ids, domain_of)
+    test_local_rows_by_client = group_rows_by_client(bench.get("test_local", []) or [])
+    val_rows_by_client = group_rows_by_client(bench.get("val", []) or [])
+    held_out_clients = _resolve_held_out_clients(
+        args.held_out_clients,
+        client_ids,
+        domain_of,
+        policy=getattr(args, "held_out_policy", "first"),
+        offset=int(getattr(args, "held_out_offset", 0) or 0),
+        seed=int(args.seed),
+    )
     held_out_set = set(int(x) for x in held_out_clients)
     if held_out_set:
         unknown = sorted(held_out_set - {int(x) for x in client_ids})
@@ -301,8 +331,7 @@ def main():
     # 可选：每客户端用自己的 test_local（不同子分布），bulletproof 冷启动/onboarding 验证。
     local_eval_loaders = {}
     if bool(getattr(args, "eval_on_local", False)):
-        test_by_client = group_rows_by_client(bench.get("test_local", []) or [])
-        for cid, rows in test_by_client.items():
+        for cid, rows in test_local_rows_by_client.items():
             if rows:
                 local_eval_loaders[int(cid)] = create_domain_eval_dataloader(rows, tok, args)
         n_missing = sum(1 for c in client_ids if int(c) not in local_eval_loaders)
@@ -310,8 +339,7 @@ def main():
               f"（{n_missing} 个缺失将回退域测试）", flush=True)
 
     val_eval_loaders = {}
-    val_by_client = group_rows_by_client(bench.get("val", []) or [])
-    for cid, rows in val_by_client.items():
+    for cid, rows in val_rows_by_client.items():
         if rows:
             val_eval_loaders[int(cid)] = create_domain_eval_dataloader(rows, tok, args)
 
@@ -336,7 +364,7 @@ def main():
     # --- precompute aggregates ---
     A_global = aggregate_global_A(A_by, a_keys)
     train_client_ids = [int(cid) for cid, _loader in train_pairs]
-    B_global = {bk: torch.stack([B_by[c][bk].float() for c in train_client_ids if c in B_by and bk in B_by[c]], 0).mean(0)
+    B_global = {bk: torch.stack([B_by[c][bk].float() for c in train_client_ids if bk in B_by[c]], 0).mean(0)
                 for bk in b_keys}
     B_per_domain = aggregate_per_domain_B(B_by, domain_of, b_keys, mode=args.v7_b_mode)
 
@@ -363,13 +391,18 @@ def main():
 
     def _domain_B_loo(domain, exclude_cid):
         """同域 B 池化，排除 exclude_cid（留一法，模拟新客户端）。"""
-        cids = [
-            c for c in train_client_ids
-            if domain_of.get(c) == domain and c != exclude_cid
-        ]
+        # Strict held-out clients are intentionally absent from B_by.  Pool only
+        # over clients that actually participated in training; otherwise
+        # v11c_coldstart/select_without_local can touch a held-out cid and raise
+        # KeyError before writing the evaluation JSON.
+        cids = [c for c in train_client_ids if domain_of.get(c) == domain and c != exclude_cid]
         out = {}
         for bk in b_keys:
-            Bs = [B_by[c][bk] for c in cids if c in B_by and bk in B_by[c]]
+            Bs = []
+            for c in cids:
+                state = B_by.get(c)
+                if state is not None and bk in state:
+                    Bs.append(state[bk])
             if Bs:
                 out[bk] = _consolidate_B(Bs, args.v7_b_mode)
         return out
@@ -379,7 +412,11 @@ def main():
         cids = [c for c in train_client_ids if c != exclude_cid]
         out = {}
         for bk in b_keys:
-            Bs = [B_by[c][bk] for c in cids if c in B_by and bk in B_by[c]]
+            Bs = []
+            for c in cids:
+                state = B_by.get(c)
+                if state is not None and bk in state:
+                    Bs.append(state[bk])
             if Bs:
                 out[bk] = torch.stack([B.float() for B in Bs], 0).mean(0)
         return out
@@ -466,28 +503,68 @@ def main():
 
     geom_route_domain_by_client = {}
     geom_route_scores = {}
+    geom_route_top2_by_client = {}
+    geom_route_margin_by_client = {}
+    geom_route_oracle_match_by_client = {}
     if held_out_set and route_probe_states:
-        domain_vectors = {
-            dom: _flat_b(st)
-            for dom, st in B_per_domain.items()
-            if _flat_b(st).numel() > 0
-        }
+        domain_vectors = {}
+        for dom, st in B_per_domain.items():
+            vec = _flat_b(st)
+            if vec.numel() > 0:
+                domain_vectors[dom] = vec
         for cid, st in route_probe_states.items():
             q = _flat_b(st)
-            best = None
+            scores = []
             for dom, vec in domain_vectors.items():
                 if q.numel() != vec.numel() or q.numel() == 0:
                     continue
                 score = float(F.cosine_similarity(q, vec, dim=0).item())
-                if best is None or score > best[0]:
-                    best = (score, dom)
-            if best is not None:
+                scores.append((score, dom))
+            scores.sort(key=lambda x: x[0], reverse=True)
+            if scores:
+                best = scores[0]
+                second = scores[1] if len(scores) > 1 else None
                 geom_route_domain_by_client[int(cid)] = best[1]
                 geom_route_scores[int(cid)] = best[0]
+                geom_route_top2_by_client[int(cid)] = [
+                    {"domain": dom, "score": float(score)}
+                    for score, dom in scores[:2]
+                ]
+                geom_route_margin_by_client[int(cid)] = (
+                    float(best[0] - second[0]) if second is not None else None
+                )
+                geom_route_oracle_match_by_client[int(cid)] = (
+                    str(best[1]) == str(domain_of.get(int(cid), "?"))
+                )
         print(
             f"[heldout-route] geom_route_domain_by_client={geom_route_domain_by_client}",
             flush=True,
         )
+
+    protocol_tag = "personalized_eval"
+    if held_out_set:
+        eval_scope = "all" if bool(getattr(args, "held_out_eval_all", False)) else "heldout"
+        objective = "localtest" if bool(getattr(args, "eval_on_local", False)) else "domaintest"
+        protocol_tag = (
+            f"strict_heldout:{objective}:policy={getattr(args, 'held_out_policy', 'first')}"
+            f":offset={int(getattr(args, 'held_out_offset', 0) or 0)}"
+            f":scope={eval_scope}:route_probe={int(getattr(args, 'held_out_route_probe_samples', 0) or 0)}"
+        )
+    geom_route_summary = {
+        "num_routed": int(len(geom_route_domain_by_client)),
+        "oracle_match_rate": (
+            float(np.mean([bool(v) for v in geom_route_oracle_match_by_client.values()]))
+            if geom_route_oracle_match_by_client else None
+        ),
+        "mean_margin": (
+            float(np.mean([float(v) for v in geom_route_margin_by_client.values() if v is not None]))
+            if any(v is not None for v in geom_route_margin_by_client.values()) else None
+        ),
+        "min_margin": (
+            float(np.min([float(v) for v in geom_route_margin_by_client.values() if v is not None]))
+            if any(v is not None for v in geom_route_margin_by_client.values()) else None
+        ),
+    }
 
     selected_choice_by_client = {}
     selected_choice_without_local_by_client = {}
@@ -651,13 +728,41 @@ def main():
             results[scheme]["geom_route_score_by_client"] = {
                 str(k): float(v) for k, v in sorted(geom_route_scores.items())
             }
+            results[scheme]["geom_route_top2_by_client"] = {
+                str(k): v for k, v in sorted(geom_route_top2_by_client.items())
+            }
+            results[scheme]["geom_route_margin_by_client"] = {
+                str(k): (None if v is None else float(v))
+                for k, v in sorted(geom_route_margin_by_client.items())
+            }
+            results[scheme]["geom_route_oracle_match_by_client"] = {
+                str(k): bool(v)
+                for k, v in sorted(geom_route_oracle_match_by_client.items())
+            }
+            if geom_route_oracle_match_by_client:
+                results[scheme]["geom_route_oracle_match_rate"] = float(
+                    np.mean([bool(v) for v in geom_route_oracle_match_by_client.values()])
+                )
         print(f"[scheme {scheme:7s}] per-domain macro_acc={macro:.4f} worst={worst:.4f}", flush=True)
 
-    report = {"config": {k: getattr(args, k) for k in
+    client_manifest = ((benchmark_fingerprint.get("clients") or {}).get("per_client_manifest") or {})
+    held_out_client_manifest = {}
+    for cid in held_out_clients:
+        cid_i = int(cid)
+        manifest = dict(client_manifest.get(str(cid_i), {}) or {})
+        manifest.setdefault("domain", domain_of.get(cid_i, "?"))
+        manifest["n_train_rows"] = int(len(train_rows_by_client.get(cid_i, []) or []))
+        manifest["n_val_rows"] = int(len(val_rows_by_client.get(cid_i, []) or []))
+        manifest["n_test_local_rows"] = int(len(test_local_rows_by_client.get(cid_i, []) or []))
+        held_out_client_manifest[str(cid_i)] = manifest
+
+    report = {"protocol_tag": protocol_tag,
+              "config": {k: getattr(args, k) for k in
                          ["model", "benchmark_dir", "target_modules", "max_steps",
                           "eval_max_batches", "v7_b_mode", "local_epochs",
                           "max_train_samples_per_client", "cold_start", "eval_on_local",
                           "v11c_mu", "select_candidates", "held_out_clients",
+                          "held_out_policy", "held_out_offset",
                           "held_out_eval_all", "few_shot_caps",
                           "held_out_route_probe_samples"]},
               "benchmark_fingerprint": benchmark_fingerprint,
@@ -665,6 +770,8 @@ def main():
                                  else "per_domain_shared_test"),
               "strict_held_out": {
                   "enabled": bool(held_out_set),
+                  "selection_policy": str(getattr(args, "held_out_policy", "first")),
+                  "selection_offset": int(getattr(args, "held_out_offset", 0) or 0),
                   "held_out_clients": [int(x) for x in held_out_clients],
                   "train_clients": [int(x) for x in train_client_ids],
                   "eval_clients": [int(x) for x in eval_client_ids],
@@ -672,6 +779,29 @@ def main():
                       str(int(cid)): domain_of.get(int(cid), "?")
                       for cid in held_out_clients
                   },
+                  "held_out_client_manifest": held_out_client_manifest,
+                  "geom_route_domain_by_client": {
+                      str(k): v for k, v in sorted(geom_route_domain_by_client.items())
+                  },
+                  "geom_route_score_by_client": {
+                      str(k): float(v) for k, v in sorted(geom_route_scores.items())
+                  },
+                  "geom_route_top2_by_client": {
+                      str(k): v for k, v in sorted(geom_route_top2_by_client.items())
+                  },
+                  "geom_route_margin_by_client": {
+                      str(k): (None if v is None else float(v))
+                      for k, v in sorted(geom_route_margin_by_client.items())
+                  },
+                  "geom_route_oracle_match_by_client": {
+                      str(k): bool(v)
+                      for k, v in sorted(geom_route_oracle_match_by_client.items())
+                  },
+                  "geom_route_oracle_match_rate": (
+                      float(np.mean([bool(v) for v in geom_route_oracle_match_by_client.values()]))
+                      if geom_route_oracle_match_by_client else None
+                  ),
+                  "geom_route_summary": geom_route_summary,
               },
               "results": results}
     os.makedirs(os.path.dirname(os.path.abspath(args.out)), exist_ok=True)
