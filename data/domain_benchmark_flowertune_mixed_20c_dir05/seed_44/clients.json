@@ -1,0 +1,142 @@
+[
+  {
+    "client_id": 0,
+    "domain": "code",
+    "n_train": 312,
+    "n_val": 39,
+    "n_local_test": 39
+  },
+  {
+    "client_id": 1,
+    "domain": "code",
+    "n_train": 469,
+    "n_val": 58,
+    "n_local_test": 58
+  },
+  {
+    "client_id": 2,
+    "domain": "code",
+    "n_train": 532,
+    "n_val": 66,
+    "n_local_test": 66
+  },
+  {
+    "client_id": 3,
+    "domain": "code",
+    "n_train": 755,
+    "n_val": 94,
+    "n_local_test": 94
+  },
+  {
+    "client_id": 4,
+    "domain": "code",
+    "n_train": 816,
+    "n_val": 101,
+    "n_local_test": 101
+  },
+  {
+    "client_id": 5,
+    "domain": "finance",
+    "n_train": 574,
+    "n_val": 71,
+    "n_local_test": 71
+  },
+  {
+    "client_id": 6,
+    "domain": "finance",
+    "n_train": 592,
+    "n_val": 73,
+    "n_local_test": 73
+  },
+  {
+    "client_id": 7,
+    "domain": "finance",
+    "n_train": 178,
+    "n_val": 22,
+    "n_local_test": 22
+  },
+  {
+    "client_id": 8,
+    "domain": "finance",
+    "n_train": 631,
+    "n_val": 78,
+    "n_local_test": 78
+  },
+  {
+    "client_id": 9,
+    "domain": "finance",
+    "n_train": 499,
+    "n_val": 62,
+    "n_local_test": 62
+  },
+  {
+    "client_id": 10,
+    "domain": "general",
+    "n_train": 773,
+    "n_val": 96,
+    "n_local_test": 96
+  },
+  {
+    "client_id": 11,
+    "domain": "general",
+    "n_train": 330,
+    "n_val": 41,
+    "n_local_test": 41
+  },
+  {
+    "client_id": 12,
+    "domain": "general",
+    "n_train": 526,
+    "n_val": 65,
+    "n_local_test": 65
+  },
+  {
+    "client_id": 13,
+    "domain": "general",
+    "n_train": 754,
+    "n_val": 94,
+    "n_local_test": 94
+  },
+  {
+    "client_id": 14,
+    "domain": "general",
+    "n_train": 501,
+    "n_val": 62,
+    "n_local_test": 62
+  },
+  {
+    "client_id": 15,
+    "domain": "medical",
+    "n_train": 840,
+    "n_val": 104,
+    "n_local_test": 104
+  },
+  {
+    "client_id": 16,
+    "domain": "medical",
+    "n_train": 368,
+    "n_val": 45,
+    "n_local_test": 45
+  },
+  {
+    "client_id": 17,
+    "domain": "medical",
+    "n_train": 927,
+    "n_val": 115,
+    "n_local_test": 115
+  },
+  {
+    "client_id": 18,
+    "domain": "medical",
+    "n_train": 512,
+    "n_val": 64,
+    "n_local_test": 64
+  },
+  {
+    "client_id": 19,
+    "domain": "medical",
+    "n_train": 233,
+    "n_val": 29,
+    "n_local_test": 29
+  }
+]

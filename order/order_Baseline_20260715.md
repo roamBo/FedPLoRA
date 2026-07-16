@@ -92,8 +92,11 @@ exec bash
 cd /data2/minghao/code/FedPLoRA-main
 export MODEL_PATH=/data2/minghao/model/SmolLM2-1.7B
 export RUN_TAG_MODEL=SmolLM2-1.7B
-export SMOKE_RUN_ID=v13_20260715_scale_1p7b_smoke_seed42
 source scripts/RunScripts/preflight_20260709_baseline.sh
+# source 之后再设；否则会落到 baseline_20260709_smoke_seed42
+export SMOKE_RUN_ID=v13_20260715_scale_1p7b_smoke_seed42
+refresh_smoke_paths
+echo "[check] SMOKE_RUN_ID=$SMOKE_RUN_ID SMOKE_ROOT=$SMOKE_ROOT"
 GPU=0 run_sft_smoke smoke_normal normal
 GPU=0 run_sft_smoke smoke_ecolora ecolora --ecolora_keep_ratio 0.25 --ecolora_mask_mode round_robin
 GPU=0 run_sft_smoke smoke_fedsa_lora fedsa_lora
@@ -110,10 +113,9 @@ cd /data2/minghao/code/FedPLoRA-main
 export MODEL_PATH=/data2/minghao/model/SmolLM2-1.7B
 export RUN_TAG_MODEL=SmolLM2-1.7B
 export SMOKE_RUN_ID_20260713=v13_20260715_scale_1p7b_smoke_seed42
-source scripts/RunScripts/preflight_20260709_main_algorithm.sh
-mkdir -p /data2/minghao/result/FedPLoRA/v13_20260715_scale_1p7b_smoke_seed42
-nohup bash scripts/RunScripts/run_20260713_one_experiment.sh --kind smoke --method smoke_v13a_os_1p7b --agg fedplora_v13a_os --gpu 2 -- --force_retrain > /data2/minghao/result/FedPLoRA/v13_20260715_scale_1p7b_smoke_seed42/launch_v13a.log 2>&1 &
-nohup bash scripts/RunScripts/run_20260713_one_experiment.sh --kind smoke --method smoke_v13b_os_bonly_1p7b --agg fedplora_v13b_os_bonly --gpu 3 -- --force_retrain > /data2/minghao/result/FedPLoRA/v13_20260715_scale_1p7b_smoke_seed42/launch_v13b.log 2>&1 &
+mkdir -p /data2/minghao/result/FedPLoRA/v13_20260715_scale_1p7b_smoke_seed42/run_logs
+nohup bash scripts/RunScripts/run_20260713_one_experiment.sh --kind smoke --method smoke_v13a_os_1p7b --agg fedplora_v13a_os --gpu 2 -- --force_retrain > /data2/minghao/result/FedPLoRA/v13_20260715_scale_1p7b_smoke_seed42/run_logs/launch_v13a.log 2>&1 &
+nohup bash scripts/RunScripts/run_20260713_one_experiment.sh --kind smoke --method smoke_v13b_os_bonly_1p7b --agg fedplora_v13b_os_bonly --gpu 3 -- --force_retrain > /data2/minghao/result/FedPLoRA/v13_20260715_scale_1p7b_smoke_seed42/run_logs/launch_v13b.log 2>&1 &
 ```
 
 ## 2. G1 正式：SmolLM2-1.7B CORE-8 @ D1 split42
@@ -127,9 +129,11 @@ export MODEL_PATH=/data2/minghao/model/SmolLM2-1.7B
 export RUN_TAG_MODEL=SmolLM2-1.7B
 export ROUNDS=1
 export EVAL_MAX_BATCHES=0
-export RUN_ID_PREFIX=scale_20260715_baseline_1p7b_d1_split42_core8_r1_finaleval
 source scripts/RunScripts/preflight_20260709_baseline.sh
+# source 之后再设；否则会落到 baseline_20260709_35c_dir05_r10_finaleval_seed42
+export RUN_ID_PREFIX=scale_20260715_baseline_1p7b_d1_split42_core8_r1_finaleval
 set_run_paths 42
+echo "[check] RUN_ID=$RUN_ID RUN_ROOT=$RUN_ROOT"
 GPU=0 run_sft_full N7_baseline_normal_1p7b normal
 GPU=0 run_sft_full N7_baseline_ecolora_1p7b ecolora --ecolora_keep_ratio 0.25 --ecolora_mask_mode round_robin
 GPU=1 run_sft_full N7_baseline_fedsa_lora_1p7b fedsa_lora
@@ -147,9 +151,11 @@ export MODEL_PATH=/data2/minghao/model/SmolLM2-1.7B
 export RUN_TAG_MODEL=SmolLM2-1.7B
 export ROUNDS=1
 export EVAL_MAX_BATCHES=0
-export RUN_ID_PREFIX=scale_20260715_ours_1p7b_d1_split42_core8_r1_finaleval
 source scripts/RunScripts/preflight_20260709_main_algorithm.sh
+# source 之后再设；否则会落到 v12_20260709_main_..._seed42
+export RUN_ID_PREFIX=scale_20260715_ours_1p7b_d1_split42_core8_r1_finaleval
 set_run_paths 42
+echo "[check] RUN_ID=$RUN_ID RUN_ROOT=$RUN_ROOT"
 GPU=3 run_sft_full N7_ours_v13a_os_1p7b fedplora_v13a_os
 GPU=3 run_sft_full N7_ours_v13b_os_bonly_1p7b fedplora_v13b_os_bonly
 ```

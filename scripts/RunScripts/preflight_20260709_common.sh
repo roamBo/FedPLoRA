@@ -25,11 +25,13 @@ set -o pipefail
 _FEDPLORA_PREFLIGHT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 _FEDPLORA_DEFAULT_CODE_DIR="$(cd "$_FEDPLORA_PREFLIGHT_DIR/../.." && pwd)"
 
+# Preserve caller-set RUN_ID_PREFIX / SMOKE_RUN_ID (order may export them before source).
+# Hard-overwrite previously caused logs to land under baseline_20260709_* / v12_20260709_*.
 case "$FEDPLORA_PREFLIGHT_ROLE" in
   baseline)
     export FEDPLORA_PREFLIGHT_LABEL=baseline
-    export RUN_ID_PREFIX=baseline_20260709_35c_dir05_r10_finaleval
-    export SMOKE_RUN_ID=baseline_20260709_smoke_seed42
+    export RUN_ID_PREFIX=${RUN_ID_PREFIX:-baseline_20260709_35c_dir05_r10_finaleval}
+    export SMOKE_RUN_ID=${SMOKE_RUN_ID:-baseline_20260709_smoke_seed42}
     _FEDPLORA_LOG_PREFIX=test20260709_baseline
     _FEDPLORA_SMOKE_LOG_PREFIX=test20260709_baseline_smoke
     _FEDPLORA_PY_COMPILE_FILES=(
@@ -47,10 +49,40 @@ case "$FEDPLORA_PREFLIGHT_ROLE" in
     ;;
   main)
     export FEDPLORA_PREFLIGHT_LABEL=main
-    export RUN_ID_PREFIX=v12_20260709_main_35c_dir05_r10_finaleval
-    export SMOKE_RUN_ID=v12_20260709_main_smoke_seed42
+    export RUN_ID_PREFIX=${RUN_ID_PREFIX:-v12_20260709_main_35c_dir05_r10_finaleval}
+    export SMOKE_RUN_ID=${SMOKE_RUN_ID:-v12_20260709_main_smoke_seed42}
     _FEDPLORA_LOG_PREFIX=test20260709_main
     _FEDPLORA_SMOKE_LOG_PREFIX=test20260709_main_smoke
+    _FEDPLORA_PY_COMPILE_FILES=(
+      tasks/fed_train_sft.py
+      utilities/utils.py
+      utilities/train_eval.py
+      utilities/benchmark_fingerprint.py
+      methods/lora_expert_baselines.py
+      methods/v11/v11_common.py
+      methods/v11/v11c_gmix.py
+      methods/v12/__init__.py
+      methods/v12/v12_common.py
+      methods/v12/v12a_sched_gmix.py
+      methods/v12/v12b_nmi_guard_gmix.py
+      methods/v13/__init__.py
+      methods/v13/v13_common.py
+      methods/v13/v13a_os.py
+      methods/v13/v13b_os_bonly.py
+      scripts/Analysis/eval_personalized.py
+      scripts/Analysis/summarize_fedplora_results.py
+      scripts/Analysis/write_benchmark_fingerprints.py
+      scripts/Analysis/analyze_router_reliability.py
+      scripts/Analysis/build_analysis_ready_manifest.py
+      scripts/DataProcessScripts/build_mixed_richness_benchmark.py
+    )
+    ;;
+  v13)
+    export FEDPLORA_PREFLIGHT_LABEL=v13
+    export RUN_ID_PREFIX=${RUN_ID_PREFIX:-v13_20260711_manual_35c_dir05_r1_finaleval}
+    export SMOKE_RUN_ID=${SMOKE_RUN_ID:-v13_20260711_smoke_seed42}
+    _FEDPLORA_LOG_PREFIX=test20260711_main
+    _FEDPLORA_SMOKE_LOG_PREFIX=test20260711_main_smoke
     _FEDPLORA_PY_COMPILE_FILES=(
       tasks/fed_train_sft.py
       utilities/utils.py
@@ -471,7 +503,18 @@ run_sft_full () {
   shift 2
   assert_role_run "$method" "$agg" || return $?
   ensure_preflight_ready || return $?
+  if [ -z "${RUN_ROOT:-}" ] || [ -z "${RUN_ID:-}" ]; then
+    echo "[guard][$FEDPLORA_PREFLIGHT_LABEL][error] RUN_ROOT/RUN_ID 未设置；请先 export RUN_ID_PREFIX=... 再 set_run_paths <seed>。" >&2
+    return 2
+  fi
+  mkdir -p \
+    "$RUN_ROOT/run_logs" \
+    "$RUN_ROOT/result_logs/$method" \
+    "$RUN_ROOT/result_files/client_states/$method" \
+    "$TRAINED_MODELS_ROOT"
   local gpu="${GPU:-0}"
+  local log_path="$RUN_ROOT/run_logs/${_FEDPLORA_LOG_PREFIX}_${method}_${RUN_TAG}_seed${SEED}.log"
+  echo "[run_sft_full] method=$method agg=$agg gpu=$gpu RUN_ID=$RUN_ID log=$log_path"
   CUDA_VISIBLE_DEVICES="$gpu" nohup python -u tasks/fed_train_sft.py \
     --model "$MODEL_PATH" \
     --benchmark_dir "$BENCHMARK_DIR" \
@@ -492,12 +535,19 @@ run_sft_full () {
     --eval_final_only \
     --skip_post_agg_snapshots \
     "$@" \
-    > "$RUN_ROOT/run_logs/${_FEDPLORA_LOG_PREFIX}_${method}_${RUN_TAG}_seed${SEED}.log" 2>&1 &
+    > "$log_path" 2>&1 &
+  echo "[run_sft_full] pid=$!"
 }
 
-export SMOKE_ROOT="$RESULT_ROOT/$SMOKE_RUN_ID"
-export SMOKE_TRAINED_MODELS_ROOT="$MODEL_ROOT/$SMOKE_RUN_ID"
-mkdir -p "$SMOKE_ROOT/run_logs" "$SMOKE_ROOT/result_logs" "$SMOKE_ROOT/result_files/client_states" "$SMOKE_TRAINED_MODELS_ROOT"
+refresh_smoke_paths () {
+  export SMOKE_ROOT="$RESULT_ROOT/$SMOKE_RUN_ID"
+  export SMOKE_TRAINED_MODELS_ROOT="$MODEL_ROOT/$SMOKE_RUN_ID"
+  mkdir -p \
+    "$SMOKE_ROOT/run_logs" \
+    "$SMOKE_ROOT/result_logs" \
+    "$SMOKE_ROOT/result_files/client_states" \
+    "$SMOKE_TRAINED_MODELS_ROOT"
+}
 
 run_sft_smoke () {
   local method="$1"
@@ -505,7 +555,13 @@ run_sft_smoke () {
   shift 2
   assert_role_run "$method" "$agg" || return $?
   ensure_preflight_ready || return $?
+  refresh_smoke_paths
+  mkdir -p \
+    "$SMOKE_ROOT/result_logs/$method" \
+    "$SMOKE_ROOT/result_files/client_states/$method"
   local gpu="${GPU:-0}"
+  local log_path="$SMOKE_ROOT/run_logs/${_FEDPLORA_SMOKE_LOG_PREFIX}_${method}_seed42.log"
+  echo "[run_sft_smoke] method=$method agg=$agg gpu=$gpu SMOKE_RUN_ID=$SMOKE_RUN_ID log=$log_path"
   CUDA_VISIBLE_DEVICES="$gpu" nohup python -u tasks/fed_train_sft.py \
     --model "$MODEL_PATH" \
     --benchmark_dir "$BENCHMARK_DIR_MAIN" \
@@ -528,22 +584,26 @@ run_sft_smoke () {
     --eval_final_only \
     --skip_post_agg_snapshots \
     "$@" \
-    > "$SMOKE_ROOT/run_logs/${_FEDPLORA_SMOKE_LOG_PREFIX}_${method}_seed42.log" 2>&1 &
+    > "$log_path" 2>&1 &
+  echo "[run_sft_smoke] pid=$!"
 }
 
-if [ "$FEDPLORA_PREFLIGHT_ROLE" = "main" ]; then
+if [ "$FEDPLORA_PREFLIGHT_ROLE" = "main" ] || [ "$FEDPLORA_PREFLIGHT_ROLE" = "v13" ]; then
   run_personalized_eval () {
     local name="$1"
     shift
     case "$name" in
       X2_*|N2_*) ;;
       *)
-        echo "[guard][main][error] personalized eval 名称必须以 X2_ 或 N2_ 开头，当前 name=$name" >&2
+        echo "[guard][$FEDPLORA_PREFLIGHT_LABEL][error] personalized eval 名称必须以 X2_ 或 N2_ 开头，当前 name=$name" >&2
         return 2
         ;;
     esac
     ensure_preflight_ready || return $?
+    mkdir -p "$RUN_ROOT/run_logs" "$RUN_ROOT/result_logs"
     local gpu="${GPU:-0}"
+    local log_path="$RUN_ROOT/run_logs/${_FEDPLORA_LOG_PREFIX}_${name}_seed${SEED}.log"
+    echo "[run_personalized_eval] name=$name gpu=$gpu RUN_ID=$RUN_ID log=$log_path"
     CUDA_VISIBLE_DEVICES="$gpu" nohup python -u scripts/Analysis/eval_personalized.py \
       --model "$MODEL_PATH" \
       --benchmark_dir "$BENCHMARK_DIR" \
@@ -558,16 +618,25 @@ if [ "$FEDPLORA_PREFLIGHT_ROLE" = "main" ]; then
       --cold_start --eval_on_local \
       "$@" \
       --out "$RUN_ROOT/result_logs/${name}_seed${SEED}.json" \
-      > "$RUN_ROOT/run_logs/${_FEDPLORA_LOG_PREFIX}_${name}_seed${SEED}.log" 2>&1 &
+      > "$log_path" 2>&1 &
+    echo "[run_personalized_eval] pid=$!"
   }
 fi
+
+refresh_smoke_paths
+echo "[preflight] role=$FEDPLORA_PREFLIGHT_LABEL RUN_ID_PREFIX=$RUN_ID_PREFIX SMOKE_RUN_ID=$SMOKE_RUN_ID RESULT_ROOT=$RESULT_ROOT"
 
 if python -m py_compile "${_FEDPLORA_PY_COMPILE_FILES[@]}" \
   && check_required_imports \
   && check_benchmark "$BENCHMARK_DIR_MAIN"; then
-  set_run_paths 42
-  echo "[preflight][ok] $FEDPLORA_PREFLIGHT_LABEL preflight loaded."
+  if [ "${FEDPLORA_SKIP_DEFAULT_SET_RUN_PATHS:-0}" = "1" ]; then
+    echo "[preflight][ok] $FEDPLORA_PREFLIGHT_LABEL preflight loaded (skip default set_run_paths)."
+  else
+    set_run_paths 42
+    echo "[preflight][ok] $FEDPLORA_PREFLIGHT_LABEL preflight loaded."
+  fi
   echo "[preflight][ok] 后续可直接运行 order 中的 smoke / 正式实验段。"
+  echo "[preflight][hint] 改 RUN_ID_PREFIX/SMOKE_RUN_ID 后必须再执行 set_run_paths <seed> 或 refresh_smoke_paths。"
 else
   echo "[preflight][stop] 代码或 benchmark 前置检查失败；请修正后重新 source 本脚本，再跑实验段。" >&2
 fi
