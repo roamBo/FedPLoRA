@@ -1,0 +1,26 @@
+{
+  "code": {
+    "n_total": 4000,
+    "n_domain_test": 400,
+    "n_clients": 5,
+    "partition": "dirichlet"
+  },
+  "finance": {
+    "n_total": 3428,
+    "n_domain_test": 342,
+    "n_clients": 5,
+    "partition": "dirichlet"
+  },
+  "general": {
+    "n_total": 4000,
+    "n_domain_test": 400,
+    "n_clients": 5,
+    "partition": "dirichlet"
+  },
+  "medical": {
+    "n_total": 3993,
+    "n_domain_test": 399,
+    "n_clients": 5,
+    "partition": "dirichlet"
+  }
+}
