@@ -36,15 +36,15 @@ GPU: 全部物理 1 号卡（CUDA_VISIBLE_DEVICES=1）；gb 单卡，所有 GPU 
 【路径对照（minghao → gb）】
 
 
-| 项          | order_Baseline_20260715.md              | order_gb_0715.md                                  |
-| ---------- | --------------------------------------- | ------------------------------------------------- |
-| conda      | `FedRepo2`                              | `fedplora`                                        |
-| 代码         | `/data2/minghao/code/FedPLoRA-main`     | `/data/yaominghao/gb/FedPLoRA`                    |
-| 主模型        | `/data2/minghao/model/SmolLM2-135M`     | `/data/yaominghao/gb/models/SmolLM2-135M`         |
-| 1.7B 模型    | `/data2/minghao/model/SmolLM2-1.7B`     | `/data/yaominghao/gb/models/SmolLM2-1.7B`         |
-| 结果         | `/data2/minghao/result/FedPLoRA/`       | `/data/yaominghao/gb/result/FedPLoRA/`            |
+| 项          | order_Baseline_20260715.md                | order_gb_0715.md                                |
+| ---------- | ----------------------------------------- | ----------------------------------------------- |
+| conda      | `FedRepo2`                                | `fedplora`                                      |
+| 代码         | `/data2/minghao/code/FedPLoRA-main`       | `/data/yaominghao/gb/FedPLoRA`                  |
+| 主模型        | `/data2/minghao/model/SmolLM2-135M`       | `/data/yaominghao/gb/models/SmolLM2-135M`       |
+| 1.7B 模型    | `/data2/minghao/model/SmolLM2-1.7B`       | `/data/yaominghao/gb/models/SmolLM2-1.7B`       |
+| 结果         | `/data2/minghao/result/FedPLoRA/`         | `/data/yaominghao/gb/result/FedPLoRA/`          |
 | checkpoint | `/data2/minghao/model/trained_models_LW/` | `/data/yaominghao/gb/models/trained_models_LW/` |
-| GPU        | `0 1 2 3` 四卡并行                          | 全部 `GPU=1`，后台 nohup 串行                           |
+| GPU        | `0 1 2 3` 四卡并行                            | 全部 `GPU=1`，后台 nohup 串行                          |
 
 
 【实验产物位置说明】
@@ -218,7 +218,7 @@ echo "[ours-smoke] v13b pid=$!"
 
 说明：smoke 写出 metrics JSON 后再启动。gb 单卡，CORE-8 全部串行。
 
-### 2.1 baseline CORE-6
+### 2.1 baseline CORE-6(20g)
 
 ```bash
 exec bash
@@ -249,7 +249,7 @@ run_sft_full N7_baseline_hydralora_1p7b hydralora
 run_sft_full N7_baseline_fedlease_1p7b fedlease
 ```
 
-### 2.2 FedPLoRA-OS/v13a 与 v13b
+### 2.2 FedPLoRA-OS/v13a 与 v13b(10g)
 
 ```bash
 exec bash
@@ -306,15 +306,16 @@ export HF_DATASETS_CACHE=${HF_DATASETS_CACHE:-/data/yaominghao/gb/cache/huggingf
 
 mkdir -p "$FLOWER_BUILD_ROOT/run_logs" "$FLOWER_BUILD_ROOT/fingerprints" "$HF_DATASETS_CACHE"
 
-nohup bash -lc '
-set -euo pipefail
-cd "$CODE_DIR"
+# 注意：nohup + set -u + source conda.sh 会报 PS1 unbound；用 conda run。
+nohup bash -c '
+set -eo pipefail
+cd "'"$CODE_DIR"'"
+export FLOWER_RAW="'"$FLOWER_RAW"'"
+export FLOWER_OUT="'"$FLOWER_OUT"'"
+export FLOWER_BUILD_ROOT="'"$FLOWER_BUILD_ROOT"'"
+export HF_DATASETS_CACHE="'"$HF_DATASETS_CACHE"'"
 
-CONDA_BASE="$(conda info --base)"
-source "$CONDA_BASE/etc/profile.d/conda.sh"
-conda activate fedplora
-
-python - <<'"'"'PY'"'"'
+conda run -n fedplora --no-capture-output python - <<'"'"'PY'"'"'
 missing = []
 for name in ["datasets", "sklearn"]:
     try:
@@ -331,13 +332,13 @@ print("[flowertune] python deps ok: datasets, sklearn")
 PY
 
 echo "[flowertune] step1 build raw -> $FLOWER_RAW"
-python -u scripts/DataProcessScripts/build_flowertune_raw.py \
+conda run -n fedplora --no-capture-output python -u scripts/DataProcessScripts/build_flowertune_raw.py \
   --output_path "$FLOWER_RAW" \
   --cache_dir "$HF_DATASETS_CACHE" \
   --target_per_domain 4000 \
   --seed 42
 
-python - "$FLOWER_RAW" <<'"'"'PY'"'"'
+conda run -n fedplora --no-capture-output python - "$FLOWER_RAW" <<'"'"'PY'"'"'
 import collections
 import json
 import pathlib
@@ -360,7 +361,7 @@ PY
 
 echo "[flowertune] step2 build 20c dir05 splits -> $FLOWER_OUT"
 for seed in 42 43 44; do
-  python scripts/DataProcessScripts/build_domain_benchmark_v2.py \
+  conda run -n fedplora --no-capture-output python scripts/DataProcessScripts/build_domain_benchmark_v2.py \
     --input_jsonl "$FLOWER_RAW" \
     --output_dir "$FLOWER_OUT" \
     --num_clients_per_domain 5 \
@@ -375,7 +376,7 @@ done
 echo "[flowertune] step3 validate clients and fingerprints"
 for seed in 42 43 44; do
   split="$FLOWER_OUT/seed_${seed}"
-  python - "$split/clients.json" <<'"'"'PY'"'"'
+  conda run -n fedplora --no-capture-output python - "$split/clients.json" <<'"'"'PY'"'"'
 import collections
 import json
 import pathlib
@@ -392,7 +393,7 @@ if set(counts) != {"code", "finance", "general", "medical"} or set(counts.values
     raise SystemExit(f"[flowertune][error] expected 4 domains x 5 clients, found {dict(counts)}")
 print(f"[flowertune] split_ok path={path.parent} clients={len(clients)} domains={dict(sorted(counts.items()))}")
 PY
-  python utilities/benchmark_fingerprint.py "$split" \
+  conda run -n fedplora --no-capture-output python utilities/benchmark_fingerprint.py "$split" \
     --output "$FLOWER_BUILD_ROOT/fingerprints/seed_${seed}.json"
 done
 
@@ -442,16 +443,16 @@ export FLOWER_OUT=$CODE_DIR/data/domain_benchmark_flowertune_mixed_20c_dir05
 export FLOWER_BUILD_ROOT=/data/yaominghao/gb/result/FedPLoRA/flowertune_20260715_build
 mkdir -p "$FLOWER_BUILD_ROOT/run_logs" "$FLOWER_BUILD_ROOT/fingerprints"
 
-nohup bash -lc '
-set -euo pipefail
-cd "$CODE_DIR"
-
-CONDA_BASE="$(conda info --base)"
-source "$CONDA_BASE/etc/profile.d/conda.sh"
-conda activate fedplora
+# 注意：nohup + set -u + source conda.sh 会报 PS1 unbound；用 conda run。
+nohup bash -c '
+set -eo pipefail
+cd "'"$CODE_DIR"'"
+export FLOWER_RAW="'"$FLOWER_RAW"'"
+export FLOWER_OUT="'"$FLOWER_OUT"'"
+export FLOWER_BUILD_ROOT="'"$FLOWER_BUILD_ROOT"'"
 
 for seed in 42 43 44; do
-  python scripts/DataProcessScripts/build_domain_benchmark_v2.py \
+  conda run -n fedplora --no-capture-output python scripts/DataProcessScripts/build_domain_benchmark_v2.py \
     --input_jsonl "$FLOWER_RAW" \
     --output_dir "$FLOWER_OUT" \
     --num_clients_per_domain 5 \
@@ -462,7 +463,7 @@ for seed in 42 43 44; do
     --subtopic kmeans \
     --n_subtopics 10
   split="$FLOWER_OUT/seed_${seed}"
-  python utilities/benchmark_fingerprint.py "$split" \
+  conda run -n fedplora --no-capture-output python utilities/benchmark_fingerprint.py "$split" \
     --output "$FLOWER_BUILD_ROOT/fingerprints/seed_${seed}.json"
 done
 echo "[flowertune][done] benchmark=$FLOWER_OUT/seed_{42,43,44}"
@@ -549,7 +550,7 @@ run_flower_smoke 1 N9_flower_smoke_v13a fedplora_v13a_os
 run_flower_smoke 1 N9_flower_smoke_v13b fedplora_v13b_os_bonly
 ```
 
-## 5. G2 FlowerTune-Mixed 正式 CORE-8 × 3 seeds
+## 5. G2 FlowerTune-Mixed 正式 CORE-8 × 3 seeds(one seed=40g)
 
 说明：本段每个 `run_flower_full` 调用都是一个独立后台实验。先跑 seed42，确认 metrics JSON 正常后再跑 seed43/44。**gb 单卡：同一时刻只启动一条，不要把 for 循环整段一次贴完。**
 
@@ -600,15 +601,16 @@ run_flower_full () {
 
 # 推荐：按 seed 内逐方法粘贴（全部 gpu=1）；等上一条结束再贴下一条
 # seed=42 示例：
-run_flower_full 42 1 N9_flower_normal normal
-run_flower_full 42 1 N9_flower_ecolora ecolora --ecolora_keep_ratio 0.25 --ecolora_mask_mode round_robin
+run_flower_full 44 1 N9_flower_normal normal
+run_flower_full 44 1 N9_flower_ecolora ecolora --ecolora_keep_ratio 0.25 --ecolora_mask_mode round_robin
 run_flower_full 42 1 N9_flower_fedsa_lora fedsa_lora
-run_flower_full 42 1 N9_flower_fedalt fedalt
-run_flower_full 42 1 N9_flower_hydralora hydralora
-run_flower_full 42 1 N9_flower_fedlease fedlease
-run_flower_full 42 1 N7_ours_flower_v13a fedplora_v13a_os
-run_flower_full 42 1 N7_ours_flower_v13b fedplora_v13b_os_bonly
+run_flower_full 44 1 N9_flower_fedalt fedalt
+run_flower_full 44 1 N9_flower_hydralora hydralora
+run_flower_full 44 1 N9_flower_fedlease fedlease
+run_flower_full 44 1 N7_ours_flower_v13a fedplora_v13a_os
+run_flower_full 43 1 N7_ours_flower_v13b fedplora_v13b_os_bonly
 
+10g/seed
 # seed42 全部出 JSON 后，把 42 换成 43 / 44 再跑一轮
 ```
 
@@ -627,14 +629,13 @@ source scripts/RunScripts/preflight_20260709_baseline.sh
 export RAW_DOMAIN_JSONL=${RAW_DOMAIN_JSONL:-$CODE_DIR/data/raw/domain_7_all.jsonl}
 mkdir -p /data/yaominghao/gb/result/FedPLoRA/nonIID_20260715_build/run_logs
 
-nohup bash -lc '
-set -euo pipefail
-cd '"$CODE_DIR"'
-export RAW_DOMAIN_JSONL='"'"'$RAW_DOMAIN_JSONL'"'"'
-CONDA_BASE="$(conda info --base)"
-source "$CONDA_BASE/etc/profile.d/conda.sh"
-conda activate fedplora
-python scripts/DataProcessScripts/build_domain_benchmark_v2.py \
+# 注意：nohup 非交互壳 + set -u 时，source conda.sh 会因 PS1 未定义报错。
+# 用 conda run，不要在子壳里 source conda.sh。
+nohup bash -c '
+set -eo pipefail
+cd "'"$CODE_DIR"'"
+export RAW_DOMAIN_JSONL="'"$RAW_DOMAIN_JSONL"'"
+conda run -n fedplora --no-capture-output python scripts/DataProcessScripts/build_domain_benchmark_v2.py \
   --input_jsonl "$RAW_DOMAIN_JSONL" \
   --output_dir data/domain_benchmark_35c_iid \
   --num_clients_per_domain 5 \
@@ -642,7 +643,7 @@ python scripts/DataProcessScripts/build_domain_benchmark_v2.py \
   --partition iid \
   --subtopic kmeans \
   --n_subtopics 10
-python scripts/DataProcessScripts/build_domain_benchmark_v2.py \
+conda run -n fedplora --no-capture-output python scripts/DataProcessScripts/build_domain_benchmark_v2.py \
   --input_jsonl "$RAW_DOMAIN_JSONL" \
   --output_dir data/domain_benchmark_35c_dir01 \
   --num_clients_per_domain 5 \
@@ -652,6 +653,9 @@ python scripts/DataProcessScripts/build_domain_benchmark_v2.py \
   --subtopic kmeans \
   --n_subtopics 10
 ' > /data/yaominghao/gb/result/FedPLoRA/nonIID_20260715_build/run_logs/build_iid_a01.log 2>&1 &
+
+echo "[nonIID] pid=$!"
+echo "[nonIID] log=/data/yaominghao/gb/result/FedPLoRA/nonIID_20260715_build/run_logs/build_iid_a01.log"
 ```
 
 说明：`RAW_DOMAIN_JSONL` 默认 `$CODE_DIR/data/raw/domain_7_all.jsonl`；若路径不同，在 `source` 前 `export RAW_DOMAIN_JSONL=...`。
@@ -687,6 +691,8 @@ for variant in iid dir01; do
   run_sft_full N7_baseline_${variant}_fedsa_lora fedsa_lora
   run_sft_full N7_baseline_${variant}_fedalt fedalt
 done
+
+(20g)
 ```
 
 ```bash
@@ -714,6 +720,8 @@ for variant in iid dir01; do
   run_sft_full N7_ours_${variant}_v13a_os fedplora_v13a_os
   run_sft_full N7_ours_${variant}_v13b_os_bonly fedplora_v13b_os_bonly
 done
+
+8g
 ```
 
 ## 8. 大规模结果汇总
@@ -757,5 +765,6 @@ python scripts/Analysis/summarize_fedplora_results.py /data/yaominghao/gb/result
 5. 确认 gb 上存在 `/data/yaominghao/gb/models/SmolLM2-1.7B`；若模型未同步，G1 段先跳过，只跑 G2/G6（135M）。
 6. 与其它 gb order（0711/0712）错开 GPU1 时段，避免混抢。
 7. 杀误跑进程：`pkill -u "$USER" -f "fed_train_sft.py"`；`pkill -u "$USER" -f "run_20260713_one_experiment.sh"`。
-8. **路径自检**：每条 `run_sft_*` 会打印 `RUN_ID=` / `SMOKE_RUN_ID=` / `log=`；若出现 `baseline_20260709` 或 `v12_20260709`，立即停，按「source → export 前缀 → set_run_paths/refresh_smoke_paths」重来。
+8. **路径自检**：每条 `run_sft_`* 会打印 `RUN_ID=` / `SMOKE_RUN_ID=` / `log=`；若出现 `baseline_20260709` 或 `v12_20260709`，立即停，按「source → export 前缀 → set_run_paths/refresh_smoke_paths」重来。
 9. gb 务必 `git pull` 同步含 `refresh_smoke_paths` 与 `${RUN_ID_PREFIX:-...}` 保留逻辑的 `preflight_20260709_common.sh`。
+
