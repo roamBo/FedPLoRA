@@ -470,7 +470,8 @@ assert_role_run () {
         ;;
     esac
     case "$method" in
-      smoke_v8*|smoke_v11*|smoke_v12*|smoke_v13*|X1*|X2*|NX0*|NX1*|NX2*|NX3*|NX4*|NX5*|NX6*|OS1_v8*|OS1_v11*|OS1_v13*|X3_v11*|X3_v12*|M3_mixrich_v8*|M3_mixrich_v11*|M3_mixrich_v12*|M3_os_mixrich_v8*|M3_os_mixrich_v11*|M3_os_mixrich_v13*|N7_ours_*)
+      # M3_os_mixrich_* covers both M3_os_mixrich_v13a_os and M3_os_mixrich_seed42_v13a_os
+      smoke_v8*|smoke_v11*|smoke_v12*|smoke_v13*|X1*|X2*|NX0*|NX1*|NX2*|NX3*|NX4*|NX5*|NX6*|OS1_v8*|OS1_v11*|OS1_v13*|X3_v11*|X3_v12*|M3_mixrich_v8*|M3_mixrich_v11*|M3_mixrich_v12*|M3_os_mixrich_*|N7_ours_*)
         ;;
       *)
         echo "[guard][main][error] method=$method 命名不像主算法任务；为防误跑已拒绝。" >&2
