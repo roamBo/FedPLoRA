@@ -211,7 +211,7 @@ export CONDA_ENV_NAME=fedplora
 mkdir -p "$RESULT_ROOT/flowertune_20260717_strict_heldout_launcher/pipeline_logs"
 
 # ===== 改 SEED=42 / 43 / 44，逐条跑 =====
-SEED=42
+SEED=44
 
 CODE_DIR="$CODE_DIR" RESULT_ROOT="$RESULT_ROOT" MODEL_ROOT="$MODEL_ROOT" MODEL_PATH="$MODEL_PATH" \
 CONDA_ENV_NAME=fedplora \
@@ -246,6 +246,10 @@ echo "expect=$RESULT_ROOT/flowertune_20260717_strict_heldout_seed${SEED}"
 ```
 
 验收：
+
+```bash
+1g/seed
+```
 
 ```bash
 find $RESULT_ROOT/flowertune_20260717_strict_heldout_seed*/result_logs -name '*.json' | sort
@@ -309,6 +313,8 @@ run_sft_full N7_baseline_seed43_normal_1p7b normal
 # 结束后再贴：
 run_sft_full N7_baseline_seed43_fedalt_1p7b fedalt
 run_sft_full N7_baseline_seed43_hydralora_1p7b hydralora
+
+15g
 ```
 
 ### 2.2 seed43 v13a
@@ -338,6 +344,8 @@ echo "[check] RUN_ID=$RUN_ID RUN_ROOT=$RUN_ROOT BENCHMARK_DIR=$BENCHMARK_DIR"
 # 必须看到 scale_20260717_ours_..._seed43，禁止 v12_20260709
 
 run_sft_full N7_ours_seed43_v13a_os_1p7b fedplora_v13a_os
+
+5g
 ```
 
 ### 2.3 seed44 baseline 三方法
@@ -422,7 +430,7 @@ export RUN_ID_PREFIX=ref_20260717_local_only_35c_dir05_10ep
 export EVAL_MAX_BATCHES=0
 
 # ===== SEED=42 / 43 / 44 逐条 =====
-SEED=42
+SEED=44
 export BENCHMARK_DIR=$CODE_DIR/data/domain_benchmark_35c_dir05/seed_${SEED}
 check_benchmark "$BENCHMARK_DIR"
 set_run_paths "$SEED"
@@ -443,6 +451,8 @@ CUDA_VISIBLE_DEVICES=1 nohup python -u scripts/Analysis/eval_personalized.py \
   --out "$RUN_ROOT/result_logs/N6_local_only_10ep_seed${SEED}.json" \
   > "$RUN_ROOT/run_logs/test20260717_ref_local_only_10ep_seed${SEED}.log" 2>&1 &
 echo "pid=$! RUN_ROOT=$RUN_ROOT"
+
+2g
 ```
 
 ### 3.2 centralized-per-domain 7c（seed42）
@@ -493,6 +503,8 @@ CUDA_VISIBLE_DEVICES=1 nohup python -u scripts/Analysis/eval_personalized.py \
   --out "$RUN_ROOT/result_logs/N6_centralized_per_domain_7c_seed${SEED}.json" \
   > "$RUN_ROOT/run_logs/test20260717_ref_centralized_per_domain_7c_seed${SEED}.log" 2>&1 &
 echo "pid=$!"
+
+2g
 ```
 
 ---
@@ -549,7 +561,7 @@ export MODEL_PATH=/data/yaominghao/gb/models/SmolLM2-135M
 export RESULT_ROOT=/data/yaominghao/gb/result/FedPLoRA
 export MODEL_ROOT=/data/yaominghao/gb/models/trained_models_LW
 export BENCHMARK_DIR_MAIN=$CODE_DIR/data/domain_benchmark_35c_dir05/seed_42
-export GPU=1
+export GPU=0
 
 source scripts/RunScripts/preflight_20260709_baseline.sh
 export ROUNDS=1
@@ -557,7 +569,7 @@ export EVAL_MAX_BATCHES=0
 
 # 示例：SEED=43 VARIANT=iid；再换 43/dir01、44/iid、44/dir01
 SEED=43
-VARIANT=iid
+VARIANT=dir01
 export BENCHMARK_DIR=$CODE_DIR/data/domain_benchmark_35c_${VARIANT}/seed_${SEED}
 # dir01 时: export BENCHMARK_DIR=$CODE_DIR/data/domain_benchmark_35c_dir01/seed_${SEED}
 export RUN_TAG_DATASET=${VARIANT}
@@ -569,6 +581,8 @@ echo "[check] RUN_ID=$RUN_ID BENCHMARK_DIR=$BENCHMARK_DIR"
 run_sft_full N7_baseline_${VARIANT}_seed${SEED}_normal normal
 run_sft_full N7_baseline_${VARIANT}_seed${SEED}_fedsa_lora fedsa_lora
 run_sft_full N7_baseline_${VARIANT}_seed${SEED}_fedalt fedalt
+
+4g
 ```
 
 ### 4.3 v13a/v13b
@@ -582,14 +596,14 @@ export MODEL_PATH=/data/yaominghao/gb/models/SmolLM2-135M
 export RESULT_ROOT=/data/yaominghao/gb/result/FedPLoRA
 export MODEL_ROOT=/data/yaominghao/gb/models/trained_models_LW
 export BENCHMARK_DIR_MAIN=$CODE_DIR/data/domain_benchmark_35c_dir05/seed_42
-export GPU=1
+export GPU=0
 
 source scripts/RunScripts/preflight_20260709_main_algorithm.sh
 export ROUNDS=1
 export EVAL_MAX_BATCHES=0
 
 SEED=43
-VARIANT=iid
+VARIANT=dir01
 export BENCHMARK_DIR=$CODE_DIR/data/domain_benchmark_35c_${VARIANT}/seed_${SEED}
 export RUN_TAG_DATASET=${VARIANT}
 export RUN_ID_PREFIX=nonIID_20260717_ours_${VARIANT}_r1_finaleval
@@ -658,6 +672,8 @@ echo "[check] RUN_ID=$RUN_ID BENCHMARK_DIR=$BENCHMARK_DIR"
 run_sft_full M3_mixrich_baseline_seed${SEED}_normal normal
 run_sft_full M3_mixrich_baseline_seed${SEED}_fedsa_lora fedsa_lora
 run_sft_full M3_mixrich_baseline_seed${SEED}_fedalt fedalt
+
+5g
 ```
 
 ### 5.3 v13a/v13b
@@ -685,6 +701,7 @@ check_benchmark "$BENCHMARK_DIR"
 set_run_paths "$SEED"
 echo "[check] RUN_ID=$RUN_ID BENCHMARK_DIR=$BENCHMARK_DIR"
 
+# method 名须匹配 main 白名单 M3_os_mixrich_*（已支持 seed 插在中间）
 run_sft_full M3_os_mixrich_seed${SEED}_v13a_os fedplora_v13a_os
 run_sft_full M3_os_mixrich_seed${SEED}_v13b_os_bonly fedplora_v13b_os_bonly
 ```
@@ -820,8 +837,3 @@ CUDA_VISIBLE_DEVICES=1 nohup python -u scripts/Analysis/diag_b_swap.py \
 6. 与其它 gb order（0715/0712）错开 GPU1。
 7. 杀误跑：`pkill -u "$USER" -f "fed_train_sft.py"`；`pkill -u "$USER" -f "run_20260713_one_experiment.sh"`。
 
-
-
-7.17已挂：
-
-1.
