@@ -486,6 +486,13 @@ set_run_paths () {
   export RUN_ID="${RUN_ID_PREFIX}_seed${SEED}"
   export RUN_ROOT="$RESULT_ROOT/$RUN_ID"
   export TRAINED_MODELS_ROOT="$MODEL_ROOT/$RUN_ID"
+  # Keep benchmark split aligned with SEED when paths end with /seed_<n>.
+  # Previously only RUN_ID changed while BENCHMARK_DIR could stay on seed_42.
+  if [[ "${BENCHMARK_DIR:-}" =~ /seed_[0-9]+/?$ ]]; then
+    export BENCHMARK_DIR="$(dirname "${BENCHMARK_DIR%/}")/seed_${SEED}"
+  elif [[ "${BENCHMARK_DIR_MAIN:-}" =~ /seed_[0-9]+/?$ ]]; then
+    export BENCHMARK_DIR="$(dirname "${BENCHMARK_DIR_MAIN%/}")/seed_${SEED}"
+  fi
   local model_tag
   model_tag="${RUN_TAG_MODEL:-$(basename "$MODEL_PATH")}"
   export RUN_TAG=${model_tag}_${RUN_TAG_DATASET}_r${ROUNDS}_e${LOCAL_EPOCHS}_lr${LR}
