@@ -1,0 +1,376 @@
+{
+  "config": {
+    "model": "/data/yaominghao/gb/models/SmolLM2-135M",
+    "benchmark_dir": "/data/yaominghao/gb/FedPLoRA/data/domain_benchmark_35c_dir05/seed_42",
+    "target_modules": "q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj",
+    "max_steps": 0,
+    "eval_max_batches": 20,
+    "n_peers": 4,
+    "n_cross": 2
+  },
+  "summary": {
+    "n_clients_eval": 35,
+    "loss_local_mean": 1.655132663846016,
+    "loss_swap_intra_mean": 1.6594317222237587,
+    "loss_swap_inter_mean": 1.7985505281686782,
+    "delta_loss_intra": 0.0042990583777427725,
+    "delta_loss_inter": 0.14341786432266235,
+    "delta_intra_pct_of_local": 0.25974101482313156,
+    "intra_over_inter_ratio": 0.029975752309842837,
+    "acc_local_mean": 0.6063900620564,
+    "acc_swap_intra_mean": 0.6059623648144604,
+    "acc_swap_inter_mean": 0.5839777876166405
+  },
+  "per_client": [
+    {
+      "client": 0,
+      "domain": "code",
+      "loss_local": 1.2575218230485916,
+      "acc_local": 0.6870439755472293,
+      "loss_swap_intra": 1.2543933898210526,
+      "acc_swap_intra": 0.6860086767895879,
+      "loss_swap_inter": 1.3155344262719155,
+      "acc_swap_inter": 0.6775783869059357
+    },
+    {
+      "client": 1,
+      "domain": "code",
+      "loss_local": 1.2794638723134995,
+      "acc_local": 0.6823111812265825,
+      "loss_swap_intra": 1.259649608284235,
+      "acc_swap_intra": 0.6835436797475843,
+      "loss_swap_inter": 1.2971925705671312,
+      "acc_swap_inter": 0.6787615854860973
+    },
+    {
+      "client": 2,
+      "domain": "code",
+      "loss_local": 1.2380579441785813,
+      "acc_local": 0.6868467757838691,
+      "loss_swap_intra": 1.2555563263595104,
+      "acc_swap_intra": 0.6861072766712679,
+      "loss_swap_inter": 1.289798618853092,
+      "acc_swap_inter": 0.6788601853677776
+    },
+    {
+      "client": 3,
+      "domain": "code",
+      "loss_local": 1.2446910291910172,
+      "acc_local": 0.6886215736541116,
+      "loss_swap_intra": 1.2538450330495834,
+      "acc_swap_intra": 0.6852691776769867,
+      "loss_swap_inter": 1.3152886465191842,
+      "acc_swap_inter": 0.6771839873792151
+    },
+    {
+      "client": 4,
+      "domain": "code",
+      "loss_local": 1.2551961332559585,
+      "acc_local": 0.6844803786235456,
+      "loss_swap_intra": 1.2555595964193345,
+      "acc_swap_intra": 0.6852691776769868,
+      "loss_swap_inter": 1.2912694975733756,
+      "acc_swap_inter": 0.6768881877341747
+    },
+    {
+      "client": 5,
+      "domain": "education",
+      "loss_local": 1.827855533361435,
+      "acc_local": 0.5960804275897175,
+      "loss_swap_intra": 1.7350828394293785,
+      "acc_swap_intra": 0.6024433698142021,
+      "loss_swap_inter": 1.8731720626354216,
+      "acc_swap_inter": 0.5889539322982947
+    },
+    {
+      "client": 6,
+      "domain": "education",
+      "loss_local": 1.725687399506569,
+      "acc_local": 0.6026978875031814,
+      "loss_swap_intra": 1.7116158552467824,
+      "acc_swap_intra": 0.6039704759480784,
+      "loss_swap_inter": 1.8853307574987412,
+      "acc_swap_inter": 0.5817001781623823
+    },
+    {
+      "client": 7,
+      "domain": "education",
+      "loss_local": 1.701252707839012,
+      "acc_local": 0.6034614405701196,
+      "loss_swap_intra": 1.7101226553320885,
+      "acc_swap_intra": 0.6055612115041995,
+      "loss_swap_inter": 1.9029228150844575,
+      "acc_swap_inter": 0.5832272842962586
+    },
+    {
+      "client": 8,
+      "domain": "education",
+      "loss_local": 1.6671884417533875,
+      "acc_local": 0.6077882412827692,
+      "loss_swap_intra": 1.7079130552709105,
+      "acc_swap_intra": 0.6044795113260372,
+      "loss_swap_inter": 1.8603669926524162,
+      "acc_swap_inter": 0.5869177907864597
+    },
+    {
+      "client": 9,
+      "domain": "education",
+      "loss_local": 1.5976500809192657,
+      "acc_local": 0.6154237719521507,
+      "loss_swap_intra": 1.7022342212498187,
+      "acc_swap_intra": 0.6053066938152202,
+      "loss_swap_inter": 1.837688684463501,
+      "acc_swap_inter": 0.590099261898702
+    },
+    {
+      "client": 10,
+      "domain": "finance",
+      "loss_local": 2.331243258714676,
+      "acc_local": 0.4579884625031352,
+      "loss_swap_intra": 2.3232398092746736,
+      "acc_swap_intra": 0.45842738901429647,
+      "loss_swap_inter": 2.4591355353593825,
+      "acc_swap_inter": 0.4415600702282418
+    },
+    {
+      "client": 11,
+      "domain": "finance",
+      "loss_local": 2.325708049535751,
+      "acc_local": 0.4599949836970153,
+      "loss_swap_intra": 2.325376498699188,
+      "acc_swap_intra": 0.45767494356659144,
+      "loss_swap_inter": 2.460882434248924,
+      "acc_swap_inter": 0.4426887383997994
+    },
+    {
+      "client": 12,
+      "domain": "finance",
+      "loss_local": 2.3375220119953157,
+      "acc_local": 0.4574868322046652,
+      "loss_swap_intra": 2.323149061203003,
+      "acc_swap_intra": 0.4577376473539002,
+      "loss_swap_inter": 2.4384090840816497,
+      "acc_swap_inter": 0.44544770504138453
+    },
+    {
+      "client": 13,
+      "domain": "finance",
+      "loss_local": 2.311522972583771,
+      "acc_local": 0.46099824429395536,
+      "loss_swap_intra": 2.3227164551615713,
+      "acc_swap_intra": 0.4582392776523702,
+      "loss_swap_inter": 2.4767410397529606,
+      "acc_swap_inter": 0.4424379232505643
+    },
+    {
+      "client": 14,
+      "domain": "finance",
+      "loss_local": 2.298377126455307,
+      "acc_local": 0.45849009280160524,
+      "loss_swap_intra": 2.3223655968904495,
+      "acc_swap_intra": 0.45905442688738396,
+      "loss_swap_inter": 2.5219894409179684,
+      "acc_swap_inter": 0.4403059944820667
+    },
+    {
+      "client": 15,
+      "domain": "general",
+      "loss_local": NaN,
+      "acc_local": 0.6316872427983539,
+      "loss_swap_intra": NaN,
+      "acc_swap_intra": 0.6273148148148149,
+      "loss_swap_inter": NaN,
+      "acc_swap_inter": 0.6118827160493827
+    },
+    {
+      "client": 16,
+      "domain": "general",
+      "loss_local": NaN,
+      "acc_local": 0.6373456790123457,
+      "loss_swap_intra": NaN,
+      "acc_swap_intra": 0.626929012345679,
+      "loss_swap_inter": NaN,
+      "acc_swap_inter": 0.6129115226337448
+    },
+    {
+      "client": 17,
+      "domain": "general",
+      "loss_local": NaN,
+      "acc_local": 0.6180555555555556,
+      "loss_swap_intra": NaN,
+      "acc_swap_intra": 0.6275077160493827,
+      "loss_swap_inter": NaN,
+      "acc_swap_inter": 0.6248713991769548
+    },
+    {
+      "client": 18,
+      "domain": "general",
+      "loss_local": NaN,
+      "acc_local": 0.6255144032921811,
+      "loss_swap_intra": NaN,
+      "acc_swap_intra": 0.6273791152263375,
+      "loss_swap_inter": NaN,
+      "acc_swap_inter": 0.616383744855967
+    },
+    {
+      "client": 19,
+      "domain": "general",
+      "loss_local": NaN,
+      "acc_local": 0.6229423868312757,
+      "loss_swap_intra": NaN,
+      "acc_swap_intra": 0.62622170781893,
+      "loss_swap_inter": NaN,
+      "acc_swap_inter": 0.6201131687242798
+    },
+    {
+      "client": 20,
+      "domain": "legal",
+      "loss_local": NaN,
+      "acc_local": 0.5809230769230769,
+      "loss_swap_intra": NaN,
+      "acc_swap_intra": 0.5826153846153845,
+      "loss_swap_inter": NaN,
+      "acc_swap_inter": 0.5323076923076924
+    },
+    {
+      "client": 21,
+      "domain": "legal",
+      "loss_local": NaN,
+      "acc_local": 0.5913846153846154,
+      "loss_swap_intra": NaN,
+      "acc_swap_intra": 0.5852307692307692,
+      "loss_swap_inter": NaN,
+      "acc_swap_inter": 0.5372307692307692
+    },
+    {
+      "client": 22,
+      "domain": "legal",
+      "loss_local": NaN,
+      "acc_local": 0.5636923076923077,
+      "loss_swap_intra": NaN,
+      "acc_swap_intra": 0.5832307692307692,
+      "loss_swap_inter": NaN,
+      "acc_swap_inter": 0.5326153846153846
+    },
+    {
+      "client": 23,
+      "domain": "legal",
+      "loss_local": NaN,
+      "acc_local": 0.5846153846153846,
+      "loss_swap_intra": NaN,
+      "acc_swap_intra": 0.585076923076923,
+      "loss_swap_inter": NaN,
+      "acc_swap_inter": 0.5344615384615384
+    },
+    {
+      "client": 24,
+      "domain": "legal",
+      "loss_local": NaN,
+      "acc_local": 0.5993846153846154,
+      "loss_swap_intra": NaN,
+      "acc_swap_intra": 0.5838461538461538,
+      "loss_swap_inter": NaN,
+      "acc_swap_inter": 0.5378461538461539
+    },
+    {
+      "client": 25,
+      "domain": "math",
+      "loss_local": 1.0484782487154007,
+      "acc_local": 0.7264789736279401,
+      "loss_swap_intra": 1.1263113759458065,
+      "acc_swap_intra": 0.7150748396293657,
+      "loss_swap_inter": 1.2521845012903214,
+      "acc_swap_inter": 0.6908410548823949
+    },
+    {
+      "client": 26,
+      "domain": "math",
+      "loss_local": 1.1570589154958726,
+      "acc_local": 0.7077690662865289,
+      "loss_swap_intra": 1.1261533454060555,
+      "acc_swap_intra": 0.7141393442622951,
+      "loss_swap_inter": 1.2079231426119805,
+      "acc_swap_inter": 0.7034034212401996
+    },
+    {
+      "client": 27,
+      "domain": "math",
+      "loss_local": 1.1171198457479476,
+      "acc_local": 0.7172131147540983,
+      "loss_swap_intra": 1.123653081059456,
+      "acc_swap_intra": 0.7139611546685674,
+      "loss_swap_inter": 1.2668025106191636,
+      "acc_swap_inter": 0.6888809693513899
+    },
+    {
+      "client": 28,
+      "domain": "math",
+      "loss_local": 1.109150430560112,
+      "acc_local": 0.7170349251603706,
+      "loss_swap_intra": 1.124081336706877,
+      "acc_swap_intra": 0.7148966500356378,
+      "loss_swap_inter": 1.3056516200304031,
+      "acc_swap_inter": 0.6804169636493229
+    },
+    {
+      "client": 29,
+      "domain": "math",
+      "loss_local": 1.1613869190216064,
+      "acc_local": 0.7083036350677121,
+      "loss_swap_intra": 1.124750953167677,
+      "acc_swap_intra": 0.7144066286528867,
+      "loss_swap_inter": 1.23492733836174,
+      "acc_swap_inter": 0.6990377761938702
+    },
+    {
+      "client": 30,
+      "domain": "medical",
+      "loss_local": 1.871038657426834,
+      "acc_local": 0.5690265486725664,
+      "loss_swap_intra": 1.8782714322209357,
+      "acc_swap_intra": 0.5675884955752212,
+      "loss_swap_inter": 2.0979109674692156,
+      "acc_swap_inter": 0.534070796460177
+    },
+    {
+      "client": 31,
+      "domain": "medical",
+      "loss_local": 1.880713701248169,
+      "acc_local": 0.5690265486725664,
+      "loss_swap_intra": 1.8799866333603859,
+      "acc_swap_intra": 0.5686393805309735,
+      "loss_swap_inter": 2.107336887717247,
+      "acc_swap_inter": 0.5336283185840708
+    },
+    {
+      "client": 32,
+      "domain": "medical",
+      "loss_local": 1.889321994781494,
+      "acc_local": 0.5661504424778762,
+      "loss_swap_intra": 1.8787779718637467,
+      "acc_swap_intra": 0.5686393805309734,
+      "loss_swap_inter": 2.0862488448619843,
+      "acc_swap_inter": 0.5367256637168142
+    },
+    {
+      "client": 33,
+      "domain": "medical",
+      "loss_local": 1.8527952134609222,
+      "acc_local": 0.5721238938053097,
+      "loss_swap_intra": 1.8804087400436402,
+      "acc_swap_intra": 0.5682522123893805,
+      "loss_swap_inter": 2.103707879781723,
+      "acc_swap_inter": 0.5382743362831859
+    },
+    {
+      "client": 34,
+      "domain": "medical",
+      "loss_local": 1.8923142850399017,
+      "acc_local": 0.5652654867256637,
+      "loss_swap_intra": 1.8805781841278075,
+      "acc_swap_intra": 0.5686393805309734,
+      "loss_swap_inter": 2.075346904993057,
+      "acc_swap_inter": 0.5407079646017698
+    }
+  ]
+}

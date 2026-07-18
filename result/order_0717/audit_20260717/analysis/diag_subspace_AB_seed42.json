@@ -1,0 +1,21 @@
+{
+  "config": {
+    "model": "/data/yaominghao/gb/models/SmolLM2-135M",
+    "benchmark_dir": "/data/yaominghao/gb/FedPLoRA/data/domain_benchmark_35c_dir05/seed_42",
+    "target_modules": "q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj",
+    "max_steps": 0,
+    "local_epochs": 1
+  },
+  "A_rowspace": {
+    "intra": 8.91426146371024,
+    "inter": 10.831530546006702,
+    "null": 84.27526092529297,
+    "domain_signal_ratio": 0.02544113130126201
+  },
+  "B_colspace": {
+    "intra": 70.55297367459252,
+    "inter": 80.27770236787342,
+    "null": 84.35012435913086,
+    "domain_signal_ratio": 0.7048360140169253
+  }
+}
