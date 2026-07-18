@@ -662,7 +662,7 @@ export EVAL_MAX_BATCHES=0
 export RUN_TAG_DATASET=mixrich
 
 # SEED=42 优先；资源够再 43/44
-SEED=42
+SEED=44
 export BENCHMARK_DIR=$CODE_DIR/data/domain_benchmark_35c_dir05_mixrich/seed_${SEED}
 export RUN_ID_PREFIX=mixrich_20260717_baseline_r1_finaleval
 check_benchmark "$BENCHMARK_DIR"
@@ -694,7 +694,7 @@ export ROUNDS=1
 export EVAL_MAX_BATCHES=0
 export RUN_TAG_DATASET=mixrich
 
-SEED=42
+SEED=44
 export BENCHMARK_DIR=$CODE_DIR/data/domain_benchmark_35c_dir05_mixrich/seed_${SEED}
 export RUN_ID_PREFIX=mixrich_20260717_ours_r1_finaleval
 check_benchmark "$BENCHMARK_DIR"
@@ -704,6 +704,8 @@ echo "[check] RUN_ID=$RUN_ID BENCHMARK_DIR=$BENCHMARK_DIR"
 # method 名须匹配 main 白名单 M3_os_mixrich_*（已支持 seed 插在中间）
 run_sft_full M3_os_mixrich_seed${SEED}_v13a_os fedplora_v13a_os
 run_sft_full M3_os_mixrich_seed${SEED}_v13b_os_bonly fedplora_v13b_os_bonly
+
+2.6g
 ```
 
 ---
@@ -732,6 +734,8 @@ echo "[check] RUN_ID=$RUN_ID RUN_ROOT=$RUN_ROOT"
 
 run_sft_full N7_ours_rank1_v13a_os fedplora_v13a_os --v10_a_sketch_rank 1
 run_sft_full N7_ours_rank4_v13a_os fedplora_v13a_os --v10_a_sketch_rank 4
+
+3g
 ```
 
 ---
@@ -746,13 +750,19 @@ cd /data/yaominghao/gb/FedPLoRA
 export RESULT_ROOT=/data/yaominghao/gb/result/FedPLoRA
 mkdir -p "$RESULT_ROOT/audit_20260717/run_logs" "$RESULT_ROOT/audit_20260717/analysis"
 
-nohup bash -c '
+# 注意：
+# 1) 不要用 conda run 传带 | 的 --include（conda 临时脚本会把 | 当管道）
+# 2) 脚本同时要求 --output_json 与 --output_md
+nohup env PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:$PATH" bash -c '
 set -eo pipefail
 cd /data/yaominghao/gb/FedPLoRA
-conda run -n fedplora --no-capture-output python scripts/Analysis/analyze_router_reliability.py /data/yaominghao/gb/result/FedPLoRA \
+python scripts/Analysis/analyze_router_reliability.py /data/yaominghao/gb/result/FedPLoRA \
   --include "v13_2026071|NX|strict_heldout|flowertune_20260717_strict" \
-  --output_json /data/yaominghao/gb/result/FedPLoRA/audit_20260717/analysis/router_reliability.json
+  --output_json /data/yaominghao/gb/result/FedPLoRA/audit_20260717/analysis/router_reliability.json \
+  --output_md /data/yaominghao/gb/result/FedPLoRA/audit_20260717/analysis/router_reliability.md
 ' > "$RESULT_ROOT/audit_20260717/run_logs/router_reliability.log" 2>&1 &
+
+echo "pid=$! log=$RESULT_ROOT/audit_20260717/run_logs/router_reliability.log"
 ```
 
 ### 7.2 A/B subspace motivation（轻 GPU）
@@ -782,6 +792,8 @@ CUDA_VISIBLE_DEVICES=1 nohup python -u scripts/Analysis/diag_subspace_AB.py \
   --out "$RESULT_ROOT/audit_20260717/analysis/diag_subspace_AB_seed42.json" \
   --save_figs \
   > "$RESULT_ROOT/audit_20260717/run_logs/diag_subspace_AB_seed42.log" 2>&1 &
+
+2g
 ```
 
 ### 7.3 B-swap 诊断（轻 GPU）
