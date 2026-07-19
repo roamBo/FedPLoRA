@@ -1,0 +1,170 @@
+{
+  "fingerprint_version": 1,
+  "split_dir": "/data/yaominghao/gb/FedPLoRA/data/domain_benchmark_7c_dir05/seed_44",
+  "combined_sha256": "efa6b930c5b0273f62654941bc44b01635fdeead648b81f1676e0919c4f0bce0",
+  "files_sha256": {
+    "clients.json": "90f34916d9bd1aa9c08a95842904d19d660d31f9fdd4f07ef1e14ac076f02c79",
+    "domain_stats.json": "3687a149017e427cefca4b001e31ae6e3d0ce590bb21ce241c9036b3adf3e05b",
+    "train.jsonl": "6f7ca27257488cedc9acf856c330fcf6fe0ba0d5062a5ce192391d191d58a73d",
+    "val.jsonl": "25501711b718737c0f9ccc3169e44cc78827b2be8b9be783f120516821bdc654",
+    "test_local.jsonl": "d3892a9520a082e253c0c67ee0b7d156aaef1dccf98a4e97ae46c181a5ba4b02",
+    "test_domain.jsonl": "273e86f61eafe6881830570668138a18a2495def3f058f605c3fe9a0ef5814d6",
+    "test_global.jsonl": "273e86f61eafe6881830570668138a18a2495def3f058f605c3fe9a0ef5814d6"
+  },
+  "file_sizes": {
+    "clients.json": 812,
+    "domain_stats.json": 806,
+    "train.jsonl": 15054960,
+    "val.jsonl": 1843041,
+    "test_local.jsonl": 1982227,
+    "test_domain.jsonl": 2079774,
+    "test_global.jsonl": 2079774
+  },
+  "split_counts": {
+    "train": 9012,
+    "val": 1107,
+    "test_local": 1107,
+    "test_domain": 1247,
+    "test_global": 1247
+  },
+  "clients": {
+    "num_clients": 7,
+    "domain_counts": {
+      "code": 1,
+      "education": 1,
+      "finance": 1,
+      "general": 1,
+      "legal": 1,
+      "math": 1,
+      "medical": 1
+    },
+    "total_n_train_manifest": 9012,
+    "total_n_val_manifest": 1107,
+    "total_n_local_test_manifest": 1107,
+    "min_n_train": 346,
+    "median_n_train": 1444.0,
+    "max_n_train": 1446,
+    "per_client_manifest": {
+      "0": {
+        "domain": "code",
+        "n_train": 1446,
+        "n_val": 177,
+        "n_local_test": 177
+      },
+      "1": {
+        "domain": "education",
+        "n_train": 346,
+        "n_val": 40,
+        "n_local_test": 40
+      },
+      "2": {
+        "domain": "finance",
+        "n_train": 1446,
+        "n_val": 177,
+        "n_local_test": 177
+      },
+      "3": {
+        "domain": "general",
+        "n_train": 1442,
+        "n_val": 179,
+        "n_local_test": 179
+      },
+      "4": {
+        "domain": "legal",
+        "n_train": 1442,
+        "n_val": 179,
+        "n_local_test": 179
+      },
+      "5": {
+        "domain": "math",
+        "n_train": 1446,
+        "n_val": 177,
+        "n_local_test": 177
+      },
+      "6": {
+        "domain": "medical",
+        "n_train": 1444,
+        "n_val": 178,
+        "n_local_test": 178
+      }
+    }
+  },
+  "row_counts_by_client": {
+    "train": {
+      "0": 1446,
+      "1": 346,
+      "2": 1446,
+      "3": 1442,
+      "4": 1442,
+      "5": 1446,
+      "6": 1444
+    },
+    "val": {
+      "0": 177,
+      "1": 40,
+      "2": 177,
+      "3": 179,
+      "4": 179,
+      "5": 177,
+      "6": 178
+    },
+    "test_local": {
+      "0": 177,
+      "1": 40,
+      "2": 177,
+      "3": 179,
+      "4": 179,
+      "5": 177,
+      "6": 178
+    },
+    "test_domain": {},
+    "test_global": {}
+  },
+  "row_counts_by_domain": {
+    "train": {
+      "code": 1446,
+      "education": 346,
+      "finance": 1446,
+      "general": 1442,
+      "legal": 1442,
+      "math": 1446,
+      "medical": 1444
+    },
+    "val": {
+      "code": 177,
+      "education": 40,
+      "finance": 177,
+      "general": 179,
+      "legal": 179,
+      "math": 177,
+      "medical": 178
+    },
+    "test_local": {
+      "code": 177,
+      "education": 40,
+      "finance": 177,
+      "general": 179,
+      "legal": 179,
+      "math": 177,
+      "medical": 178
+    },
+    "test_domain": {
+      "code": 200,
+      "education": 47,
+      "finance": 200,
+      "general": 200,
+      "legal": 200,
+      "math": 200,
+      "medical": 200
+    },
+    "test_global": {
+      "code": 200,
+      "education": 47,
+      "finance": 200,
+      "general": 200,
+      "legal": 200,
+      "math": 200,
+      "medical": 200
+    }
+  }
+}
