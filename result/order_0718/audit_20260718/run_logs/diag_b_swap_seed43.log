@@ -1,0 +1,104 @@
+nohup: ignoring input
+[diag] captured 0 (code) [1/35]
+[diag] captured 1 (code) [2/35]
+[diag] captured 2 (code) [3/35]
+[diag] captured 3 (code) [4/35]
+[diag] captured 4 (code) [5/35]
+[diag] captured 5 (education) [6/35]
+[diag] captured 6 (education) [7/35]
+[diag] captured 7 (education) [8/35]
+[diag] captured 8 (education) [9/35]
+[diag] captured 9 (education) [10/35]
+[diag] captured 10 (finance) [11/35]
+[diag] captured 11 (finance) [12/35]
+[diag] captured 12 (finance) [13/35]
+[diag] captured 13 (finance) [14/35]
+[diag] captured 14 (finance) [15/35]
+[diag] captured 15 (general) [16/35]
+[diag] captured 16 (general) [17/35]
+[diag] captured 17 (general) [18/35]
+[diag] captured 18 (general) [19/35]
+[diag] captured 19 (general) [20/35]
+[diag] captured 20 (legal) [21/35]
+[diag] captured 21 (legal) [22/35]
+[diag] captured 22 (legal) [23/35]
+[diag] captured 23 (legal) [24/35]
+[diag] captured 24 (legal) [25/35]
+[diag] captured 25 (math) [26/35]
+[diag] captured 26 (math) [27/35]
+[diag] captured 27 (math) [28/35]
+[diag] captured 28 (math) [29/35]
+[diag] captured 29 (math) [30/35]
+[diag] captured 30 (medical) [31/35]
+[diag] captured 31 (medical) [32/35]
+[diag] captured 32 (medical) [33/35]
+[diag] captured 33 (medical) [34/35]
+[diag] captured 34 (medical) [35/35]
+[swap] c0(code) local=nan intra=nan inter=nan
+[swap] c1(code) local=nan intra=nan inter=nan
+[swap] c2(code) local=nan intra=nan inter=nan
+[swap] c3(code) local=nan intra=nan inter=nan
+[swap] c4(code) local=nan intra=nan inter=nan
+[swap] c5(education) local=nan intra=nan inter=nan
+[swap] c6(education) local=nan intra=nan inter=nan
+[swap] c7(education) local=nan intra=nan inter=nan
+[swap] c8(education) local=nan intra=nan inter=nan
+[swap] c9(education) local=nan intra=nan inter=nan
+[swap] c10(finance) local=1.9674 intra=1.9285 inter=2.0613
+[swap] c11(finance) local=1.9062 intra=1.9310 inter=2.0862
+[swap] c12(finance) local=1.9366 intra=1.9321 inter=2.1271
+[swap] c13(finance) local=1.9199 intra=1.9305 inter=2.0896
+[swap] c14(finance) local=1.9171 intra=1.9311 inter=2.0253
+[swap] c15(general) local=nan intra=nan inter=nan
+[swap] c16(general) local=nan intra=nan inter=nan
+[swap] c17(general) local=nan intra=nan inter=nan
+[swap] c18(general) local=nan intra=nan inter=nan
+[swap] c19(general) local=nan intra=nan inter=nan
+[swap] c20(legal) local=nan intra=nan inter=nan
+[swap] c21(legal) local=nan intra=nan inter=nan
+[swap] c22(legal) local=nan intra=nan inter=nan
+[swap] c23(legal) local=nan intra=nan inter=nan
+[swap] c24(legal) local=nan intra=nan inter=nan
+[swap] c25(math) local=1.2548 intra=1.2080 inter=1.3284
+[swap] c26(math) local=1.1800 intra=1.1941 inter=1.3215
+[swap] c27(math) local=1.1474 intra=1.1941 inter=1.3599
+[swap] c28(math) local=1.1885 intra=1.1925 inter=1.2715
+[swap] c29(math) local=1.1917 intra=1.1950 inter=1.3157
+[swap] c30(medical) local=1.7015 intra=1.7469 inter=1.9220
+[swap] c31(medical) local=1.7497 intra=1.7461 inter=1.9184
+[swap] c32(medical) local=1.7575 intra=1.7469 inter=1.9348
+[swap] c33(medical) local=1.7864 intra=1.7513 inter=1.9220
+[swap] c34(medical) local=1.7273 intra=1.7458 inter=1.9323
+
+============ 同域 B 互换诊断结果 ============
+loss  local=1.6221  swap_intra=1.6249  swap_inter=1.7744
+acc   local=0.6147  swap_intra=0.6138  swap_inter=0.5905
+Δloss 同域互换=+0.0028 (+0.2% of local)  跨域互换=+0.1523
+intra/inter 比值=0.018
+--------------------------------------------
+[判读] 同域 B 互换几乎无损(<5%)且远小于跨域 -> 域内 B 可共享/去噪 -> 新方法成立(域内B共识、跨域隔离)。
+
+[diag] 已保存: /data/yaominghao/gb/result/FedPLoRA/audit_20260718/analysis/diag_b_swap_seed43.json
+	Command being timed: "python -u scripts/Analysis/diag_b_swap.py --model /data/yaominghao/gb/models/SmolLM2-135M --benchmark_dir /data/yaominghao/gb/FedPLoRA/data/domain_benchmark_35c_dir05/seed_43 --target_modules q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj --torch_dtype bfloat16 --batch_size 2 --eval_batch_size 2 --max_seq_length 256 --lr 0.0002 --local_epochs 1 --max_steps 0 --eval_max_batches 20 --n_peers 4 --n_cross 2 --seed 43 --out /data/yaominghao/gb/result/FedPLoRA/audit_20260718/analysis/diag_b_swap_seed43.json"
+	User time (seconds): 1390.91
+	System time (seconds): 11.64
+	Percent of CPU this job got: 94%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 24:45.88
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 1999800
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 6
+	Minor (reclaiming a frame) page faults: 3818451
+	Voluntary context switches: 23964
+	Involuntary context switches: 355089
+	Swaps: 0
+	File system inputs: 40
+	File system outputs: 480
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0

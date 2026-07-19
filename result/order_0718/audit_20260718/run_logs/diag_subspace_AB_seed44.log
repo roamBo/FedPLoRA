@@ -1,0 +1,72 @@
+nohup: ignoring input
+[diag] clients=35 layers=210 target_modules=q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj max_steps=0
+[diag] captured 0 (code) [1/35]
+[diag] captured 1 (code) [2/35]
+[diag] captured 2 (code) [3/35]
+[diag] captured 3 (code) [4/35]
+[diag] captured 4 (code) [5/35]
+[diag] captured 5 (education) [6/35]
+[diag] captured 6 (education) [7/35]
+[diag] captured 7 (education) [8/35]
+[diag] captured 8 (education) [9/35]
+[diag] captured 9 (education) [10/35]
+[diag] captured 10 (finance) [11/35]
+[diag] captured 11 (finance) [12/35]
+[diag] captured 12 (finance) [13/35]
+[diag] captured 13 (finance) [14/35]
+[diag] captured 14 (finance) [15/35]
+[diag] captured 15 (general) [16/35]
+[diag] captured 16 (general) [17/35]
+[diag] captured 17 (general) [18/35]
+[diag] captured 18 (general) [19/35]
+[diag] captured 19 (general) [20/35]
+[diag] captured 20 (legal) [21/35]
+[diag] captured 21 (legal) [22/35]
+[diag] captured 22 (legal) [23/35]
+[diag] captured 23 (legal) [24/35]
+[diag] captured 24 (legal) [25/35]
+[diag] captured 25 (math) [26/35]
+[diag] captured 26 (math) [27/35]
+[diag] captured 27 (math) [28/35]
+[diag] captured 28 (math) [29/35]
+[diag] captured 29 (math) [30/35]
+[diag] captured 30 (medical) [31/35]
+[diag] captured 31 (medical) [32/35]
+[diag] captured 32 (medical) [33/35]
+[diag] captured 33 (medical) [34/35]
+[diag] captured 34 (medical) [35/35]
+
+========= A vs B 域信号诊断 (主夹角中位数，度) =========
+                域内      域间    随机null       域信号占比
+A 行空间         9.16   10.70     84.26        2.0%
+B 列空间        70.54   80.30     84.35       70.7%
+--------------------------------------------------------
+[判读] B 域信号占比(71%) ≫ A(2%) -> 域特异信号主要在 B。
+       含义：朴素平均 B 会抹掉域信息；'共享 B' 需谨慎设计，不能直接 FedAvg。
+       但这也说明：方法重心应转向 B 侧（你的真实卖点：跨域冲突在 B）。
+
+[diag] 已保存: /data/yaominghao/gb/result/FedPLoRA/audit_20260718/analysis/diag_subspace_AB_seed44.json
+[diag] 图: /data/yaominghao/gb/result/FedPLoRA/audit_20260718/analysis/diag_subspace_AB_seed44.png
+	Command being timed: "python -u scripts/Analysis/diag_subspace_AB.py --model /data/yaominghao/gb/models/SmolLM2-135M --benchmark_dir /data/yaominghao/gb/FedPLoRA/data/domain_benchmark_35c_dir05/seed_44 --target_modules q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj --torch_dtype bfloat16 --batch_size 2 --max_seq_length 256 --lr 0.0002 --local_epochs 1 --max_steps 0 --seed 44 --n_null 200 --out /data/yaominghao/gb/result/FedPLoRA/audit_20260718/analysis/diag_subspace_AB_seed44.json --save_figs"
+	User time (seconds): 1682.29
+	System time (seconds): 20.44
+	Percent of CPU this job got: 158%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 17:52.62
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 1964568
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 21
+	Minor (reclaiming a frame) page faults: 3473801
+	Voluntary context switches: 223293
+	Involuntary context switches: 339146
+	Swaps: 0
+	File system inputs: 1464
+	File system outputs: 312
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0
