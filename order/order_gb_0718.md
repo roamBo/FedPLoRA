@@ -8,7 +8,7 @@
 
 1. 完成 FlowerTune 5-fold leave-one-client-out：offset0 已完成，补 offset1–4 × seeds42/43/44。
 2. 补 route-probe 1/2/5/10-shot 敏感性，明确信息预算。
-3. 在 A100 9k canonical split 上重建并重跑 centralized-per-domain 参照界。
+3. 在 domain_benchmark_35c_dir05 上池化 7c 并重跑 centralized-per-domain 参照界（gb 无 A100 9k）。
 4. 补 A/B subspace 与 B-swap seeds43/44。
 5. 补同一 v13a 下的 B-routing 核心消融。
 6. 生成 cold-start paired-Δ/CI 与 router margin-performance 审计。
@@ -22,7 +22,7 @@
 结果: /data/yaominghao/gb/result/FedPLoRA
 135M: /data/yaominghao/gb/models/SmolLM2-135M
 3B: /data/yaominghao/gb/models/Qwen2.5-3B
-D1 canonical: /data/yaominghao/gb/FedPLoRA/data/A100_domain_benchmark_35c_dir05/seed_{42,43,44}
+D1 (gb): /data/yaominghao/gb/FedPLoRA/data/domain_benchmark_35c_dir05/seed_{42,43,44}  # 非 A100 9k；订单不生成 A100_*
 FlowerTune: /data/yaominghao/gb/FedPLoRA/data/domain_benchmark_flowertune_mixed_20c_dir05/seed_{42,43,44}
 GPU: 全部物理 1 号卡（原 0/1/2/3 均改为 1）；同块多条 nohup 会同时抢 GPU1，资源紧时请注释掉未跑的行或等前一条结束
 rounds=1, local_epochs=1, lr=2e-4
@@ -31,19 +31,19 @@ batch=2, max_seq_length=256, dtype=bfloat16
 full eval: eval_max_batches=0
 ```
 
-说明：Qwen2.5-3B 官方模型卡当前标注的是 **Qwen Research License**，不是 Claude 文档所写的 Apache-2.0；论文和 artifact 文档应按实际模型卡填写。模型卡：<https://huggingface.co/Qwen/Qwen2.5-3B>。
-
+说明：Qwen2.5-3B 官方模型卡当前标注的是 **Qwen Research License**，不是 Claude 文档所写的 Apache-2.0；论文和 artifact 文档应按实际模型卡填写。模型卡：[https://huggingface.co/Qwen/Qwen2.5-3B](https://huggingface.co/Qwen/Qwen2.5-3B)。
 
 【路径对照（minghao → gb）】
 
-| 项 | order_20260718_require.md | order_gb_0718.md |
-|----|---------------------------|------------------|
-| conda | `FedRepo2` | `fedplora` |
-| 代码 | `/data2/minghao/code/FedPLoRA-main` | `/data/yaominghao/gb/FedPLoRA` |
-| 模型根 | `/data2/minghao/model/` | `/data/yaominghao/gb/models/` |
-| 结果 | `/data2/minghao/result/FedPLoRA/` | `/data/yaominghao/gb/result/FedPLoRA/` |
-| conda 前缀 | `/home/minghao/anaconda3` | `/data/yaominghao/miniconda3` |
-| GPU | `0/1/2/3` | 全部 `1` |
+
+| 项        | order_20260718_require.md           | order_gb_0718.md                       |
+| -------- | ----------------------------------- | -------------------------------------- |
+| conda    | `FedRepo2`                          | `fedplora`                             |
+| 代码       | `/data2/minghao/code/FedPLoRA-main` | `/data/yaominghao/gb/FedPLoRA`         |
+| 模型根      | `/data2/minghao/model/`             | `/data/yaominghao/gb/models/`          |
+| 结果       | `/data2/minghao/result/FedPLoRA/`   | `/data/yaominghao/gb/result/FedPLoRA/` |
+| conda 前缀 | `/home/minghao/anaconda3`           | `/data/yaominghao/miniconda3`          |
+| GPU      | `0/1/2/3`                           | 全部 `1`                                 |
 
 
 【产物位置】
@@ -215,7 +215,7 @@ Baseline smoke：
 ```bash
 export MODEL_PATH=/data/yaominghao/gb/models/Qwen2.5-3B
 export RUN_TAG_MODEL=Qwen2.5-3B
-export BENCHMARK_DIR_MAIN=/data/yaominghao/gb/FedPLoRA/data/A100_domain_benchmark_35c_dir05/seed_42
+export BENCHMARK_DIR_MAIN=/data/yaominghao/gb/FedPLoRA/data/domain_benchmark_35c_dir05/seed_42
 export BENCHMARK_REQUIRED_SPLIT_SEEDS="42"
 export EXPECTED_NUM_CLIENTS=35
 source scripts/RunScripts/preflight_20260709_baseline.sh
@@ -234,7 +234,7 @@ GPU=1 run_sft_smoke smoke_qwen3b_fedalt fedalt --force_retrain
 ```bash
 export MODEL_PATH=/data/yaominghao/gb/models/Qwen2.5-3B
 export RUN_TAG_MODEL=Qwen2.5-3B
-export BENCHMARK_DIR_MAIN=/data/yaominghao/gb/FedPLoRA/data/A100_domain_benchmark_35c_dir05/seed_42
+export BENCHMARK_DIR_MAIN=/data/yaominghao/gb/FedPLoRA/data/domain_benchmark_35c_dir05/seed_42
 export BENCHMARK_REQUIRED_SPLIT_SEEDS="42"
 export EXPECTED_NUM_CLIENTS=35
 source scripts/RunScripts/preflight_20260709_main_algorithm.sh
@@ -255,7 +255,7 @@ GPU=1 run_sft_smoke smoke_v13a_qwen3b fedplora_v13a_os --force_retrain
 
 ```bash
 export MODEL_PATH=/data/yaominghao/gb/models/SmolLM2-135M
-export BENCHMARK_DIR_MAIN=/data/yaominghao/gb/FedPLoRA/data/A100_domain_benchmark_35c_dir05/seed_42
+export BENCHMARK_DIR_MAIN=/data/yaominghao/gb/FedPLoRA/data/domain_benchmark_35c_dir05/seed_42
 export BENCHMARK_REQUIRED_SPLIT_SEEDS="42"
 export EXPECTED_NUM_CLIENTS=35
 source scripts/RunScripts/preflight_20260709_main_algorithm.sh
@@ -339,19 +339,30 @@ PATH="/data/yaominghao/miniconda3/condabin:${PATH}" EXPECTED_NUM_CLIENTS=20 BENC
 PATH="/data/yaominghao/miniconda3/condabin:${PATH}" EXPECTED_NUM_CLIENTS=20 BENCHMARK_DIR_MAIN=/data/yaominghao/gb/FedPLoRA/data/domain_benchmark_flowertune_mixed_20c_dir05/seed_42 BENCHMARK_REQUIRED_SPLIT_SEEDS="42" RUN_TAG_DATASET=flowertune20c_dir05 PIPELINE_EVAL_MAX_BATCHES=0 PIPELINE_ROUNDS=1 nohup /usr/bin/time -v bash scripts/RunScripts/run_20260713_one_experiment.sh --kind personalized_eval --method X2_flower_probe5_seed42 --seed 42 --split-seed 42 --run-id-prefix flowertune_20260718_probe5 --gpu 1 -- --held_out_clients auto_one_per_domain --held_out_policy first --held_out_offset 0 --schemes base,global,coldstart,coldstart_geom --few_shot_caps 5 --held_out_route_probe_samples 5 --eval_on_local --cold_start > /data/yaominghao/gb/result/FedPLoRA/flowertune_20260718_probe_launcher/pipeline_logs/X2_flower_probe5_seed42.launch.log 2>&1 &
 ```
 
-## 3. R5：A100 9k canonical centralized-per-domain ×3
+## 3. R5：centralized-per-domain ×3（gb：domain_benchmark，非 A100 9k）
 
 ### 3.1 从 35c 原样池化为 7c（0 GPU）
 
-该命令不重新随机切分：保留每个 A100 9k split 的全部 train/val/test rows 与 domain test，只把同域 5 clients 的 `client_id` 合并为一个，因此 centralized reference 与主表严格同源。
+**作用：生成 `domain_benchmark_7c_dir05`，不是读取已有 7c；也不会生成任何 `A100_`*。**  
+读源 `domain_benchmark_35c_dir05/seed_{42,43,44}`，把同域 5 个 client 合并成 1 个 → 写出 `domain_benchmark_7c_dir05/seed_`*。不重新随机切分，只改 `client_id`。  
+源缺 seed43/44 时先按 §4 补建再跑本段。
 
 ```bash
 mkdir -p /data/yaominghao/gb/result/FedPLoRA/audit_20260718/run_logs
+cd /data/yaominghao/gb/FedPLoRA
 
-nohup /usr/bin/time -v bash -s > /data/yaominghao/gb/result/FedPLoRA/audit_20260718/run_logs/build_a1009k_7c_3seeds.log 2>&1 <<'BASH' &
+export POOL_SRC_ROOT=/data/yaominghao/gb/FedPLoRA/data/domain_benchmark_35c_dir05
+export POOL_DST_ROOT=/data/yaominghao/gb/FedPLoRA/data/domain_benchmark_7c_dir05
+export POOL_TAG=dir05
+echo "POOL_SRC_ROOT=$POOL_SRC_ROOT"
+echo "POOL_DST_ROOT=$POOL_DST_ROOT"
+ls -l "$POOL_SRC_ROOT"/seed_{42,43,44}/clients.json
+
+nohup /usr/bin/time -v env PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" \
+  POOL_SRC_ROOT="$POOL_SRC_ROOT" POOL_DST_ROOT="$POOL_DST_ROOT" POOL_TAG="$POOL_TAG" \
+  bash -s > /data/yaominghao/gb/result/FedPLoRA/audit_20260718/run_logs/build_${POOL_TAG}_7c_3seeds.log 2>&1 <<'BASH' &
 # 勿 source conda.sh + set -u（nohup 无 PS1 → unbound variable）
 set -eo pipefail
-export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}"
 cd /data/yaominghao/gb/FedPLoRA
 python - <<'PY'
 import json
@@ -360,9 +371,11 @@ import pathlib
 import shutil
 import tempfile
 
-src_root = pathlib.Path("/data/yaominghao/gb/FedPLoRA/data/A100_domain_benchmark_35c_dir05")
-dst_root = pathlib.Path("/data/yaominghao/gb/FedPLoRA/data/A100_domain_benchmark_7c_dir05")
+src_root = pathlib.Path(os.environ["POOL_SRC_ROOT"])
+dst_root = pathlib.Path(os.environ["POOL_DST_ROOT"])
 dst_root.mkdir(parents=True, exist_ok=True)
+print(f"[pool7c] src={src_root}")
+print(f"[pool7c] dst={dst_root}")
 
 def read_jsonl(path):
     with path.open(encoding="utf-8") as f:
@@ -374,7 +387,7 @@ for seed in (42, 43, 44):
     src = src_root / f"seed_{seed}"
     dst = dst_root / f"seed_{seed}"
     if not (src / "clients.json").is_file():
-        raise SystemExit(f"[pool7c][error] missing {src / 'clients.json'}")
+        raise SystemExit(f"[pool7c][error] missing {src / 'clients.json'} (先补建 35c seed，见 §4)")
     if (dst / "clients.json").is_file():
         clients = json.loads((dst / "clients.json").read_text())
         if len(clients) != 7:
@@ -420,63 +433,63 @@ PY
 
 for SEED in 42 43 44; do
   python utilities/benchmark_fingerprint.py \
-    "/data/yaominghao/gb/FedPLoRA/data/A100_domain_benchmark_7c_dir05/seed_${SEED}" \
-    --output "/data/yaominghao/gb/result/FedPLoRA/audit_20260718/a1009k_7c_seed${SEED}_fingerprint.json"
+    "${POOL_DST_ROOT}/seed_${SEED}" \
+    --output "/data/yaominghao/gb/result/FedPLoRA/audit_20260718/${POOL_TAG}_7c_seed${SEED}_fingerprint.json"
 done
 BASH
 ```
 
 ### 3.2 centralized smoke（seed42）
 
+须先完成 3.1（`POOL_DST_ROOT` 已存在）。同一 shell 可直接用；新 shell 先重跑 3.1 开头的 `if/else` 导出变量。
+
 ```bash
-export CENTRAL_SMOKE_ROOT=/data/yaominghao/gb/result/FedPLoRA/ref_20260718_a1009k_centralized_smoke_seed42
+export POOL_DST_ROOT=${POOL_DST_ROOT:-/data/yaominghao/gb/FedPLoRA/data/domain_benchmark_7c_dir05}
+export CENTRAL_SMOKE_ROOT=/data/yaominghao/gb/result/FedPLoRA/ref_20260718_centralized_smoke_seed42
 mkdir -p "$CENTRAL_SMOKE_ROOT/run_logs" "$CENTRAL_SMOKE_ROOT/result_logs"
 
 CUDA_VISIBLE_DEVICES=1 nohup /usr/bin/time -v python -u scripts/Analysis/eval_personalized.py \
   --model /data/yaominghao/gb/models/SmolLM2-135M \
-  --benchmark_dir /data/yaominghao/gb/FedPLoRA/data/A100_domain_benchmark_7c_dir05/seed_42 \
+  --benchmark_dir "$POOL_DST_ROOT/seed_42" \
   --target_modules q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj \
   --torch_dtype bfloat16 --batch_size 2 --max_seq_length 256 \
   --lr 0.0002 --local_epochs 1 --max_steps 1 --eval_max_batches 1 \
   --seed 42 --schemes local --eval_on_local \
-  --out "$CENTRAL_SMOKE_ROOT/result_logs/N6_a1009k_centralized_smoke_seed42.json" \
-  > "$CENTRAL_SMOKE_ROOT/run_logs/N6_a1009k_centralized_smoke_seed42.log" 2>&1 &
+  --out "$CENTRAL_SMOKE_ROOT/result_logs/N6_centralized_smoke_seed42.json" \
+  > "$CENTRAL_SMOKE_ROOT/run_logs/N6_centralized_smoke_seed42.log" 2>&1 &
 ```
 
 ### 3.3 centralized formal seeds42/43/44
 
 ```bash
-export CENTRAL_ROOT42=/data/yaominghao/gb/result/FedPLoRA/ref_20260718_a1009k_centralized_7c_seed42
+export POOL_DST_ROOT=${POOL_DST_ROOT:-/data/yaominghao/gb/FedPLoRA/data/domain_benchmark_7c_dir05}
+
+export CENTRAL_ROOT42=/data/yaominghao/gb/result/FedPLoRA/ref_20260718_centralized_7c_seed42
 mkdir -p "$CENTRAL_ROOT42/run_logs" "$CENTRAL_ROOT42/result_logs"
-CUDA_VISIBLE_DEVICES=1 nohup /usr/bin/time -v python -u scripts/Analysis/eval_personalized.py --model /data/yaominghao/gb/models/SmolLM2-135M --benchmark_dir /data/yaominghao/gb/FedPLoRA/data/A100_domain_benchmark_7c_dir05/seed_42 --target_modules q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj --torch_dtype bfloat16 --batch_size 2 --max_seq_length 256 --lr 0.0002 --local_epochs 1 --eval_max_batches 0 --seed 42 --schemes local --eval_on_local --out "$CENTRAL_ROOT42/result_logs/N6_a1009k_centralized_7c_seed42.json" > "$CENTRAL_ROOT42/run_logs/N6_a1009k_centralized_7c_seed42.log" 2>&1 &
+CUDA_VISIBLE_DEVICES=1 nohup /usr/bin/time -v python -u scripts/Analysis/eval_personalized.py --model /data/yaominghao/gb/models/SmolLM2-135M --benchmark_dir "$POOL_DST_ROOT/seed_42" --target_modules q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj --torch_dtype bfloat16 --batch_size 2 --max_seq_length 256 --lr 0.0002 --local_epochs 1 --eval_max_batches 0 --seed 42 --schemes local --eval_on_local --out "$CENTRAL_ROOT42/result_logs/N6_centralized_7c_seed42.json" > "$CENTRAL_ROOT42/run_logs/N6_centralized_7c_seed42.log" 2>&1 &
 
-export CENTRAL_ROOT43=/data/yaominghao/gb/result/FedPLoRA/ref_20260718_a1009k_centralized_7c_seed43
+export CENTRAL_ROOT43=/data/yaominghao/gb/result/FedPLoRA/ref_20260718_centralized_7c_seed43
 mkdir -p "$CENTRAL_ROOT43/run_logs" "$CENTRAL_ROOT43/result_logs"
-CUDA_VISIBLE_DEVICES=1 nohup /usr/bin/time -v python -u scripts/Analysis/eval_personalized.py --model /data/yaominghao/gb/models/SmolLM2-135M --benchmark_dir /data/yaominghao/gb/FedPLoRA/data/A100_domain_benchmark_7c_dir05/seed_43 --target_modules q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj --torch_dtype bfloat16 --batch_size 2 --max_seq_length 256 --lr 0.0002 --local_epochs 1 --eval_max_batches 0 --seed 43 --schemes local --eval_on_local --out "$CENTRAL_ROOT43/result_logs/N6_a1009k_centralized_7c_seed43.json" > "$CENTRAL_ROOT43/run_logs/N6_a1009k_centralized_7c_seed43.log" 2>&1 &
+CUDA_VISIBLE_DEVICES=1 nohup /usr/bin/time -v python -u scripts/Analysis/eval_personalized.py --model /data/yaominghao/gb/models/SmolLM2-135M --benchmark_dir "$POOL_DST_ROOT/seed_43" --target_modules q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj --torch_dtype bfloat16 --batch_size 2 --max_seq_length 256 --lr 0.0002 --local_epochs 1 --eval_max_batches 0 --seed 43 --schemes local --eval_on_local --out "$CENTRAL_ROOT43/result_logs/N6_centralized_7c_seed43.json" > "$CENTRAL_ROOT43/run_logs/N6_centralized_7c_seed43.log" 2>&1 &
 
-export CENTRAL_ROOT44=/data/yaominghao/gb/result/FedPLoRA/ref_20260718_a1009k_centralized_7c_seed44
+export CENTRAL_ROOT44=/data/yaominghao/gb/result/FedPLoRA/ref_20260718_centralized_7c_seed44
 mkdir -p "$CENTRAL_ROOT44/run_logs" "$CENTRAL_ROOT44/result_logs"
-CUDA_VISIBLE_DEVICES=1 nohup /usr/bin/time -v python -u scripts/Analysis/eval_personalized.py --model /data/yaominghao/gb/models/SmolLM2-135M --benchmark_dir /data/yaominghao/gb/FedPLoRA/data/A100_domain_benchmark_7c_dir05/seed_44 --target_modules q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj --torch_dtype bfloat16 --batch_size 2 --max_seq_length 256 --lr 0.0002 --local_epochs 1 --eval_max_batches 0 --seed 44 --schemes local --eval_on_local --out "$CENTRAL_ROOT44/result_logs/N6_a1009k_centralized_7c_seed44.json" > "$CENTRAL_ROOT44/run_logs/N6_a1009k_centralized_7c_seed44.log" 2>&1 &
+CUDA_VISIBLE_DEVICES=1 nohup /usr/bin/time -v python -u scripts/Analysis/eval_personalized.py --model /data/yaominghao/gb/models/SmolLM2-135M --benchmark_dir "$POOL_DST_ROOT/seed_44" --target_modules q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj --torch_dtype bfloat16 --batch_size 2 --max_seq_length 256 --lr 0.0002 --local_epochs 1 --eval_max_batches 0 --seed 44 --schemes local --eval_on_local --out "$CENTRAL_ROOT44/result_logs/N6_centralized_7c_seed44.json" > "$CENTRAL_ROOT44/run_logs/N6_centralized_7c_seed44.log" 2>&1 &
 ```
 
 ## 4. R3：Motivation 诊断 seed43/44
 
 这些命令会训练每个 split 的 35 个 client LoRA。每条命令需要 GPU；`diag_subspace_AB` 与 `diag_b_swap` 不要在同一张卡同时跑。
 
-**【gb 数据说明】** 原文用 `A100_domain_benchmark_35c_dir05`（9k canonical）。gb 若无该目录（常见），改用 `domain_benchmark_35c_dir05`（非 9k，笔记中注明）。跑前先确认 `seed_43/44` 的 `train.jsonl` 存在；缺失则先执行下方「补建」再跑 4.1/4.2。
+**【gb】** 4.1/4.2 固定用 `domain_benchmark_35c_dir05`（不会、也不依赖 `A100_`*）。缺 `seed_43/44` 先补建再跑。
 
 ```bash
-# 数据检查 + 缺 seed 时补建（0 GPU；有 A100 则优先 A100）
+# 数据检查 + 缺 seed 时补建（0 GPU）
 cd /data/yaominghao/gb/FedPLoRA
-if [ -f data/A100_domain_benchmark_35c_dir05/seed_43/train.jsonl ]; then
-  export DIAG_BENCH_ROOT=/data/yaominghao/gb/FedPLoRA/data/A100_domain_benchmark_35c_dir05
-else
-  export DIAG_BENCH_ROOT=/data/yaominghao/gb/FedPLoRA/data/domain_benchmark_35c_dir05
-fi
+export DIAG_BENCH_ROOT=/data/yaominghao/gb/FedPLoRA/data/domain_benchmark_35c_dir05
 echo "DIAG_BENCH_ROOT=$DIAG_BENCH_ROOT"
 ls -l "$DIAG_BENCH_ROOT"/seed_{43,44}/train.jsonl
 
-# 若上面 ls 报 No such file，补建 seed43/44（需 data/raw/domain_7_all.jsonl）
 for SEED in 43 44; do
   if [ ! -f "$DIAG_BENCH_ROOT/seed_${SEED}/train.jsonl" ]; then
     python -u scripts/DataProcessScripts/build_domain_benchmark_v2.py \
@@ -497,7 +510,7 @@ ls -l "$DIAG_BENCH_ROOT"/seed_{43,44}/train.jsonl
 
 ```bash
 cd /data/yaominghao/gb/FedPLoRA
-export DIAG_BENCH_ROOT=${DIAG_BENCH_ROOT:-/data/yaominghao/gb/FedPLoRA/data/domain_benchmark_35c_dir05}
+export DIAG_BENCH_ROOT=/data/yaominghao/gb/FedPLoRA/data/domain_benchmark_35c_dir05
 mkdir -p /data/yaominghao/gb/result/FedPLoRA/audit_20260718/analysis /data/yaominghao/gb/result/FedPLoRA/audit_20260718/run_logs
 
 CUDA_VISIBLE_DEVICES=1 nohup /usr/bin/time -v python -u scripts/Analysis/diag_subspace_AB.py --model /data/yaominghao/gb/models/SmolLM2-135M --benchmark_dir "$DIAG_BENCH_ROOT/seed_43" --target_modules q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj --torch_dtype bfloat16 --batch_size 2 --max_seq_length 256 --lr 0.0002 --local_epochs 1 --max_steps 0 --seed 43 --n_null 200 --out /data/yaominghao/gb/result/FedPLoRA/audit_20260718/analysis/diag_subspace_AB_seed43.json --save_figs > /data/yaominghao/gb/result/FedPLoRA/audit_20260718/run_logs/diag_subspace_AB_seed43.log 2>&1 &
@@ -509,7 +522,7 @@ CUDA_VISIBLE_DEVICES=1 nohup /usr/bin/time -v python -u scripts/Analysis/diag_su
 
 ```bash
 cd /data/yaominghao/gb/FedPLoRA
-export DIAG_BENCH_ROOT=${DIAG_BENCH_ROOT:-/data/yaominghao/gb/FedPLoRA/data/domain_benchmark_35c_dir05}
+export DIAG_BENCH_ROOT=/data/yaominghao/gb/FedPLoRA/data/domain_benchmark_35c_dir05
 
 CUDA_VISIBLE_DEVICES=1 nohup /usr/bin/time -v python -u scripts/Analysis/diag_b_swap.py --model /data/yaominghao/gb/models/SmolLM2-135M --benchmark_dir "$DIAG_BENCH_ROOT/seed_43" --target_modules q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj --torch_dtype bfloat16 --batch_size 2 --eval_batch_size 2 --max_seq_length 256 --lr 0.0002 --local_epochs 1 --max_steps 0 --eval_max_batches 20 --n_peers 4 --n_cross 2 --seed 43 --out /data/yaominghao/gb/result/FedPLoRA/audit_20260718/analysis/diag_b_swap_seed43.json > /data/yaominghao/gb/result/FedPLoRA/audit_20260718/run_logs/diag_b_swap_seed43.log 2>&1 &
 
@@ -525,15 +538,15 @@ CUDA_VISIBLE_DEVICES=1 nohup /usr/bin/time -v python -u scripts/Analysis/diag_b_
 - `global`：所有 client 的 B 进入一个池，保留 v13a A-sketch，其余配置不变；这是 `w/o B-routing`。
 - `domain`：使用真实 domain 分池，是 oracle upper bound；只能进消融/诊断，不能作为 label-free 方法结果。
 
-### 5.1 D1 A100 9k，seed42
+### 5.1 D1 domain_benchmark_35c_dir05，seed42
 
 ```bash
 export MODEL_PATH=/data/yaominghao/gb/models/SmolLM2-135M
-export BENCHMARK_DIR_MAIN=/data/yaominghao/gb/FedPLoRA/data/A100_domain_benchmark_35c_dir05/seed_42
+export BENCHMARK_DIR_MAIN=/data/yaominghao/gb/FedPLoRA/data/domain_benchmark_35c_dir05/seed_42
 export BENCHMARK_REQUIRED_SPLIT_SEEDS="42"
 export EXPECTED_NUM_CLIENTS=35
 source scripts/RunScripts/preflight_20260709_main_algorithm.sh
-export ROUNDS=1 LOCAL_EPOCHS=1 EVAL_MAX_BATCHES=0 RUN_TAG_DATASET=a1009k_35c_dir05
+export ROUNDS=1 LOCAL_EPOCHS=1 EVAL_MAX_BATCHES=0 RUN_TAG_DATASET=dir05
 export RUN_ID_PREFIX=v13_20260718_route_ablation_d1
 set_run_paths 42
 
@@ -575,21 +588,21 @@ mkdir -p /data/yaominghao/gb/result/FedPLoRA/qwen3b_20260718_flower_coldstart_la
 PATH="/data/yaominghao/miniconda3/condabin:${PATH}" MODEL_PATH=/data/yaominghao/gb/models/Qwen2.5-3B RUN_TAG_MODEL=Qwen2.5-3B EXPECTED_NUM_CLIENTS=20 BENCHMARK_DIR_MAIN=/data/yaominghao/gb/FedPLoRA/data/domain_benchmark_flowertune_mixed_20c_dir05/seed_42 BENCHMARK_REQUIRED_SPLIT_SEEDS="42" RUN_TAG_DATASET=flowertune20c_dir05 PIPELINE_EVAL_MAX_BATCHES=0 PIPELINE_ROUNDS=1 nohup /usr/bin/time -v bash scripts/RunScripts/run_20260713_one_experiment.sh --kind personalized_eval --method X2_qwen3b_flower_coldstart_seed42 --seed 42 --split-seed 42 --run-id-prefix qwen3b_20260718_flower_coldstart --gpu 1 -- --held_out_clients auto_one_per_domain --held_out_policy first --held_out_offset 0 --schemes base,global,coldstart,coldstart_geom,v11c_coldstart --few_shot_caps 5,10 --held_out_route_probe_samples 10 --eval_on_local --cold_start --v11c_mu 0.4 > /data/yaominghao/gb/result/FedPLoRA/qwen3b_20260718_flower_coldstart_launcher/pipeline_logs/X2_qwen3b_flower_coldstart_seed42.launch.log 2>&1 &
 ```
 
-### 6.2 R10 D1 @3B：Normal/FedALT
+### 6.2 R10 D1 @3B：Normal/FedALT  (10g/1method)
 
 ```bash
 export MODEL_PATH=/data/yaominghao/gb/models/Qwen2.5-3B
 export RUN_TAG_MODEL=Qwen2.5-3B
-export BENCHMARK_DIR_MAIN=/data/yaominghao/gb/FedPLoRA/data/A100_domain_benchmark_35c_dir05/seed_42
+export BENCHMARK_DIR_MAIN=/data/yaominghao/gb/FedPLoRA/data/domain_benchmark_35c_dir05/seed_42
 export BENCHMARK_REQUIRED_SPLIT_SEEDS="42"
 export EXPECTED_NUM_CLIENTS=35
 source scripts/RunScripts/preflight_20260709_baseline.sh
-export ROUNDS=1 LOCAL_EPOCHS=1 EVAL_MAX_BATCHES=0 RUN_TAG_DATASET=a1009k_35c_dir05
+export ROUNDS=1 LOCAL_EPOCHS=1 EVAL_MAX_BATCHES=0 RUN_TAG_DATASET=dir05
 export RUN_ID_PREFIX=qwen3b_20260718_d1_baseline_r1_finaleval
 set_run_paths 42
 
-GPU=1 run_sft_full N7_baseline_qwen3b_normal normal --force_retrain
-GPU=1 run_sft_full N7_baseline_qwen3b_fedalt fedalt --force_retrain
+GPU=0 run_sft_full N7_baseline_qwen3b_normal normal --force_retrain
+GPU=0 run_sft_full N7_baseline_qwen3b_fedalt fedalt --force_retrain
 ```
 
 ### 6.3 R10 D1 @3B：FedPLoRA-OS/v13a
@@ -597,15 +610,15 @@ GPU=1 run_sft_full N7_baseline_qwen3b_fedalt fedalt --force_retrain
 ```bash
 export MODEL_PATH=/data/yaominghao/gb/models/Qwen2.5-3B
 export RUN_TAG_MODEL=Qwen2.5-3B
-export BENCHMARK_DIR_MAIN=/data/yaominghao/gb/FedPLoRA/data/A100_domain_benchmark_35c_dir05/seed_42
+export BENCHMARK_DIR_MAIN=/data/yaominghao/gb/FedPLoRA/data/domain_benchmark_35c_dir05/seed_42
 export BENCHMARK_REQUIRED_SPLIT_SEEDS="42"
 export EXPECTED_NUM_CLIENTS=35
 source scripts/RunScripts/preflight_20260709_main_algorithm.sh
-export ROUNDS=1 LOCAL_EPOCHS=1 EVAL_MAX_BATCHES=0 RUN_TAG_DATASET=a1009k_35c_dir05
+export ROUNDS=1 LOCAL_EPOCHS=1 EVAL_MAX_BATCHES=0 RUN_TAG_DATASET=dir05
 export RUN_ID_PREFIX=qwen3b_20260718_d1_ours_r1_finaleval
 set_run_paths 42
 
-GPU=1 run_sft_full N7_ours_qwen3b_v13a_os fedplora_v13a_os --force_retrain
+GPU=0 run_sft_full N7_ours_qwen3b_v13a_os fedplora_v13a_os --force_retrain
 ```
 
 `run_sft_full` 内部为每个调用分别启动一个 nohup；三方法各自有独立 PID、日志、checkpoint 与结果目录。
@@ -857,11 +870,12 @@ Stage 5（需要代码后再运行）
 
 【注意事项】
 
-1. 不重复运行 D1 A1009k offset1；它已经完成。
-2. 不把 19k `domain_benchmark_7c` centralized 结果混入 A100 9k 主表。
+1. 不重复运行已完成的 D1/Flower offset0 实验。
+2. gb 本订单 D1/centralized 均基于 `domain_benchmark_`*，勿与 minghao 的 A100 9k 主表混报。
 3. 不把 `coldstart` 写成 label-free；它使用真实 domain。
 4. 不把 `coldstart_geom` 写成 zero-data；当前正式设置使用 10 条带 response 的 SFT probe 样本。
 5. 不把 full-A cold-start 数值直接标成 v13a A-sketch exact。
 6. 不把 `diag_subspace_AB --save_figs` 的 histogram 当成 35×35 heatmap。
 7. Qwen2.5-3B 的 license 以下载时模型卡/LICENSE 文件为准，不写成未经核验的 Apache-2.0。
 8. 所有正式 JSON 必须保存 benchmark fingerprint、seed、held-out offset、probe samples 和完整有效超参。
+
