@@ -832,32 +832,59 @@ echo "[E-prep][ok] both adapter_export_manifest.json present"
 
 **【gb】** 不要在交互 tmux 里用 `|| { ... exit 1; }`（会**直接退出当前 shell**，pane/session 像被 kill）。用子 shell 或 `FAILED=1` 汇总。
 
+**常见误报**：`lm_eval ls tasks` 在 0.4.x 往往只列叶子 task（如 `mmlu_abstract_algebra`），**不会**单独出现一行 `mmlu`；用整词 `grep mmlu` 会误报失败，但 `--tasks mmlu` 仍可跑。下面用 `TaskManager.match_tasks()` 做 group/alias 级校验。
+
 ```bash
 cd /data/yaominghao/gb/FedPLoRA
 export RESULT_ROOT=/data/yaominghao/gb/result/FedPLoRA/order_0723
+export PY=/data/yaominghao/miniconda3/envs/fedplora/bin/python
 export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}"
 mkdir -p "$RESULT_ROOT/launcher_logs"
 
-/data/yaominghao/miniconda3/envs/fedplora/bin/python -m pip show lm_eval >/dev/null 2>&1 \
-  || /data/yaominghao/miniconda3/envs/fedplora/bin/python -m pip install 'lm_eval[hf]>=0.4.8,<0.5'
+"$PY" -m pip show lm_eval >/dev/null 2>&1 \
+  || "$PY" -m pip install 'lm_eval[hf]>=0.4.8,<0.5'
 
-/data/yaominghao/miniconda3/envs/fedplora/bin/python -m lm_eval ls tasks \
-  > "$RESULT_ROOT/lm_eval_tasks_20260723.txt"
+"$PY" -m lm_eval ls tasks 2>&1 | tee "$RESULT_ROOT/lm_eval_tasks_20260723.txt" | head -n 20
+echo "[E0] task list lines=$(wc -l < "$RESULT_ROOT/lm_eval_tasks_20260723.txt")"
 
 bash -c '
 set -eo pipefail
-RESULT_ROOT="'"$RESULT_ROOT"'"
-TASK_FILE="$RESULT_ROOT/lm_eval_tasks_20260723.txt"
-FAILED=0
-for TASK in mmlu pubmedqa mbpp; do
-  if ! grep -Eq "(^|[[:space:]])${TASK}([[:space:]]|$)" "$TASK_FILE"; then
-    echo "[external][error] task not registered: $TASK" >&2
-    FAILED=1
-  else
-    echo "[external][ok] task registered: $TASK"
-  fi
-done
-exit "$FAILED"
+PY="'"$PY"'"
+TASK_FILE="'"$RESULT_ROOT"'/lm_eval_tasks_20260723.txt"
+if [[ ! -s "$TASK_FILE" ]]; then
+  echo "[external][error] empty task list: $TASK_FILE (lm_eval ls tasks failed?)" >&2
+  exit 1
+fi
+export TASK_FILE
+"$PY" - <<'"'"'PY'"'"'
+import os, sys
+from lm_eval.tasks import TaskManager
+
+checks = {
+    "mmlu": ("mmlu",),
+    "pubmedqa": ("pubmedqa", "pubmed_qa"),
+    "mbpp": ("mbpp",),
+}
+tm = TaskManager()
+failed = 0
+task_file = os.environ["TASK_FILE"]
+blob = open(task_file, encoding="utf-8", errors="replace").read().lower()
+for label, aliases in checks.items():
+    matched = set()
+    for alias in aliases:
+        try:
+            matched.update(tm.match_tasks(alias))
+        except Exception:
+            pass
+        if alias.lower() in blob or f"{alias.lower()}_" in blob:
+            matched.add(alias)
+    if matched:
+        print(f"[external][ok] task registered: {label} -> {sorted(matched)[:5]}")
+    else:
+        print(f"[external][error] task not registered: {label} (tried {aliases})", file=sys.stderr)
+        failed = 1
+sys.exit(failed)
+PY
 '
 echo "[E0] exit code=$?"
 ```
@@ -867,19 +894,19 @@ FiQA 在 lm-eval 版本间没有稳定内置 task 名，本批不伪造 task ali
 ### E-smoke. 10 examples（GPU eval，不训练）
 
 ```bash
-cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v python scripts/Analysis/run_external_lm_eval.py --adapter_manifest "$RESULT_ROOT/external_adapters/v13a_seed42/adapter_export_manifest.json" --tasks pubmedqa:medical --mode both --limit 10 --device cuda:0 --batch_size auto --output_dir "$RESULT_ROOT/external_eval_smoke/v13a_seed42" > "$RESULT_ROOT/launcher_logs/test20260723_external_smoke_v13a_seed42.log" 2>&1 &
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v /data/yaominghao/miniconda3/envs/fedplora/bin/python scripts/Analysis/run_external_lm_eval.py --adapter_manifest "$RESULT_ROOT/external_adapters/v13a_seed42/adapter_export_manifest.json" --tasks pubmedqa:medical --mode both --limit 10 --device cuda:0 --batch_size auto --output_dir "$RESULT_ROOT/external_eval_smoke/v13a_seed42" > "$RESULT_ROOT/launcher_logs/test20260723_external_smoke_v13a_seed42.log" 2>&1 &
 ```
 
 ### E1. Normal global / MMLU + PubMedQA + MBPP
 
 ```bash
-cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v python scripts/Analysis/run_external_lm_eval.py --adapter_manifest "$RESULT_ROOT/external_adapters/normal_seed42/adapter_export_manifest.json" --tasks mmlu:general,pubmedqa:medical,mbpp:code --mode global --device cuda:0 --batch_size auto --confirm_run_unsafe_code --output_dir "$RESULT_ROOT/external_eval/normal_seed42" > "$RESULT_ROOT/launcher_logs/test20260723_external_normal_seed42.log" 2>&1 &
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v /data/yaominghao/miniconda3/envs/fedplora/bin/python scripts/Analysis/run_external_lm_eval.py --adapter_manifest "$RESULT_ROOT/external_adapters/normal_seed42/adapter_export_manifest.json" --tasks mmlu:general,pubmedqa:medical,mbpp:code --mode global --device cuda:0 --batch_size auto --confirm_run_unsafe_code --output_dir "$RESULT_ROOT/external_eval/normal_seed42" > "$RESULT_ROOT/launcher_logs/test20260723_external_normal_seed42.log" 2>&1 &
 ```
 
 ### E2. v13a global + declared-domain routed-client macro
 
 ```bash
-cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v python scripts/Analysis/run_external_lm_eval.py --adapter_manifest "$RESULT_ROOT/external_adapters/v13a_seed42/adapter_export_manifest.json" --tasks mmlu:general,pubmedqa:medical,mbpp:code --mode both --device cuda:0 --batch_size auto --confirm_run_unsafe_code --output_dir "$RESULT_ROOT/external_eval/v13a_seed42" > "$RESULT_ROOT/launcher_logs/test20260723_external_v13a_seed42.log" 2>&1 &
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v /data/yaominghao/miniconda3/envs/fedplora/bin/python scripts/Analysis/run_external_lm_eval.py --adapter_manifest "$RESULT_ROOT/external_adapters/v13a_seed42/adapter_export_manifest.json" --tasks mmlu:general,pubmedqa:medical,mbpp:code --mode both --device cuda:0 --batch_size auto --confirm_run_unsafe_code --output_dir "$RESULT_ROOT/external_eval/v13a_seed42" > "$RESULT_ROOT/launcher_logs/test20260723_external_v13a_seed42.log" 2>&1 &
 ```
 
 E2 会对每个 task 顺序跑 global + 该域全部 client adapters，并在 `external_eval_summary.json` 做无权宏平均。MBPP 会执行生成代码，只能在隔离环境运行；若服务器不是隔离执行环境，去掉 MBPP 和 `--confirm_run_unsafe_code`，不要绕过安全门。
@@ -954,7 +981,7 @@ Stage 7（P2 external；不训练）
 | R1 检索型 cold-start baseline | 已落地，无需新训练 | `order_gb_0723new.md` 的 `--held_out_route_metrics ... nearest_client_subspace ...` |
 | W1-W10 诚实性改稿 | 写作/制图项，不是服务器实验 | 不放 GPU 命令；写稿时按清单改 |
 | H1 non-IID common-test | 已修正为 frozen-test repartition + 重训 | `order_gb_0723new.md` 第 7.2-A |
-| I1 matched-domain eval-only | 已单独落地，60 个正式 checkpoint | `order_eval_only_worst_indomain_20260723.md` |
+| I1 matched-domain eval-only | 已单独落地，60 个正式 checkpoint | `order_gb_eval_only_worst_indomain_20260723.md` |
 | N1 70-client | 缺，P1 加分 | 本文第十三部分 N1.1-N1.9 |
 | N2 rank r=16 | 缺，P1 加分 | 本文第十四部分 N2.1-N2.9 |
 | E4 per-client Local | 当前训练 JSON 已有 `client_local_macro_*`，但未落盘逐 client/逐域正式表 | 暂不伪造命令；若要正文逐域 Local，需要再补代码输出 per-client artifact |
@@ -1673,7 +1700,7 @@ PY
 完整 60-job 命令已放在：
 
 ```text
-/Users/hawaiii/codex/FedPLoRA/order/order_eval_only_worst_indomain_20260723.md
+order/order_gb_eval_only_worst_indomain_20260723.md
 ```
 
 该任务必须在原始训练节点 `/data/yaominghao/gb/FedPLoRA` 上运行，因为正式 checkpoint 根在 `/data/yaominghao/gb/models/trained_models_LW`。验收标准是：
