@@ -1,11 +1,11 @@
 # FedPLoRA 20260723 投稿前统一实验命令（gb 服务器 · 合并修正版）
 
-######### FedPLoRA 1-shot、router、common-test修复、YOCO与补充实验统一入口（gb）-20260723 #########
+######### FedPLoRA 1-shot、router、common-test修复、YOCO与补充实验统一入口（gb 单卡 GPU1）-20260723 #########
 
-> 由 `order/order_20260723.md` 适配。章节与命令格式保持原文；仅换 gb 路径、conda、GPU，并写入 gb 已知坑。  
-> 0723 批次与 sup 内容已合并进 `order_20260723.md`；gb 上 `git pull` 后按本文运行。  
-> common-test 若报 `source train/val intersects common test`，不要跑旧 C1/C2–C7；改走第七部分 `7.2-A0 -> A1-A6`。  
-> YOCO、70-client、r16 在第九部分之后；gb 单卡 GPU1 时优先 P0 主线与 7.2-A，sup 资源允许再开。
+> 由 `order/order_20260723.md`（合并 sup 后的最新版）适配 gb。章节与命令格式保持原文；仅换服务器路径、conda、GPU，并写入 gb 已知坑。  
+> 原则：已完成结果不重复训练；每条正式命令只运行一个实验、产生一个 PID 和一个独立产物根。  
+> **旧 C0–C7 intersection eval-only 已停用**；common-test 请走 `7.2-A0 → A1–A6`（gb 上 dir05 train + IID test 会 ~2100 overlap，不要强行 C1）。  
+> YOCO、70-client、r16 等 sup 实验在第九部分之后；先完成 P0 主线与 7.2-A，再按资源追加。
 
 ## 先看：运行顺序总览
 
@@ -49,7 +49,7 @@ Rebuild all heterogeneity splits from one frozen shared test set; do not use eva
 4. P0：补 Qwen2.5-3B seed42 的 probe=1，共 1 条 GPU probe/eval 任务，使三 seed 均为 probe=1。
 5. P1：重新生成 D1 canonical 9k 的三 seed client states，共 3 条 GPU 训练；随后执行 CPU-only layer×module spectrum。
 
-原主线 GPU 任务共 **16 条**：12 + 1 + 3。第七部分另补 3 条 offset0 router、6 条 full-common-test dir0.5 重训练（7.2-A1–A6）和 2 条 external-task eval。旧 C0–C7 已停用。第九部分起为 YOCO/70c/r16；gb 资源紧时可只跑主线 + 7.2-A + I1。
+原主线 GPU 任务共 **16 条**：12 + 1 + 3。第七部分另补 3 条 offset0 router、**7.2-A** 6 条 full-common-test dir0.5 重训练、2 条 external-task eval；**旧 C0–C7 intersection eval-only 已停用**。第九部分以后为 YOCO/70c/r16 等 sup 队列（`order_0723_sup` 结果根）。
 
 ## 【命令目的】
 
@@ -64,7 +64,7 @@ Rebuild all heterogeneity splits from one frozen shared test set; do not use eva
 2. `coldstart` 使用真实 domain，是 oracle-domain 上界；`coldstart_geom` 使用带 response 的本地 SFT probe 样本，是 domain-label-free，但不是 zero-data。
 3. 每个 held-out fold 同时留出每个域一个 client；应写 `client-held-out fold, one client per domain`，不写经典 leave-one-client-out。
 4. full-fold 1-shot 的预注册通过条件：route match ≥95%、15/15 fold-seed 的 ΔGlobal 为正、Local 相对 10-shot 无实质退化。
-5. 9k spectrum 的 CPU 分析本身不需要 GPU；但当前服务器没有 canonical 9k 的 35-client states，因此必须先生成 states。旧 19k states 不得冒充 9k 结果。
+5. spectrum 的 CPU 分析不需要 GPU；gb 需先用 G14–G16 生成 dir05 的 35-client states。旧 19k / minghao A100 states 不得混用。
 
 ## 【命令设置】
 
@@ -82,25 +82,34 @@ conda: fedplora
 模型:
 /data/yaominghao/gb/models/SmolLM2-135M
 /data/yaominghao/gb/models/Qwen2.5-3B
+/data/yaominghao/gb/models/SmolLM2-1.7B  # sup/YOCO-scale；缺则先下载
 
-D1 dir05（gb，非 minghao A100 9k）:
+D1 (gb，非 A100 9k；不生成 A100_*):
 /data/yaominghao/gb/FedPLoRA/data/domain_benchmark_35c_dir05/seed_{42,43,44}
+/data/yaominghao/gb/FedPLoRA/data/domain_benchmark_35c_iid/seed_{42,43,44}
+/data/yaominghao/gb/FedPLoRA/data/domain_benchmark_35c_dir01/seed_{42,43,44}
+common-test 重训输出:
+/data/yaominghao/gb/FedPLoRA/data/domain_benchmark_35c_dir05_common_test_v2/seed_{42,43,44}
 
 FlowerTune-Mixed:
 /data/yaominghao/gb/FedPLoRA/data/domain_benchmark_flowertune_mixed_20c_dir05/seed_{42,43,44}
 
+70-client frozen-test (sup):
+/data/yaominghao/gb/FedPLoRA/data/domain_benchmark_70c_dir05_frozen_test/seed_{42,43,44}
+
+GPU: 默认物理 1 号卡（export GPU_ID=1）；单卡串行，勿同卡堆 nohup
+
 训练/评测:
 rounds=1, local_epochs=1, lr=2e-4
-LoRA r=8, alpha=16, dropout=0.05
+LoRA r=8, alpha=16, dropout=0.05（r16: r=16, alpha=32）
 batch=2, max_seq_length=256, dtype=bfloat16
 formal eval_max_batches=0
 smoke eval_max_batches=1, max_steps=1, max_train_samples_per_client=10
 ```
 
-
 【路径对照（minghao → gb）】
 
-| 项 | order_20260723.md | order_gb_0723.md |
+| 项 | order_20260723.md | order_gb_0723new.md |
 | --- | --- | --- |
 | conda | `FedRepo2` | `fedplora` |
 | 代码 | `/data2/minghao/code/FedPLoRA-main` | `/data/yaominghao/gb/FedPLoRA` |
@@ -113,15 +122,17 @@ smoke eval_max_batches=1, max_steps=1, max_train_samples_per_client=10
 
 ```text
 1. 每条 GPU 命令前先：cd /data/yaominghao/gb/FedPLoRA && export GPU_ID=1
-   （nohup 子壳用 PATH=.../fedplora/bin；勿在 result/order_* 下裸粘贴相对路径）。
+   （或 export PATH=.../fedplora/bin；勿在 result/order_* 下裸粘贴相对路径）。
 2. nohup 子壳禁止 set -u + source conda.sh（PS1 unbound）；用 PATH=.../fedplora/bin。
-3. gb 无 A100_*；D1 用 domain_benchmark_35c_dir05。7.2-A0 还需 domain_benchmark_35c_iid、domain_benchmark_35c_dir01。
+3. gb 无 A100_*；D1 一律 domain_benchmark_35c_dir05。缺 seed43/44 先 build。
 4. 单卡串行：G/R/A1–A6/sup 正式训练同卡一次只开一条；3B 独占 GPU1。
-5. personalized-eval 不加 --force_retrain；G14–G16 / A1–A6 / sup 正式训练保留 --force_retrain。
-6. 旧 C0–C7 intersection eval-only 已停用；common-test 只走 7.2-A0→A1–A6。
-7. HF 不可达：export HF_ENDPOINT=https://hf-mirror.com。
-8. I1 matched-domain eval-only checkpoint 根：/data/yaominghao/gb/models/trained_models_LW。
+5. personalized-eval 不加 --force_retrain；G14–G16 / A1–A6 / sup 必须 --force_retrain。
+6. HF 不可达：export HF_ENDPOINT=https://hf-mirror.com。
+7. 旧 C1 build_common_test_benchmark（dir05 train + IID test）在 gb 会因 ~2.1k overlap 失败；改跑 7.2-A0 repartition。
+8. 新脚本用 git pull；需含 repartition_with_frozen_test.py。
+9. 7.2-A0 第二个 cmp（dir05 vs dir01 test）失败说明 iid/dir01 未共 test，需先对齐三套 benchmark 再 repartition。
 ```
+
 
 ## 【实验产物位置说明】
 
@@ -150,7 +161,7 @@ launcher logs:
 ```text
 P0-A: FlowerTune-Mixed / 20 clients / 4 domains / 5 held-out offsets / 3 seeds / 1-example probe
 P0-B: Qwen2.5-3B / FlowerTune offset0 / 3-seed aligned 1-example probe
-P1: D1 dir05 / 35 clients / 7 domains / v13a one-round states / CPU layer spectrum（gb 勿与 minghao A100 9k 混报）
+P1: D1 canonical 9k / 35 clients / 7 domains / v13a one-round states / CPU layer spectrum
 ```
 
 ---
@@ -198,14 +209,13 @@ cd /data/yaominghao/gb/FedPLoRA && git pull
 
 确保含：`repartition_with_frozen_test.py`、`l1_layer_spectrum.py`、`pt_reader.py`、
 `build_common_test_benchmark.py`、`checkpoint_manifest.py`、`run_external_lm_eval.py`、
-更新后的 `eval_personalized.py`、`fed_train_sft.py`。
-
+`eval_personalized.py`、`fed_train_sft.py`、`summarize_fedplora_results.py`、`print_sft_comm_profile.py`。
 
 ## 0.2 服务器环境
 
 ```bash
 # 登录 gb 后执行（用户: yaominghao）
-exec bash
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && exec bash
 # 交互壳可用 conda；若已 set -u：export PS1="${PS1-}"
 source /data/yaominghao/miniconda3/etc/profile.d/conda.sh
 conda activate fedplora
@@ -237,7 +247,7 @@ bash -n scripts/RunScripts/run_20260713_one_experiment.sh
 ## 0.3 数据与模型检查
 
 ```bash
-python - <<'PY'
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && python - <<'PY'
 import collections
 import json
 import pathlib
@@ -282,13 +292,13 @@ cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs
 ## S3. D1-9k state generation smoke
 
 ```bash
-cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && MODEL_PATH="$MODEL_135M" BENCHMARK_DIR_MAIN="$D1_ROOT/seed_42" EXPECTED_NUM_CLIENTS=35 RUN_TAG_DATASET=dir05 PIPELINE_ROUNDS=1 PIPELINE_EVAL_MAX_BATCHES=1 nohup /usr/bin/time -v bash scripts/RunScripts/run_20260713_one_experiment.sh --kind sft --method N7_ours_spectrum9k_v13a_smoke_seed42 --agg fedplora_v13a_os --seed 42 --split-seed 42 --run-id-prefix spectrum9k_20260723_smoke --gpu "${GPU_ID:-1}" -- --force_retrain --train_max_steps_per_client 1 --max_train_samples_per_client 10 > "$RESULT_ROOT/launcher_logs/test20260723_smoke_spectrum9k_state_seed42.launch.log" 2>&1 &
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && MODEL_PATH="$MODEL_135M" BENCHMARK_DIR_MAIN="$D1_ROOT/seed_42" EXPECTED_NUM_CLIENTS=35 RUN_TAG_DATASET=gb19k_35c_dir05 PIPELINE_ROUNDS=1 PIPELINE_EVAL_MAX_BATCHES=1 nohup /usr/bin/time -v bash scripts/RunScripts/run_20260713_one_experiment.sh --kind sft --method N7_ours_spectrum9k_v13a_smoke_seed42 --agg fedplora_v13a_os --seed 42 --split-seed 42 --run-id-prefix spectrum9k_20260723_smoke --gpu "${GPU_ID:-1}" -- --force_retrain --train_max_steps_per_client 1 --max_train_samples_per_client 10 > "$RESULT_ROOT/launcher_logs/test20260723_smoke_spectrum9k_state_seed42.launch.log" 2>&1 &
 ```
 
 ## S4. smoke 完成检查
 
 ```bash
-find "$RESULT_ROOT" -path '*smoke*/run_logs/*.log' -type f -print -exec tail -n 8 {} \;
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && find "$RESULT_ROOT" -path '*smoke*/run_logs/*.log' -type f -print -exec tail -n 8 {} \;
 find "$RESULT_ROOT" -path '*smoke*/result_logs/*.json' -type f -print
 find "$RESULT_ROOT" -path '*spectrum9k*smoke*client_states*client_*.pt' -type f | wc -l
 ```
@@ -376,7 +386,7 @@ cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs
 ## G1–G12 完成检查
 
 ```bash
-python - <<'PY'
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && python - <<'PY'
 import json
 import pathlib
 
@@ -430,19 +440,19 @@ cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs
 ## G14. D1-9k / seed42 states
 
 ```bash
-cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && MODEL_PATH="$MODEL_135M" BENCHMARK_DIR_MAIN="$D1_ROOT/seed_42" EXPECTED_NUM_CLIENTS=35 RUN_TAG_DATASET=dir05 PIPELINE_ROUNDS=1 PIPELINE_EVAL_MAX_BATCHES=1 nohup /usr/bin/time -v bash scripts/RunScripts/run_20260713_one_experiment.sh --kind sft --method N7_ours_spectrum9k_v13a_seed42 --agg fedplora_v13a_os --seed 42 --split-seed 42 --run-id-prefix spectrum9k_20260723_v13a --gpu "${GPU_ID:-1}" -- --force_retrain > "$RESULT_ROOT/launcher_logs/test20260723_spectrum9k_state_seed42.launch.log" 2>&1 &
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && MODEL_PATH="$MODEL_135M" BENCHMARK_DIR_MAIN="$D1_ROOT/seed_42" EXPECTED_NUM_CLIENTS=35 RUN_TAG_DATASET=gb19k_35c_dir05 PIPELINE_ROUNDS=1 PIPELINE_EVAL_MAX_BATCHES=1 nohup /usr/bin/time -v bash scripts/RunScripts/run_20260713_one_experiment.sh --kind sft --method N7_ours_spectrum9k_v13a_seed42 --agg fedplora_v13a_os --seed 42 --split-seed 42 --run-id-prefix spectrum9k_20260723_v13a --gpu "${GPU_ID:-1}" -- --force_retrain > "$RESULT_ROOT/launcher_logs/test20260723_spectrum9k_state_seed42.launch.log" 2>&1 &
 ```
 
 ## G15. D1-9k / seed43 states
 
 ```bash
-cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && MODEL_PATH="$MODEL_135M" BENCHMARK_DIR_MAIN="$D1_ROOT/seed_42" EXPECTED_NUM_CLIENTS=35 RUN_TAG_DATASET=dir05 PIPELINE_ROUNDS=1 PIPELINE_EVAL_MAX_BATCHES=1 nohup /usr/bin/time -v bash scripts/RunScripts/run_20260713_one_experiment.sh --kind sft --method N7_ours_spectrum9k_v13a_seed43 --agg fedplora_v13a_os --seed 43 --split-seed 43 --run-id-prefix spectrum9k_20260723_v13a --gpu "${GPU_ID:-1}" -- --force_retrain > "$RESULT_ROOT/launcher_logs/test20260723_spectrum9k_state_seed43.launch.log" 2>&1 &
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && MODEL_PATH="$MODEL_135M" BENCHMARK_DIR_MAIN="$D1_ROOT/seed_42" EXPECTED_NUM_CLIENTS=35 RUN_TAG_DATASET=gb19k_35c_dir05 PIPELINE_ROUNDS=1 PIPELINE_EVAL_MAX_BATCHES=1 nohup /usr/bin/time -v bash scripts/RunScripts/run_20260713_one_experiment.sh --kind sft --method N7_ours_spectrum9k_v13a_seed43 --agg fedplora_v13a_os --seed 43 --split-seed 43 --run-id-prefix spectrum9k_20260723_v13a --gpu "${GPU_ID:-1}" -- --force_retrain > "$RESULT_ROOT/launcher_logs/test20260723_spectrum9k_state_seed43.launch.log" 2>&1 &
 ```
 
 ## G16. D1-9k / seed44 states
 
 ```bash
-cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && MODEL_PATH="$MODEL_135M" BENCHMARK_DIR_MAIN="$D1_ROOT/seed_42" EXPECTED_NUM_CLIENTS=35 RUN_TAG_DATASET=dir05 PIPELINE_ROUNDS=1 PIPELINE_EVAL_MAX_BATCHES=1 nohup /usr/bin/time -v bash scripts/RunScripts/run_20260713_one_experiment.sh --kind sft --method N7_ours_spectrum9k_v13a_seed44 --agg fedplora_v13a_os --seed 44 --split-seed 44 --run-id-prefix spectrum9k_20260723_v13a --gpu "${GPU_ID:-1}" -- --force_retrain > "$RESULT_ROOT/launcher_logs/test20260723_spectrum9k_state_seed44.launch.log" 2>&1 &
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && MODEL_PATH="$MODEL_135M" BENCHMARK_DIR_MAIN="$D1_ROOT/seed_42" EXPECTED_NUM_CLIENTS=35 RUN_TAG_DATASET=gb19k_35c_dir05 PIPELINE_ROUNDS=1 PIPELINE_EVAL_MAX_BATCHES=1 nohup /usr/bin/time -v bash scripts/RunScripts/run_20260713_one_experiment.sh --kind sft --method N7_ours_spectrum9k_v13a_seed44 --agg fedplora_v13a_os --seed 44 --split-seed 44 --run-id-prefix spectrum9k_20260723_v13a --gpu "${GPU_ID:-1}" -- --force_retrain > "$RESULT_ROOT/launcher_logs/test20260723_spectrum9k_state_seed44.launch.log" 2>&1 &
 ```
 
 ## G14–G16 之后的 CPU-only postprocess
@@ -510,9 +520,7 @@ cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs
 ### 7.2-A0. 0-GPU 重建 full-common-test dir0.5
 
 ```bash
-cd /data/yaominghao/gb/FedPLoRA
-export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}"
-set -euo pipefail
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && set -eo pipefail
 export IID_19K_ROOT="$CODE_DIR/data/domain_benchmark_35c_iid"
 export DIR01_19K_ROOT="$CODE_DIR/data/domain_benchmark_35c_dir01"
 export DIR05_COMMON_ROOT="$CODE_DIR/data/domain_benchmark_35c_dir05_common_test_v2"
@@ -583,15 +591,14 @@ cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs
 旧 C2/C3 已停用，所以 external eval 不再依赖 common-test eval-only 的副产物。这里直接从正式 D1 seed42 checkpoint 导出 PEFT adapter；只做 adapter 物化，不重新训练、不重评 common-test。
 
 ```bash
-export CKPT_SEARCH_ROOTS="/data/yaominghao/gb/models/trained_models_LW /data/yaominghao/gb/result/FedPLoRA"
-cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}"
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && export CKPT_SEARCH_ROOTS="/data/yaominghao/gb/models/trained_models_LW /data/yaominghao/gb/result/FedPLoRA"
 export CKPT_MANIFEST_EXT="$RESULT_ROOT/checkpoint_manifest_external_20260723.json"
-cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && python scripts/Analysis/checkpoint_manifest.py --roots $CKPT_SEARCH_ROOTS --output "$CKPT_MANIFEST_EXT"
+python scripts/Analysis/checkpoint_manifest.py --roots $CKPT_SEARCH_ROOTS --output "$CKPT_MANIFEST_EXT"
 
 export CKPT_NORMAL_EXT_42="$(python scripts/Analysis/checkpoint_manifest.py --roots $CKPT_SEARCH_ROOTS --resolve --agg_type normal --seed 42 --model_contains SmolLM2-135M --benchmark_contains "domain_benchmark_35c_dir05/seed_42")"
 export CKPT_V13A_EXT_42="$(python scripts/Analysis/checkpoint_manifest.py --roots $CKPT_SEARCH_ROOTS --resolve --agg_type fedplora_v13a_os --seed 42 --model_contains SmolLM2-135M --benchmark_contains "domain_benchmark_35c_dir05/seed_42")"
 
-cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" python -u tasks/fed_train_sft.py \
+CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" python -u tasks/fed_train_sft.py \
   --model "$MODEL_135M" \
   --benchmark_dir "$D1_ROOT/seed_42" \
   --agg_type normal \
@@ -606,7 +613,7 @@ cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs
   --torch_dtype bfloat16 \
   --eval_personalization_metrics
 
-cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" python -u tasks/fed_train_sft.py \
+CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" python -u tasks/fed_train_sft.py \
   --model "$MODEL_135M" \
   --benchmark_dir "$D1_ROOT/seed_42" \
   --agg_type fedplora_v13a_os \
@@ -671,18 +678,19 @@ Stage 1（串行 smoke）
   S3 -> 检查 client-state 文件
 
 Stage 2（P0，优先）
-  gb 单卡 GPU1：G1–G12 串行，一次只开一条
+  G1–G12 同级，可并行；每张 GPU 同时只跑 1 条
+  同一 GPU 上必须串行，禁止 12 条全部指向 GPU 0
 
 Stage 3（P0，可与 Stage 2 跨卡并行）
   G13 Qwen3B probe=1
   3B 显存占用高，单卡独占
 
 Stage 4（P1，主张锁定后再跑）
-  gb 单卡：G14–G16 串行
-  每个 seed 完成后 CPU spectrum postprocess
+  G14–G16 同级，可一 seed/一卡并行
+  每个 seed 完成后立即串行运行对应 CPU spectrum postprocess
 
 Stage 5（P0 router/onboarding 闭环）
-  G1–G12 已内联新 router；R1–R3 补 offset0，gb 单卡串行
+  G1–G12 已内联新 router；R1–R3 补 offset0，可同 Stage 2 跨卡并行
   等 15 fold-seed 全齐后，统一比较 route accuracy、下游增益与 payload/time
 
 Stage 6（P1 common-test；正文方案需重训练）
@@ -692,8 +700,8 @@ Stage 6（P1 common-test；正文方案需重训练）
   任一 test cmp 或泄漏检查失败，则对应阶段停止
 
 Stage 7（P2 external；不训练）
-  E-prep -> E0 -> E-smoke 串行
-  gb 单卡：E1/E2 串行
+  E-prep seed42 adapter export -> E0 task check -> E-smoke 串行
+  smoke 通过后 E1 与 E2 可跨卡并行；E2 内部各 adapter 串行
 
 优先停止条件
   若 full-fold 1-shot route <95%，或任一 fold-seed ΔGlobal≤0，
@@ -702,7 +710,7 @@ Stage 7（P2 external；不训练）
 
 ## 【注意事项】
 
-1. gb 默认 `export GPU_ID=1`；同卡一次只跑一条 GPU 任务。
+1. 每复制一条命令前先设置 `GPU_ID`，例如 `export GPU_ID=1`；不要让多个正式任务挤在同一卡。
 2. 不要给 personalized-eval 命令加 `--force_retrain`；它没有 run-checkpoint resume 语义，输出路径已按 offset/seed 隔离。
 3. G14–G16 必须保留 `--force_retrain`，否则已有同 stem bundle 可能触发 resume 跳过，最终仍没有新 states。
 4. FlowerTune-Mixed 是 public-source custom federation，不是官方 FlowerTune leaderboard protocol。
@@ -723,21 +731,21 @@ Stage 7（P2 external；不训练）
 |---|---|---|
 | G1 YOCO on FlowerTune ×3 | 缺，最高优先 | 本文第十一部分 F1-F3 |
 | G2 YOCO on 1.7B/3B ×3 | 缺，scale one-shot 对照 | 本文第十二部分 S1-S6 |
-| R1 检索型 cold-start baseline | 已落地，无需新训练 | `order_20260723.md` 的 `--held_out_route_metrics ... nearest_client_subspace ...` |
+| R1 检索型 cold-start baseline | 已落地，无需新训练 | `order_gb_0723new.md` 的 `--held_out_route_metrics ... nearest_client_subspace ...` |
 | W1-W10 诚实性改稿 | 写作/制图项，不是服务器实验 | 不放 GPU 命令；写稿时按清单改 |
-| H1 non-IID common-test | 已修正为 frozen-test repartition + 重训 | `order_20260723.md` 第 7.2-A |
+| H1 non-IID common-test | 已修正为 frozen-test repartition + 重训 | `order_gb_0723new.md` 第 7.2-A |
 | I1 matched-domain eval-only | 已单独落地，60 个正式 checkpoint | `order_eval_only_worst_indomain_20260723.md` |
 | N1 70-client | 缺，P1 加分 | 本文第十三部分 N1.1-N1.9 |
 | N2 rank r=16 | 缺，P1 加分 | 本文第十四部分 N2.1-N2.9 |
 | E4 per-client Local | 当前训练 JSON 已有 `client_local_macro_*`，但未落盘逐 client/逐域正式表 | 暂不伪造命令；若要正文逐域 Local，需要再补代码输出 per-client artifact |
-| X1 official task eval-only | 已落地 | `order_20260723.md` 第 7.3 |
-| L1-9k spectrum | 已落地 | `order_20260723.md` 第 6 节 |
+| X1 official task eval-only | 已落地 | `order_gb_0723new.md` 第 7.3 |
+| L1-9k spectrum | 已落地 | `order_gb_0723new.md` 第 6 节 |
 
 ## 【额外新增实验命令设置】
 
 ```text
-服务器: gb / yaominghao
-conda: fedplora
+服务器: gb（/data/yaominghao/gb/FedPLoRA）
+用户名: minghao
 代码目录: /data/yaominghao/gb/FedPLoRA
 
 结果根:
@@ -751,7 +759,7 @@ conda: fedplora
 /data/yaominghao/gb/models/SmolLM2-1.7B
 /data/yaominghao/gb/models/Qwen2.5-3B
 
-D1 dir05（gb，非 minghao A100 9k）:
+D1 (gb dir05，非 A100 9k):
 /data/yaominghao/gb/FedPLoRA/data/domain_benchmark_35c_dir05/seed_{42,43,44}
 
 FlowerTune-Mixed:
@@ -799,12 +807,13 @@ P1/N2: D1 canonical 9k / LoRA rank r=16 / rank-scale robustness and communicatio
 
 ---
 
-# 第九部分：额外新增实验服务器前置命令（gb 可选）
+# 第九部分：额外新增实验服务器前置命令
 
 ## 0.1 登录与环境变量
 
 ```bash
-exec bash
+# gb 登录后
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && exec bash
 source /data/yaominghao/miniconda3/etc/profile.d/conda.sh
 conda activate fedplora
 
@@ -826,7 +835,7 @@ mkdir -p "$RESULT_ROOT/launcher_logs" "$RESULT_ROOT/pids" "$RESULT_ROOT/comm_pro
 ## 0.2 公共参数
 
 ```bash
-COMMON_SFT_ARGS=(
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && COMMON_SFT_ARGS=(
   --rounds 1
   --local_epochs 1
   --lr 0.0002
@@ -857,7 +866,7 @@ YOCO_ARGS=(
 ## 0.3 代码、模型和数据检查
 
 ```bash
-python -m py_compile \
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && python -m py_compile \
   tasks/fed_train_sft.py \
   scripts/DataProcessScripts/repartition_with_frozen_test.py \
   scripts/Analysis/summarize_fedplora_results.py \
@@ -898,9 +907,7 @@ PY
 说明：70-client 用 canonical D1 的 full test 冻结为同一测试集，只重分配非测试池。`--min_samples_per_client 25` 是为了避免小域在 10 clients/domain 下样本下限不可达；该实验只作 participant-scale robustness，不替代主表。
 
 ```bash
-cd /data/yaominghao/gb/FedPLoRA
-export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}"
-set -euo pipefail
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && set -eo pipefail
 
 for SEED in 42 43 44; do
   python scripts/DataProcessScripts/repartition_with_frozen_test.py \
@@ -1060,7 +1067,7 @@ echo $! > "$RESULT_ROOT/pids/smoke_r16_v13a_seed42.pid"
 ## SM6. smoke 完成检查
 
 ```bash
-find "$RESULT_ROOT/launcher_logs" -type f -name 'test20260723_sup_smoke_*.log' -print -exec tail -n 12 {} \;
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && find "$RESULT_ROOT/launcher_logs" -type f -name 'test20260723_sup_smoke_*.log' -print -exec tail -n 12 {} \;
 find "$RESULT_ROOT" -path '*smoke*/result_logs/*.json' -type f -print
 ```
 
@@ -1408,7 +1415,7 @@ echo $! > "$RESULT_ROOT/pids/r16_v13a_seed44.pid"
 
 ## 7.1 R1 retrieval cold-start baseline
 
-在 `order_20260723.md` 中，G1-G12 与 R1-R3 已包含：
+在 `order_gb_0723new.md` 中，G1-G12 与 R1-R3 已包含：
 
 ```text
 --held_out_route_metrics flat_b_cosine,subspace,relative_l2,delta_w_cosine,nearest_client_subspace,largest_domain,random,oracle
@@ -1417,7 +1424,7 @@ echo $! > "$RESULT_ROOT/pids/r16_v13a_seed44.pid"
 验收命令：
 
 ```bash
-python - <<'PY'
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && python - <<'PY'
 import json
 import pathlib
 
@@ -1439,7 +1446,7 @@ PY
 
 ## 7.2 H1 non-IID common-test
 
-执行 `order_20260723.md` 第 7.2-A：`repartition_with_frozen_test.py` 构建 `domain_benchmark_35c_dir05_common_test_v2`，再跑 Normal/v13a × 3 seeds。旧完整 IID-test eval-only 方案已因 2.1k train/test overlap 判定无效，不再使用。
+执行 `order_gb_0723new.md` 第 7.2-A：`repartition_with_frozen_test.py` 构建 `domain_benchmark_35c_dir05_common_test_v2`，再跑 Normal/v13a × 3 seeds。旧完整 IID-test eval-only 方案已因 2.1k train/test overlap 判定无效，不再使用。
 
 ## 7.3 I1 matched-domain eval-only
 
@@ -1459,11 +1466,11 @@ summary: d1_summary.tsv 和 flowertune_summary.tsv
 
 ## 7.4 X1 external task eval-only
 
-执行 `order_20260723.md` 第 7.3。MBPP 会执行生成代码；若服务器不是隔离环境，去掉 MBPP 和 `--confirm_run_unsafe_code`。
+执行 `order_gb_0723new.md` 第 7.3。MBPP 会执行生成代码；若服务器不是隔离环境，去掉 MBPP 和 `--confirm_run_unsafe_code`。
 
 ## 7.5 L1-9k spectrum
 
-执行 `order_20260723.md` 第 6 节 G14-G16 与 CPU postprocess。它依赖 canonical 9k 的 v13a client states，不使用本文件的 70c/r16 states。
+执行 `order_gb_0723new.md` 第 6 节 G14-G16 与 CPU postprocess。它依赖 canonical 9k 的 v13a client states，不使用本文件的 70c/r16 states。
 
 ---
 
@@ -1506,7 +1513,7 @@ cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs
 ## 8.2 完整性检查
 
 ```bash
-python - <<'PY'
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && python - <<'PY'
 import pathlib
 
 root = pathlib.Path("/data/yaominghao/gb/result/FedPLoRA/order_0723_sup")
@@ -1545,7 +1552,7 @@ Stage 2（P0，最高信息增益）
 
 Stage 3（P0/P1，可与 eval-only 跨机并行）
   在原训练节点运行 I1 matched-domain eval-only。
-  gb 按本文 7.2-A 与 R1–R3 验收；minghao 可并行跑 sup。
+  在 gb（/data/yaominghao/gb/FedPLoRA） 按 order_20260723 跑 H1 common-test 与 R1 router/onboarding 验收。
 
 Stage 4（P1）
   N1.1-N1.9 70c 与 N2.1-N2.9 r16。
