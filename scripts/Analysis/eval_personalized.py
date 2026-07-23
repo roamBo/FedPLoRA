@@ -29,12 +29,13 @@ import json
 import math
 import os
 import sys
+import time
 from collections import defaultdict
 
 import numpy as np
 import torch
 import torch.nn.functional as F
-from torch.utils.data import DataLoader, Subset
+from torch.utils.data import DataLoader
 
 _ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 if _ROOT not in sys.path:
@@ -197,6 +198,93 @@ def _make_train_loader_for_rows(rows, tokenizer, args, *, cap=0, seed=42, client
     return DataLoader(ds, batch_size=args.batch_size, shuffle=True)
 
 
+def _state_nbytes(state, pred=None):
+    """Exact tensor payload size (serialization/container overhead excluded)."""
+    total = 0
+    for key, value in (state or {}).items():
+        if torch.is_tensor(value) and (pred is None or pred(key)):
+            total += int(value.numel()) * int(value.element_size())
+    return int(total)
+
+
+def _flat_named_state(state, keys):
+    values = [state[k].float().reshape(-1) for k in keys if k in state]
+    return torch.cat(values) if values else torch.empty(0)
+
+
+def _flat_cosine_score(query, candidate, keys):
+    q = _flat_named_state(query, keys)
+    c = _flat_named_state(candidate, keys)
+    if q.numel() == 0 or q.numel() != c.numel():
+        return None
+    return float(F.cosine_similarity(q, c, dim=0).item())
+
+
+def _relative_l2_score(query, candidate, keys):
+    q = _flat_named_state(query, keys)
+    c = _flat_named_state(candidate, keys)
+    if q.numel() == 0 or q.numel() != c.numel():
+        return None
+    denom = float(q.norm().item() + c.norm().item())
+    return -float((q - c).norm().item()) / max(denom, 1e-12)
+
+
+def _subspace_score(query, candidate, keys):
+    """Mean canonical correlation between per-layer B column spaces."""
+    def _basis(value):
+        u, singular, _ = torch.linalg.svd(value.float(), full_matrices=False)
+        if singular.numel() == 0 or float(singular[0].item()) <= 0.0:
+            return None
+        tol = torch.finfo(singular.dtype).eps * max(value.shape) * singular[0]
+        rank = int((singular > tol).sum().item())
+        return u[:, :rank] if rank > 0 else None
+
+    layer_scores = []
+    for key in keys:
+        if key not in query or key not in candidate:
+            continue
+        q = query[key].float()
+        c = candidate[key].float()
+        if q.ndim != 2 or c.ndim != 2 or q.shape[0] != c.shape[0]:
+            continue
+        q_basis = _basis(q)
+        c_basis = _basis(c)
+        if q_basis is None or c_basis is None:
+            continue
+        singular = torch.linalg.svdvals(q_basis.T @ c_basis).clamp(0.0, 1.0)
+        if singular.numel():
+            layer_scores.append(float(singular.mean().item()))
+    return float(np.mean(layer_scores)) if layer_scores else None
+
+
+def _delta_w_cosine_score(query, candidate, a_keys, b_keys, fallback_a):
+    """Cosine between BA updates without materializing the dense matrices."""
+    inner = qnorm2 = cnorm2 = 0.0
+    for ak, bk in zip(a_keys, b_keys):
+        if bk not in query or bk not in candidate:
+            continue
+        qa = query.get(ak, fallback_a.get(ak))
+        ca = candidate.get(ak, fallback_a.get(ak))
+        if qa is None or ca is None:
+            continue
+        qb, cb = query[bk].float(), candidate[bk].float()
+        qa, ca = qa.float(), ca.float()
+        if qb.ndim != 2 or cb.ndim != 2 or qa.ndim != 2 or ca.ndim != 2:
+            continue
+        if qb.shape[0] != cb.shape[0] or qa.shape[1] != ca.shape[1]:
+            continue
+        inner += float(torch.sum(qa * ((qb.T @ cb) @ ca)).item())
+        qnorm2 += float(torch.sum(qa * ((qb.T @ qb) @ qa)).item())
+        cnorm2 += float(torch.sum(ca * ((cb.T @ cb) @ ca)).item())
+    denom = math.sqrt(max(qnorm2, 0.0) * max(cnorm2, 0.0))
+    return inner / max(denom, 1e-12) if denom > 0 else None
+
+
+def _sync_device(device):
+    if getattr(device, "type", "cpu") == "cuda":
+        torch.cuda.synchronize(device)
+
+
 @torch.no_grad()
 def _eval(model, loader, device, max_batches):
     """NaN-safe per-domain eval: 手动 fp32 交叉熵，跳过无有效标签的 batch。"""
@@ -269,6 +357,19 @@ def main():
                     help="Comma-separated caps for held-out local few-shot upper-bound schemes, e.g. 5,10.")
     ap.add_argument("--held_out_route_probe_samples", type=int, default=10,
                     help="Few-shot samples used only to infer a held-out client's B-geometry route for coldstart_geom. 0 disables.")
+    ap.add_argument(
+        "--held_out_route_metrics",
+        type=str,
+        default="",
+        help="Optional comma-separated router audit. Supported: flat_b_cosine,subspace,"
+        "relative_l2,delta_w_cosine,nearest_client_subspace,largest_domain,random,oracle. "
+        "Empty preserves the legacy coldstart_geom-only behavior.",
+    )
+    ap.add_argument(
+        "--onboarding_accounting",
+        action="store_true",
+        help="Record probe training/router wall time and exact tensor payload bytes.",
+    )
     ap.add_argument("--eval_on_local", action="store_true",
                     help="每客户端用自己的 test_local（不同子分布）评测，而非共享 test_domain；"
                     "配合内容型非IID(--subtopic kmeans) 做 bulletproof 冷启动验证")
@@ -450,6 +551,9 @@ def main():
 
     fewshot_states = defaultdict(dict)
     route_probe_states = {}
+    fewshot_train_seconds = defaultdict(dict)
+    route_probe_train_seconds = {}
+    route_probe_sample_count = {}
     if held_out_set and few_shot_caps:
         for cap in few_shot_caps:
             for cid in held_out_clients:
@@ -465,7 +569,13 @@ def main():
                     seed=int(args.seed),
                     client_id=int(cid),
                 )
+                _sync_device(device)
+                train_started = time.perf_counter()
                 _train_one_client(model, loader, args, device)
+                _sync_device(device)
+                fewshot_train_seconds[int(cap)][int(cid)] = float(
+                    time.perf_counter() - train_started
+                )
                 sd = model.state_dict()
                 fewshot_states[int(cap)][int(cid)] = {
                     **{k: sd[k].detach().cpu().clone() for k in a_keys},
@@ -478,6 +588,12 @@ def main():
         for cid in held_out_clients:
             if cid in fewshot_states.get(route_probe_cap, {}):
                 route_probe_states[int(cid)] = fewshot_states[route_probe_cap][int(cid)]
+                route_probe_train_seconds[int(cid)] = float(
+                    fewshot_train_seconds[route_probe_cap].get(int(cid), 0.0)
+                )
+                route_probe_sample_count[int(cid)] = int(
+                    min(route_probe_cap, len(train_rows_by_client.get(int(cid), []) or []))
+                )
                 continue
             rows = train_rows_by_client.get(int(cid), [])
             if not rows:
@@ -491,10 +607,18 @@ def main():
                 seed=int(args.seed),
                 client_id=int(cid),
             )
+            _sync_device(device)
+            train_started = time.perf_counter()
             _train_one_client(model, loader, args, device)
+            _sync_device(device)
+            route_probe_train_seconds[int(cid)] = float(
+                time.perf_counter() - train_started
+            )
+            route_probe_sample_count[int(cid)] = int(min(route_probe_cap, len(rows)))
             sd = model.state_dict()
             route_probe_states[int(cid)] = {
-                bk: sd[bk].detach().cpu().clone() for bk in b_keys if bk in sd
+                **{k: sd[k].detach().cpu().clone() for k in a_keys if k in sd},
+                **{bk: sd[bk].detach().cpu().clone() for bk in b_keys if bk in sd},
             }
 
     def _flat_b(state):
@@ -538,6 +662,121 @@ def main():
                 )
         print(
             f"[heldout-route] geom_route_domain_by_client={geom_route_domain_by_client}",
+            flush=True,
+        )
+
+    supported_route_metrics = {
+        "flat_b_cosine", "subspace", "relative_l2", "delta_w_cosine",
+        "nearest_client_subspace", "largest_domain", "random", "oracle",
+    }
+    requested_route_metrics = [
+        item.strip()
+        for item in str(getattr(args, "held_out_route_metrics", "") or "").split(",")
+        if item.strip()
+    ]
+    unknown_route_metrics = sorted(set(requested_route_metrics) - supported_route_metrics)
+    if unknown_route_metrics:
+        raise ValueError(
+            f"unsupported held_out_route_metrics={unknown_route_metrics}; "
+            f"supported={sorted(supported_route_metrics)}"
+        )
+    route_audits = {}
+
+    def _route_metric_score(metric, query, candidate):
+        if metric == "flat_b_cosine":
+            return _flat_cosine_score(query, candidate, b_keys)
+        if metric == "subspace" or metric == "nearest_client_subspace":
+            return _subspace_score(query, candidate, b_keys)
+        if metric == "relative_l2":
+            return _relative_l2_score(query, candidate, b_keys)
+        if metric == "delta_w_cosine":
+            return _delta_w_cosine_score(
+                query, candidate, a_keys, b_keys, A_global
+            )
+        return None
+
+    for metric in requested_route_metrics:
+        routed, score_by_client, top2_by_client = {}, {}, {}
+        margin_by_client, match_by_client, seconds_by_client = {}, {}, {}
+        for cid, query in sorted(route_probe_states.items()):
+            route_started = time.perf_counter()
+            if metric == "oracle":
+                scores = [(1.0, str(domain_of.get(int(cid), "?")))]
+            elif metric == "largest_domain":
+                counts = defaultdict(int)
+                for train_cid in train_client_ids:
+                    counts[str(domain_of.get(int(train_cid), "?"))] += 1
+                largest = sorted(counts, key=lambda dom: (-counts[dom], dom))[0] if counts else "?"
+                scores = [(1.0 if dom == largest else 0.0, dom) for dom in sorted(counts)]
+            elif metric == "random":
+                domains = sorted(B_per_domain)
+                rng = np.random.default_rng(
+                    int(args.seed) * 1000003 + int(cid) * 9176 + 73
+                )
+                picked = str(rng.choice(domains)) if domains else "?"
+                scores = [(1.0 if dom == picked else 0.0, dom) for dom in domains]
+            elif metric == "nearest_client_subspace":
+                domain_best = {}
+                for train_cid, candidate in B_by.items():
+                    score = _route_metric_score(metric, query, candidate)
+                    dom = str(domain_of.get(int(train_cid), "?"))
+                    if score is not None and (
+                        dom not in domain_best or score > domain_best[dom]
+                    ):
+                        domain_best[dom] = float(score)
+                scores = [(score, dom) for dom, score in domain_best.items()]
+            else:
+                scores = []
+                for dom, b_state in B_per_domain.items():
+                    candidate = {**A_global, **b_state}
+                    score = _route_metric_score(metric, query, candidate)
+                    if score is not None:
+                        scores.append((float(score), str(dom)))
+            scores.sort(key=lambda item: (-item[0], item[1]))
+            seconds_by_client[int(cid)] = float(time.perf_counter() - route_started)
+            if not scores:
+                continue
+            best = scores[0]
+            second = scores[1] if len(scores) > 1 else None
+            routed[int(cid)] = best[1]
+            score_by_client[int(cid)] = float(best[0])
+            top2_by_client[int(cid)] = [
+                {"domain": dom, "score": float(score)} for score, dom in scores[:2]
+            ]
+            margin_by_client[int(cid)] = (
+                float(best[0] - second[0]) if second is not None else None
+            )
+            match_by_client[int(cid)] = (
+                str(best[1]) == str(domain_of.get(int(cid), "?"))
+            )
+        valid_margins = [float(v) for v in margin_by_client.values() if v is not None]
+        route_audits[metric] = {
+            "route_domain_by_client": routed,
+            "score_by_client": score_by_client,
+            "top2_by_client": top2_by_client,
+            "margin_by_client": margin_by_client,
+            "oracle_match_by_client": match_by_client,
+            "route_compute_seconds_by_client": seconds_by_client,
+            "summary": {
+                "num_routed": int(len(routed)),
+                "oracle_match_rate": (
+                    float(np.mean(list(match_by_client.values())))
+                    if match_by_client else None
+                ),
+                "mean_margin": float(np.mean(valid_margins)) if valid_margins else None,
+                "mean_route_compute_seconds": (
+                    float(np.mean(list(seconds_by_client.values())))
+                    if seconds_by_client else None
+                ),
+            },
+        }
+        scheme_name = f"coldstart_route_{metric}"
+        if routed and scheme_name not in schemes:
+            schemes.append(scheme_name)
+        print(
+            f"[heldout-route] metric={metric} "
+            f"match_rate={route_audits[metric]['summary']['oracle_match_rate']} "
+            f"routes={routed}",
             flush=True,
         )
 
@@ -600,6 +839,13 @@ def main():
         if scheme == "coldstart_geom":
             routed_domain = geom_route_domain_by_client.get(int(cid), d)
             return {**A_global, **B_per_domain.get(routed_domain, {})}
+        if scheme.startswith("coldstart_route_"):
+            metric = scheme.replace("coldstart_route_", "", 1)
+            audit = route_audits.get(metric, {})
+            routed_domain = (audit.get("route_domain_by_client") or {}).get(int(cid))
+            if routed_domain is None:
+                return {**A_global, **B_global}
+            return {**A_global, **B_per_domain.get(routed_domain, B_global)}
         if scheme == "v11c_coldstart":
             # 新客户端：全局 A + global/domain pools both exclude the target client.
             return {
@@ -743,6 +989,15 @@ def main():
                 results[scheme]["geom_route_oracle_match_rate"] = float(
                     np.mean([bool(v) for v in geom_route_oracle_match_by_client.values()])
                 )
+        if scheme.startswith("coldstart_route_"):
+            metric = scheme.replace("coldstart_route_", "", 1)
+            audit = route_audits.get(metric, {})
+            results[scheme]["route_metric"] = metric
+            results[scheme]["route_audit"] = {
+                key: ({str(k): v for k, v in sorted(value.items())}
+                      if isinstance(value, dict) and key != "summary" else value)
+                for key, value in audit.items()
+            }
         print(f"[scheme {scheme:7s}] per-domain macro_acc={macro:.4f} worst={worst:.4f}", flush=True)
 
     client_manifest = ((benchmark_fingerprint.get("clients") or {}).get("per_client_manifest") or {})
@@ -756,6 +1011,72 @@ def main():
         manifest["n_test_local_rows"] = int(len(test_local_rows_by_client.get(cid_i, []) or []))
         held_out_client_manifest[str(cid_i)] = manifest
 
+    onboarding_accounting = {"enabled": False}
+    if bool(getattr(args, "onboarding_accounting", False)):
+        per_client_accounting = {}
+        shared_a_bytes = _state_nbytes(A_global)
+        for cid in held_out_clients:
+            cid_i = int(cid)
+            probe_state = route_probe_states.get(cid_i, {})
+            selected_b_bytes = {}
+            route_seconds = {}
+            for metric, audit in route_audits.items():
+                routed_domain = (audit.get("route_domain_by_client") or {}).get(cid_i)
+                selected_b_bytes[metric] = _state_nbytes(
+                    B_per_domain.get(routed_domain, {})
+                )
+                route_seconds[metric] = float(
+                    (audit.get("route_compute_seconds_by_client") or {}).get(cid_i, 0.0)
+                )
+            legacy_domain = geom_route_domain_by_client.get(cid_i)
+            if legacy_domain is not None:
+                selected_b_bytes["legacy_flat_b_cosine"] = _state_nbytes(
+                    B_per_domain.get(legacy_domain, {})
+                )
+            per_client_accounting[str(cid_i)] = {
+                "domain": domain_of.get(cid_i, "?"),
+                "probe_samples": int(route_probe_sample_count.get(cid_i, 0)),
+                "probe_train_seconds": float(route_probe_train_seconds.get(cid_i, 0.0)),
+                "probe_signature_b_bytes": _state_nbytes(
+                    probe_state, is_lora_b_param_name
+                ),
+                "probe_a_bytes": _state_nbytes(probe_state, is_lora_a_param_name),
+                "probe_upload_bytes_by_metric": {
+                    metric: (
+                        0 if metric in {"largest_domain", "random", "oracle"}
+                        else _state_nbytes(probe_state, is_lora_b_param_name)
+                        + (_state_nbytes(probe_state, is_lora_a_param_name)
+                           if metric == "delta_w_cosine" else 0)
+                    )
+                    for metric in route_audits
+                },
+                "route_compute_seconds_by_metric": route_seconds,
+                "shared_a_download_bytes": int(shared_a_bytes),
+                "selected_expert_b_download_bytes_by_metric": selected_b_bytes,
+                "full_adapter_download_bytes_by_metric": {
+                    metric: int(shared_a_bytes + value)
+                    for metric, value in selected_b_bytes.items()
+                },
+            }
+        probe_times = [x["probe_train_seconds"] for x in per_client_accounting.values()]
+        upload_bytes = [x["probe_signature_b_bytes"] for x in per_client_accounting.values()]
+        onboarding_accounting = {
+            "enabled": True,
+            "measurement_scope": {
+                "probe_train_seconds": "wall-clock local adapter training in this process",
+                "route_compute_seconds": "server-side scoring only; excludes transport",
+                "payload_bytes": "tensor bytes only; excludes protocol/serialization overhead",
+                "base_model": "excluded because it is assumed pre-installed",
+            },
+            "per_client": per_client_accounting,
+            "summary": {
+                "num_clients": int(len(per_client_accounting)),
+                "mean_probe_train_seconds": float(np.mean(probe_times)) if probe_times else None,
+                "mean_probe_signature_b_bytes": float(np.mean(upload_bytes)) if upload_bytes else None,
+                "shared_a_download_bytes": int(shared_a_bytes),
+            },
+        }
+
     report = {"protocol_tag": protocol_tag,
               "config": {k: getattr(args, k) for k in
                          ["model", "benchmark_dir", "target_modules", "max_steps",
@@ -764,7 +1085,8 @@ def main():
                           "v11c_mu", "select_candidates", "held_out_clients",
                           "held_out_policy", "held_out_offset",
                           "held_out_eval_all", "few_shot_caps",
-                          "held_out_route_probe_samples"]},
+                          "held_out_route_probe_samples", "held_out_route_metrics",
+                          "onboarding_accounting"]},
               "benchmark_fingerprint": benchmark_fingerprint,
               "eval_objective": ("per_client_local_test" if bool(getattr(args, "eval_on_local", False))
                                  else "per_domain_shared_test"),
@@ -802,7 +1124,16 @@ def main():
                       if geom_route_oracle_match_by_client else None
                   ),
                   "geom_route_summary": geom_route_summary,
+                  "route_audits": {
+                      metric: {
+                          key: ({str(k): v for k, v in sorted(value.items())}
+                                if isinstance(value, dict) and key != "summary" else value)
+                          for key, value in audit.items()
+                      }
+                      for metric, audit in route_audits.items()
+                  },
               },
+              "onboarding_accounting": onboarding_accounting,
               "results": results}
     os.makedirs(os.path.dirname(os.path.abspath(args.out)), exist_ok=True)
     with open(args.out, "w", encoding="utf-8") as f:
