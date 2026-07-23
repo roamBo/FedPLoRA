@@ -43,9 +43,10 @@ def _records(roots):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--roots", nargs="+", required=True)
+    parser.add_argument("--roots", nargs="*", default=None)
     parser.add_argument("--output", default="")
     parser.add_argument("--resolve", action="store_true")
+    parser.add_argument("--list_matches", action="store_true")
     parser.add_argument("--agg_type", default="")
     parser.add_argument("--seed", type=int)
     parser.add_argument("--model_contains", default="")
@@ -83,6 +84,10 @@ def main():
                 )
         print(str(bundle))
         return
+    if not args.roots:
+        raise SystemExit(
+            "[checkpoint-manifest][error] --roots is required unless --from_result_json is set"
+        )
     records = _records(args.roots)
     if args.output:
         out = Path(args.output).expanduser().resolve()
@@ -104,6 +109,11 @@ def main():
         selected = [row for row in selected if args.benchmark_contains in str(row.get("benchmark_dir", ""))]
     if args.bundle_contains:
         selected = [row for row in selected if args.bundle_contains in str(row.get("bundle", ""))]
+    if args.list_matches:
+        for row in selected:
+            print(row["bundle"])
+        print(f"[checkpoint-manifest] list_matches count={len(selected)}", flush=True)
+        return
     if len(selected) != 1:
         details = "\n".join(row["bundle"] for row in selected[:20])
         raise SystemExit(
