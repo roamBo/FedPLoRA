@@ -234,6 +234,14 @@ parser.add_argument(
     "Pass the same --model as in meta.",
 )
 parser.add_argument(
+    "--eval_only_matched_domain",
+    action="store_true",
+    help="With --eval_only_from_checkpoint, evaluate only each client adapter on the "
+    "independent domain-test split of its home domain. Writes matched-domain macro, "
+    "per-domain metrics, and Worst In-Domain without rerunning all-domain/off-domain "
+    "coverage evaluation.",
+)
+parser.add_argument(
     "--export_eval_adapter_dir",
     type=str,
     default="",
@@ -1126,6 +1134,88 @@ def _mean_eval_stats(stats_list):
     }
 
 
+def _summarize_in_domain_stats_by_domain(stats_by_domain):
+    """Aggregate matched-adapter domain-test metrics and their worst domain.
+
+    Each entry in ``stats_by_domain[d]`` must come from a client whose home domain
+    is ``d`` evaluated on the independent domain-test split for ``d``.  This is
+    deliberately different from ``domain_metrics``, which evaluates every client
+    adapter on every domain and therefore measures all-domain coverage.
+    """
+    per_domain = {}
+    for domain, stats in sorted(stats_by_domain.items()):
+        if not stats:
+            continue
+        summary = _mean_eval_stats(stats)
+        per_domain[str(domain)] = {
+            "loss": summary["loss"],
+            "token_accuracy": summary["token_accuracy"],
+            "perplexity": summary["perplexity"],
+            "num_clients": int(len(stats)),
+        }
+
+    if not per_domain:
+        return {
+            "in_domain_domain_test_metrics": {},
+            "in_domain_domain_test_worst_token_accuracy": float("nan"),
+            "in_domain_domain_test_worst_perplexity": float("nan"),
+            "in_domain_domain_test_worst_loss": float("nan"),
+        }
+
+    return {
+        "in_domain_domain_test_metrics": per_domain,
+        "in_domain_domain_test_worst_token_accuracy": float(
+            min(v["token_accuracy"] for v in per_domain.values())
+        ),
+        "in_domain_domain_test_worst_perplexity": float(
+            max(v["perplexity"] for v in per_domain.values())
+        ),
+        "in_domain_domain_test_worst_loss": float(
+            max(v["loss"] for v in per_domain.values())
+        ),
+    }
+
+
+def _evaluate_matched_domain_test_metrics(
+    global_model,
+    client_ids,
+    benchmark,
+    tokenizer,
+    args,
+    load_client_state_fn,
+):
+    """Evaluate each client adapter only on its home-domain test split."""
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    eval_cap = int(getattr(args, "eval_max_batches", 0) or 0)
+    id2home = _client_id_to_home_domain(benchmark["clients"])
+    by_domain_test = group_rows_by_domain(benchmark["test_domain"])
+
+    stats_all = []
+    stats_by_domain = {}
+    for client_id in client_ids:
+        home = id2home.get(int(client_id))
+        if not home:
+            continue
+        rows = by_domain_test.get(home, [])
+        if not rows:
+            continue
+        dl = create_domain_eval_dataloader(rows, tokenizer, args)
+        load_client_state_fn(client_id)
+        stats = compute_lm_eval_stats(
+            global_model, dl, device, max_batches=eval_cap
+        )
+        stats_all.append(stats)
+        stats_by_domain.setdefault(str(home), []).append(stats)
+
+    macro = _mean_eval_stats(stats_all)
+    return {
+        "in_domain_domain_test_macro_token_accuracy": macro["token_accuracy"],
+        "in_domain_domain_test_macro_perplexity": macro["perplexity"],
+        "in_domain_domain_test_macro_loss": macro["loss"],
+        **_summarize_in_domain_stats_by_domain(stats_by_domain),
+    }
+
+
 def _load_client_eval_state(global_model, client_store, client_id, shared_state, args):
     local_state = _get_client_local_state(client_store, client_id)
     if is_fedalt_sequential_agg(args.agg_type):
@@ -1189,20 +1279,16 @@ def _evaluate_personalization_metrics(
             )
     off = _mean_eval_stats(off_stats)
 
-    in_dom_dt_stats = []
-    for client_id in client_ids:
-        home = id2home.get(int(client_id))
-        if not home:
-            continue
-        rows = by_domain_test.get(home, [])
-        if not rows:
-            continue
-        dl = create_domain_eval_dataloader(rows, tokenizer, args)
-        _load_client_eval_state(global_model, client_store, client_id, shared_state, args)
-        in_dom_dt_stats.append(
-            compute_lm_eval_stats(global_model, dl, device, max_batches=eval_cap)
-        )
-    indt = _mean_eval_stats(in_dom_dt_stats)
+    indt = _evaluate_matched_domain_test_metrics(
+        global_model,
+        client_ids,
+        benchmark,
+        tokenizer,
+        args,
+        lambda client_id: _load_client_eval_state(
+            global_model, client_store, client_id, shared_state, args
+        ),
+    )
 
     gap_loss = off["loss"] - loc["loss"]
     gap_tok = loc["token_accuracy"] - off["token_accuracy"]
@@ -1215,9 +1301,7 @@ def _evaluate_personalization_metrics(
         "off_domain_macro_token_accuracy": off["token_accuracy"],
         "off_domain_macro_perplexity": off["perplexity"],
         "off_domain_macro_loss": off["loss"],
-        "in_domain_domain_test_macro_token_accuracy": indt["token_accuracy"],
-        "in_domain_domain_test_macro_perplexity": indt["perplexity"],
-        "in_domain_domain_test_macro_loss": indt["loss"],
+        **indt,
         "personalization_gap_token_accuracy": gap_tok,
         "personalization_gap_perplexity": gap_ppl,
         "personalization_gap_loss": gap_loss,
@@ -1271,21 +1355,18 @@ def _evaluate_personalization_metrics_full_state(
             )
     off = _mean_eval_stats(off_stats)
 
-    in_dom_dt_stats = []
-    for idx in eval_client_ids:
-        home = id2home.get(int(idx))
-        if not home:
-            continue
-        rows = by_domain_test.get(home, [])
-        if not rows:
-            continue
-        dl = create_domain_eval_dataloader(rows, tokenizer, args)
+    def _load_full_state_client(idx):
         state = _get_client_local_state(eval_store, idx)
         load_partial_state_dict(global_model, state)
-        in_dom_dt_stats.append(
-            compute_lm_eval_stats(global_model, dl, device, max_batches=eval_cap)
-        )
-    indt = _mean_eval_stats(in_dom_dt_stats)
+
+    indt = _evaluate_matched_domain_test_metrics(
+        global_model,
+        eval_client_ids,
+        benchmark,
+        tokenizer,
+        args,
+        _load_full_state_client,
+    )
 
     gap_loss = off["loss"] - loc["loss"]
     gap_tok = loc["token_accuracy"] - off["token_accuracy"]
@@ -1298,9 +1379,7 @@ def _evaluate_personalization_metrics_full_state(
         "off_domain_macro_token_accuracy": off["token_accuracy"],
         "off_domain_macro_perplexity": off["perplexity"],
         "off_domain_macro_loss": off["loss"],
-        "in_domain_domain_test_macro_token_accuracy": indt["token_accuracy"],
-        "in_domain_domain_test_macro_perplexity": indt["perplexity"],
-        "in_domain_domain_test_macro_loss": indt["loss"],
+        **indt,
         "personalization_gap_token_accuracy": gap_tok,
         "personalization_gap_perplexity": gap_ppl,
         "personalization_gap_loss": gap_loss,
@@ -1932,6 +2011,7 @@ def _metrics_recommended_kpis(include_personalization: bool) -> dict:
             [
                 "client_local_macro_token_accuracy",
                 "in_domain_domain_test_macro_token_accuracy",
+                "in_domain_domain_test_worst_token_accuracy",
                 "off_domain_macro_token_accuracy",
             ]
         )
@@ -1939,6 +2019,7 @@ def _metrics_recommended_kpis(include_personalization: bool) -> dict:
             [
                 "client_local_macro_perplexity",
                 "in_domain_domain_test_macro_perplexity",
+                "in_domain_domain_test_worst_perplexity",
                 "off_domain_macro_perplexity",
             ]
         )
@@ -2170,7 +2251,9 @@ def _sft_eval_phase(
             f"off tok_acc={pfl_block['off_domain_macro_token_accuracy']:.4f} "
             f"off_ppl={pfl_block['off_domain_macro_perplexity']:.2f} | "
             f"in_dom_test tok_acc={pfl_block['in_domain_domain_test_macro_token_accuracy']:.4f} "
-            f"in_dom_test ppl={pfl_block['in_domain_domain_test_macro_perplexity']:.2f} | "
+            f"in_dom_test ppl={pfl_block['in_domain_domain_test_macro_perplexity']:.2f} "
+            f"worst_in_dom_tok_acc={pfl_block['in_domain_domain_test_worst_token_accuracy']:.4f} "
+            f"worst_in_dom_ppl={pfl_block['in_domain_domain_test_worst_perplexity']:.2f} | "
             f"gap_tok_acc(local-off)={pfl_block['personalization_gap_token_accuracy']:.4f} "
             f"gap_ppl(off-local)={pfl_block['personalization_gap_perplexity']:.2f} | "
             f"aux local_loss={pfl_block['client_local_macro_loss']:.4f} "
@@ -2239,9 +2322,12 @@ def _metrics_path_from_checkpoint_eval(args, split_dir, ckpt_dir):
     split_tag = os.path.basename(os.path.normpath(split_dir))
     model_tag = os.path.basename(os.path.normpath(args.model.rstrip("/")))
     ckpt_tag = os.path.basename(os.path.normpath(ckpt_dir)).replace(" ", "_")
+    mode_tag = "_matched_domain" if getattr(
+        args, "eval_only_matched_domain", False
+    ) else ""
     fname = (
         f"{args.agg_type}_{model_tag}_{split_tag}_eval_ckpt_{ckpt_tag}_"
-        f"r{args.rounds}_e{args.local_epochs}_seed{args.seed}.json"
+        f"r{args.rounds}_e{args.local_epochs}_seed{args.seed}{mode_tag}.json"
     )
     os.makedirs(args.metrics_output_dir, exist_ok=True)
     return os.path.join(args.metrics_output_dir, fname)
@@ -2772,6 +2858,104 @@ def eval_only_from_checkpoint(args):
         if bool(getattr(args, "export_eval_adapter_only", False)):
             return
 
+    if bool(getattr(args, "eval_only_matched_domain", False)):
+        if is_lora_a_disk_agg(args.agg_type) or is_fedalt_sequential_agg(
+            args.agg_type
+        ):
+            matched_client_ids = list(client_ids)
+            shared_state = {
+                k: v.detach().cpu().clone()
+                for k, v in global_model.state_dict().items()
+                if is_fedplora_shared_param_name(
+                    k, get_trainable_param_names(global_model)
+                )
+            }
+
+            def _load_matched_client(client_id):
+                _load_client_eval_state(
+                    global_model,
+                    client_store,
+                    client_id,
+                    shared_state,
+                    args,
+                )
+
+        else:
+            matched_client_ids = list(range(len(client_states_for_agg)))
+            if is_memory_global_agg_agg(
+                args.agg_type
+            ) and not _memory_agg_eval_use_local_clients(args):
+                global_eval_state = extract_trainable_state_dict(global_model)
+
+                def _load_matched_client(client_id):
+                    load_partial_state_dict(global_model, global_eval_state)
+
+            else:
+
+                def _load_matched_client(client_id):
+                    load_partial_state_dict(
+                        global_model, client_states_for_agg[int(client_id)]
+                    )
+
+        matched_metrics = _evaluate_matched_domain_test_metrics(
+            global_model,
+            matched_client_ids,
+            benchmark,
+            tokenizer,
+            args,
+            _load_matched_client,
+        )
+        round_payload = {
+            "round": int(meta.get("round_saved_1based", args.rounds) or args.rounds),
+            "eval_note": "eval_only_matched_domain_from_checkpoint (no training)",
+            **matched_metrics,
+        }
+        comm_info = _comm_info_for_args(global_model, args)
+        metrics_history = {
+            "args": vars(args).copy(),
+            "benchmark_dir": split_dir,
+            "eval_only_from_checkpoint": ckpt,
+            "checkpoint_meta": meta,
+            "benchmark_fingerprint": getattr(args, "_benchmark_fingerprint", {}),
+            "effective_hparams": _effective_hparams_payload(args),
+            "recommended_primary_metrics": [
+                "in_domain_domain_test_macro_token_accuracy",
+                "in_domain_domain_test_worst_token_accuracy",
+                "in_domain_domain_test_macro_perplexity",
+                "in_domain_domain_test_worst_perplexity",
+            ],
+            "matched_domain_eval_definition": (
+                "Each client adapter is evaluated only on the independent "
+                "domain-test split of its home domain; Worst In-Domain is the "
+                "minimum home-domain mean token accuracy across domains."
+            ),
+            "communication": _communication_metrics_payload(args, comm_info),
+            "rounds": [round_payload],
+        }
+        out_path = _metrics_path_from_checkpoint_eval(args, split_dir, ckpt)
+        _write_metrics_file(out_path, metrics_history)
+        print(
+            "[eval-only][matched-domain] "
+            f"macro_tok_acc={matched_metrics['in_domain_domain_test_macro_token_accuracy']:.4f} "
+            f"worst_tok_acc={matched_metrics['in_domain_domain_test_worst_token_accuracy']:.4f} "
+            f"macro_ppl={matched_metrics['in_domain_domain_test_macro_perplexity']:.2f} "
+            f"worst_ppl={matched_metrics['in_domain_domain_test_worst_perplexity']:.2f}",
+            flush=True,
+        )
+        for domain, values in matched_metrics[
+            "in_domain_domain_test_metrics"
+        ].items():
+            print(
+                f"[eval-only][matched-domain] {domain}: "
+                f"clients={values['num_clients']} "
+                f"tok_acc={values['token_accuracy']:.4f} "
+                f"ppl={values['perplexity']:.2f} "
+                f"loss={values['loss']:.4f}",
+                flush=True,
+            )
+        print(f"[metrics] matched-domain eval-only saved to {out_path}", flush=True)
+        return
+
     comm_info = _comm_info_for_args(global_model, args)
     metrics_history = {
         "args": vars(args).copy(),
@@ -2796,6 +2980,10 @@ def eval_only_from_checkpoint(args):
         metrics_history["recommended_primary_personalization_metrics"] = [
             "client_local_macro_token_accuracy",
             "client_local_macro_perplexity",
+            "in_domain_domain_test_macro_token_accuracy",
+            "in_domain_domain_test_macro_perplexity",
+            "in_domain_domain_test_worst_token_accuracy",
+            "in_domain_domain_test_worst_perplexity",
             "off_domain_macro_token_accuracy",
             "off_domain_macro_perplexity",
             "personalization_gap_token_accuracy",
@@ -3059,6 +3247,10 @@ def federated_sft(args):
         metrics_history["recommended_primary_personalization_metrics"] = [
             "client_local_macro_token_accuracy",
             "client_local_macro_perplexity",
+            "in_domain_domain_test_macro_token_accuracy",
+            "in_domain_domain_test_macro_perplexity",
+            "in_domain_domain_test_worst_token_accuracy",
+            "in_domain_domain_test_worst_perplexity",
             "off_domain_macro_token_accuracy",
             "off_domain_macro_perplexity",
             "personalization_gap_token_accuracy",
@@ -3690,6 +3882,10 @@ if __name__ == "__main__":
                 raise ValueError("--eval_only_from_checkpoint cannot be combined with --build_benchmark")
             eval_only_from_checkpoint(args)
         else:
+            if bool(getattr(args, "eval_only_matched_domain", False)):
+                raise ValueError(
+                    "--eval_only_matched_domain requires --eval_only_from_checkpoint"
+                )
             federated_sft(args)
     finally:
         restore_logging(log_file, orig_out, orig_err)
