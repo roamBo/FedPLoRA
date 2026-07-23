@@ -760,9 +760,39 @@ CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v /data/yaominghao/mini
 
 | 现象 | 原因 | 处理 |
 |------|------|------|
-| `found 0` | 旧 run 无 `run_checkpoint_meta.json`，或 benchmark 子串不匹配 | 用下方 **主表 result JSON** 路径（推荐） |
-| `found >1` | 7.2-A common-test 重训 + os_20260709 同时 valid | 加 `--bundle_contains os_20260709` / `v13_20260712` |
+| `found 0` | gb 上无 D1 主表 result / checkpoint，或旧 bundle 无 meta | 先跑下方 **E-prep-0 发现**；仅有 checkpoint 时用 manifest resolve |
+| `found >1` | 7.2-A common-test 重训 + 主表同时 valid | 加 `--bundle_contains` 或手选 bundle |
 | `CKPT_*` 为空 | resolve 失败但 `$()` 未阻断 | 必须看到非空路径再 nohup |
+| `--roots is required` | gb 代码未 pull 最新 `checkpoint_manifest.py` | `git pull` 后再跑 |
+
+#### E-prep-0. 发现 gb 上实际产物（0 GPU，先跑）
+
+```bash
+cd /data/yaominghao/gb/FedPLoRA
+export RESULT_ROOT=/data/yaominghao/gb/result/FedPLoRA/order_0723
+export FED_RESULT_ROOT=/data/yaominghao/gb/result/FedPLoRA
+export PY=/data/yaominghao/miniconda3/envs/fedplora/bin/python
+export CKPT_SEARCH_ROOTS="/data/yaominghao/gb/models/trained_models_LW /data/yaominghao/gb/result/FedPLoRA"
+
+# A) result JSON 在哪（主表 normal / v13a seed42）
+find "$FED_RESULT_ROOT" -path '*/OS1_normal/*.json' 2>/dev/null | head
+find "$FED_RESULT_ROOT" -path '*NX0_v13a*/*.json' 2>/dev/null | head
+find "$FED_RESULT_ROOT" -path '*NX1_v13a*/*.json' 2>/dev/null | head
+ls -d "$FED_RESULT_ROOT"/os_* "$FED_RESULT_ROOT"/v13_* 2>/dev/null | head
+
+# B) 不依赖 result JSON：checkpoint 候选（需 git pull 后才有 --list_matches）
+"$PY" scripts/Analysis/checkpoint_manifest.py --roots $CKPT_SEARCH_ROOTS --output "$RESULT_ROOT/checkpoint_manifest_external_20260723.json"
+echo "=== normal seed42 candidates ==="
+"$PY" scripts/Analysis/checkpoint_manifest.py --roots $CKPT_SEARCH_ROOTS --resolve --list_matches \
+  --agg_type normal --seed 42 --model_contains SmolLM2-135M --benchmark_contains "domain_benchmark_35c_dir05/seed_42"
+echo "=== v13a seed42 candidates ==="
+"$PY" scripts/Analysis/checkpoint_manifest.py --roots $CKPT_SEARCH_ROOTS --resolve --list_matches \
+  --agg_type fedplora_v13a_os --seed 42 --model_contains SmolLM2-135M --benchmark_contains "domain_benchmark_35c_dir05/seed_42"
+```
+
+若 A/B **都为空** → gb 上还没有 D1 seed42 的 final checkpoint，**不能 E-prep**；需先完成 0709 主表或 7.2-A 重训。
+
+#### E-prep-1. resolve + export
 
 ```bash
 cd /data/yaominghao/gb/FedPLoRA
@@ -776,39 +806,28 @@ export PY=/data/yaominghao/miniconda3/envs/fedplora/bin/python
 export CKPT_SEARCH_ROOTS="/data/yaominghao/gb/models/trained_models_LW /data/yaominghao/gb/result/FedPLoRA"
 mkdir -p "$RESULT_ROOT/launcher_logs" "$RESULT_ROOT/external_adapter_export" "$RESULT_ROOT/external_adapters"
 
-# --- 0-GPU：诊断（可选；看清 valid 候选）---
-export CKPT_MANIFEST_EXT="$RESULT_ROOT/checkpoint_manifest_external_20260723.json"
-"$PY" scripts/Analysis/checkpoint_manifest.py --roots $CKPT_SEARCH_ROOTS --output "$CKPT_MANIFEST_EXT"
-"$PY" - <<'PY'
-import json, pathlib
-manifest = pathlib.Path("'"$CKPT_MANIFEST_EXT"'")
-rows = json.loads(manifest.read_text(encoding="utf-8"))
-for want, agg, bundle_hint in [
-    ("normal seed42", "normal", "os_20260709"),
-    ("v13a seed42", "fedplora_v13a_os", "v13_20260712"),
-]:
-    hits = [
-        r for r in rows
-        if r.get("valid") and r.get("agg_type") == agg and r.get("seed") == 42
-        and "seed_42" in str(r.get("benchmark_dir", ""))
-        and "SmolLM2-135M" in str(r.get("model", ""))
-    ]
-    print(f"[E-prep][audit] {want}: {len(hits)} valid candidate(s)")
-    for r in hits[:5]:
-        mark = " <-- main" if bundle_hint in str(r.get("bundle", "")) else ""
-        print(" ", r.get("bundle"), mark)
-PY
+# --- resolve 路径 A：主表 result JSON（若 E-prep-0 的 find 有输出，替换下面两行为实际路径）---
+NORMAL_RESULT_JSON="$(find "$FED_RESULT_ROOT" -path '*/OS1_normal/*.json' 2>/dev/null | grep 'seed42\|seed_42\|_seed42' | sort | head -n 1)"
+V13A_RESULT_JSON="$(find "$FED_RESULT_ROOT" -path '*NX0_v13a*/*.json' -path '*seed42*' 2>/dev/null | sort | head -n 1)"
+if [[ -z "$V13A_RESULT_JSON" ]]; then
+  V13A_RESULT_JSON="$(find "$FED_RESULT_ROOT" -path '*NX0_v13a*/*.json' 2>/dev/null | sort | head -n 1)"
+fi
 
-# --- 0-GPU：resolve（推荐：主表 result JSON → 与 I1 同源）---
-NORMAL_RESULT_JSON="$(find "$FED_RESULT_ROOT/os_20260709_baseline_35c_dir05_r1_finaleval_seed42/result_logs/OS1_normal" -maxdepth 1 -type f -name '*.json' | sort | head -n 1)"
-V13A_RESULT_JSON="$(find "$FED_RESULT_ROOT/v13_20260712_nx0_35c_dir05_r1_finaleval_seed42/result_logs/NX0_v13a_os_split42_train42" -maxdepth 1 -type f -name '*.json' | sort | head -n 1)"
-test -f "$NORMAL_RESULT_JSON"
-test -f "$V13A_RESULT_JSON"
-echo "[E-prep] NORMAL_RESULT_JSON=$NORMAL_RESULT_JSON"
-echo "[E-prep] V13A_RESULT_JSON=$V13A_RESULT_JSON"
+if [[ -f "$NORMAL_RESULT_JSON" && -f "$V13A_RESULT_JSON" ]]; then
+  echo "[E-prep] resolve via result JSON"
+  echo "[E-prep] NORMAL_RESULT_JSON=$NORMAL_RESULT_JSON"
+  echo "[E-prep] V13A_RESULT_JSON=$V13A_RESULT_JSON"
+  export CKPT_NORMAL_EXT_42="$("$PY" scripts/Analysis/checkpoint_manifest.py --from_result_json "$NORMAL_RESULT_JSON")"
+  export CKPT_V13A_EXT_42="$("$PY" scripts/Analysis/checkpoint_manifest.py --from_result_json "$V13A_RESULT_JSON")"
+else
+  echo "[E-prep] result JSON missing; resolve via checkpoint manifest"
+  # --- resolve 路径 B：仅 checkpoint（7.2-A 已跑时必须 bundle_contains 锁主表；只有 1 条候选时可去掉）---
+  export CKPT_NORMAL_EXT_42="$("$PY" scripts/Analysis/checkpoint_manifest.py --roots $CKPT_SEARCH_ROOTS --resolve \
+    --agg_type normal --seed 42 --model_contains SmolLM2-135M --benchmark_contains "domain_benchmark_35c_dir05/seed_42")"
+  export CKPT_V13A_EXT_42="$("$PY" scripts/Analysis/checkpoint_manifest.py --roots $CKPT_SEARCH_ROOTS --resolve \
+    --agg_type fedplora_v13a_os --seed 42 --model_contains SmolLM2-135M --benchmark_contains "domain_benchmark_35c_dir05/seed_42")"
+fi
 
-export CKPT_NORMAL_EXT_42="$("$PY" scripts/Analysis/checkpoint_manifest.py --from_result_json "$NORMAL_RESULT_JSON")"
-export CKPT_V13A_EXT_42="$("$PY" scripts/Analysis/checkpoint_manifest.py --from_result_json "$V13A_RESULT_JSON")"
 echo "[E-prep][ok] CKPT_NORMAL_EXT_42=$CKPT_NORMAL_EXT_42"
 echo "[E-prep][ok] CKPT_V13A_EXT_42=$CKPT_V13A_EXT_42"
 test -n "$CKPT_NORMAL_EXT_42"
@@ -817,14 +836,21 @@ test -f "$CKPT_NORMAL_EXT_42/run_checkpoint_meta.json"
 test -f "$CKPT_V13A_EXT_42/run_checkpoint_meta.json"
 ```
 
-若 `--from_result_json` 报 `missing run_checkpoint_meta.json`，说明该主表 run 是旧格式 checkpoint，需用新代码重训或换有 meta 的 bundle。
-
-**备用：manifest resolve**（仅当 result JSON 路径漂移时用；若 7.2-A 已跑，必须加 `--bundle_contains` 锁主表）：
+若路径 B 报 `found >1`，先 `--list_matches` 看清 bundle，再任选其一：
 
 ```bash
-export CKPT_NORMAL_EXT_42="$("$PY" scripts/Analysis/checkpoint_manifest.py --roots $CKPT_SEARCH_ROOTS --resolve --agg_type normal --seed 42 --model_contains SmolLM2-135M --benchmark_contains "domain_benchmark_35c_dir05/seed_42" --bundle_contains os_20260709_baseline_35c_dir05_r1_finaleval)"
-export CKPT_V13A_EXT_42="$("$PY" scripts/Analysis/checkpoint_manifest.py --roots $CKPT_SEARCH_ROOTS --resolve --agg_type fedplora_v13a_os --seed 42 --model_contains SmolLM2-135M --benchmark_contains "domain_benchmark_35c_dir05/seed_42" --bundle_contains v13_20260712_nx0_35c_dir05_r1_finaleval_seed42)"
+# 例：锁 7.2-A common-test 重训产物（若主表不在 gb）
+export CKPT_NORMAL_EXT_42="$("$PY" scripts/Analysis/checkpoint_manifest.py --roots $CKPT_SEARCH_ROOTS --resolve \
+  --agg_type normal --seed 42 --model_contains SmolLM2-135M \
+  --benchmark_contains "domain_benchmark_35c_dir05_common_test_v2/seed_42" \
+  --bundle_contains common_test_v2)"
+export CKPT_V13A_EXT_42="$("$PY" scripts/Analysis/checkpoint_manifest.py --roots $CKPT_SEARCH_ROOTS --resolve \
+  --agg_type fedplora_v13a_os --seed 42 --model_contains SmolLM2-135M \
+  --benchmark_contains "domain_benchmark_35c_dir05_common_test_v2/seed_42" \
+  --bundle_contains common_test_v2)"
 ```
+
+若 `--from_result_json` 报 `missing run_checkpoint_meta.json`，说明该 checkpoint 是旧格式，需用新代码重训。
 
 ```bash
 # --- GPU：E-prep-normal（nohup；占 GPU1 直到结束）---
