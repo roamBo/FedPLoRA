@@ -552,28 +552,192 @@ done
 
 ### 7.2-A1–A6. full-common-test dir0.5 重新训练（6 条 GPU）
 
-```bash
-cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && MODEL_PATH="$MODEL_135M" BENCHMARK_DIR_MAIN="$DIR05_COMMON_ROOT/seed_42" EXPECTED_NUM_CLIENTS=35 RUN_TAG_DATASET=dir05_common_test_v2 PIPELINE_ROUNDS=1 PIPELINE_EVAL_MAX_BATCHES=0 nohup /usr/bin/time -v bash scripts/RunScripts/run_20260713_one_experiment.sh --kind sft --method N9_common_dir05_normal_seed42 --agg normal --seed 42 --split-seed 42 --run-id-prefix common_test_20260723_dir05 --gpu "${GPU_ID:-1}" -- --force_retrain > "$RESULT_ROOT/launcher_logs/test20260723_common_dir05_normal_seed42.log" 2>&1 &
-```
+**【gb】** A1–A6 **全部直接** `$PY -u tasks/fed_train_sft.py`；**不要**再用 `run_20260713_one_experiment.sh`：
+1. `agg=normal` 会被 main preflight `[guard][main]` 拒绝。
+2. wrapper 里 `exec python` 在 nohup 子壳可能落到**无 numpy 的系统 python**；交互式 `(fedplora)` 里 `pip show numpy` 正常不代表 nohup 用的是同一个解释器。
+3. 必须用 **fedplora 绝对路径**（见各条 nohup 里的 python 路径）。**不要只粘贴 nohup 一行**：若 `$PY` / `$RESULT_ROOT` 未 export，会报 `cannot run : No such file`（exit 127）或找不到 benchmark。
+4. 每条 A* 块从 `cd ...` 到 `nohup ... &` **整段一起粘贴**；或先跑上面「共用 export」再跑 A*。
+
+先一次性 export（A1–A6 共用）：
 
 ```bash
-cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && MODEL_PATH="$MODEL_135M" BENCHMARK_DIR_MAIN="$DIR05_COMMON_ROOT/seed_42" EXPECTED_NUM_CLIENTS=35 RUN_TAG_DATASET=dir05_common_test_v2 PIPELINE_ROUNDS=1 PIPELINE_EVAL_MAX_BATCHES=0 nohup /usr/bin/time -v bash scripts/RunScripts/run_20260713_one_experiment.sh --kind sft --method N7_ours_common_dir05_v13a_seed42 --agg fedplora_v13a_os --seed 42 --split-seed 42 --run-id-prefix common_test_20260723_dir05 --gpu "${GPU_ID:-1}" -- --force_retrain > "$RESULT_ROOT/launcher_logs/test20260723_common_dir05_v13a_seed42.log" 2>&1 &
+cd /data/yaominghao/gb/FedPLoRA
+export CODE_DIR=/data/yaominghao/gb/FedPLoRA
+export RESULT_ROOT=/data/yaominghao/gb/result/FedPLoRA/order_0723
+export MODEL_ROOT=/data/yaominghao/gb/models/trained_models_LW/order_0723
+export MODEL_135M=/data/yaominghao/gb/models/SmolLM2-135M
+export DIR05_COMMON_ROOT="$CODE_DIR/data/domain_benchmark_35c_dir05_common_test_v2"
+export GPU_ID=1
+/data/yaominghao/miniconda3/envs/fedplora/bin/python -c "import numpy; print('[ok] numpy', numpy.__version__, 'python', __import__('sys').executable)"
+mkdir -p "$RESULT_ROOT/launcher_logs"
 ```
 
-```bash
-cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && MODEL_PATH="$MODEL_135M" BENCHMARK_DIR_MAIN="$DIR05_COMMON_ROOT/seed_42" EXPECTED_NUM_CLIENTS=35 RUN_TAG_DATASET=dir05_common_test_v2 PIPELINE_ROUNDS=1 PIPELINE_EVAL_MAX_BATCHES=0 nohup /usr/bin/time -v bash scripts/RunScripts/run_20260713_one_experiment.sh --kind sft --method N9_common_dir05_normal_seed43 --agg normal --seed 43 --split-seed 43 --run-id-prefix common_test_20260723_dir05 --gpu "${GPU_ID:-1}" -- --force_retrain > "$RESULT_ROOT/launcher_logs/test20260723_common_dir05_normal_seed43.log" 2>&1 &
-```
+#### A1. Normal seed42
 
 ```bash
-cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && MODEL_PATH="$MODEL_135M" BENCHMARK_DIR_MAIN="$DIR05_COMMON_ROOT/seed_42" EXPECTED_NUM_CLIENTS=35 RUN_TAG_DATASET=dir05_common_test_v2 PIPELINE_ROUNDS=1 PIPELINE_EVAL_MAX_BATCHES=0 nohup /usr/bin/time -v bash scripts/RunScripts/run_20260713_one_experiment.sh --kind sft --method N7_ours_common_dir05_v13a_seed43 --agg fedplora_v13a_os --seed 43 --split-seed 43 --run-id-prefix common_test_20260723_dir05 --gpu "${GPU_ID:-1}" -- --force_retrain > "$RESULT_ROOT/launcher_logs/test20260723_common_dir05_v13a_seed43.log" 2>&1 &
+cd /data/yaominghao/gb/FedPLoRA
+RUN_ID=common_test_20260723_dir05_seed42
+METHOD=N9_common_dir05_normal_seed42
+RUN_TAG=SmolLM2-135M_dir05_common_test_v2_r1_e1_lr0.0002
+mkdir -p "$RESULT_ROOT/$RUN_ID/result_files/client_states/$METHOD" "$RESULT_ROOT/$RUN_ID/result_logs/$METHOD" "$MODEL_ROOT/$RUN_ID"
+CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v /data/yaominghao/miniconda3/envs/fedplora/bin/python -u tasks/fed_train_sft.py \
+  --model "$MODEL_135M" \
+  --benchmark_dir "$DIR05_COMMON_ROOT/seed_42" \
+  --num_clients 35 \
+  --agg_type normal \
+  --rounds 1 --local_epochs 1 --lr 0.0002 \
+  --lora_r 8 --lora_alpha 16 --lora_dropout 0.05 \
+  --batch_size 2 --max_seq_length 256 --torch_dtype bfloat16 \
+  --target_modules q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj \
+  --client_state_dir "$RESULT_ROOT/$RUN_ID/result_files/client_states/$METHOD" \
+  --metrics_output_dir "$RESULT_ROOT/$RUN_ID/result_logs/$METHOD" \
+  --save_run_checkpoint_dir "$MODEL_ROOT/$RUN_ID/${METHOD}_${RUN_TAG}_seed42" \
+  --trained_models_root "$MODEL_ROOT/$RUN_ID" \
+  --eval_max_batches 0 --seed 42 \
+  --save_client_state_to_disk --gradient_checkpointing \
+  --eval_personalization_metrics --eval_final_only --skip_post_agg_snapshots \
+  --force_retrain \
+  > "$RESULT_ROOT/launcher_logs/test20260723_common_dir05_normal_seed42.log" 2>&1 &
 ```
 
-```bash
-cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && MODEL_PATH="$MODEL_135M" BENCHMARK_DIR_MAIN="$DIR05_COMMON_ROOT/seed_42" EXPECTED_NUM_CLIENTS=35 RUN_TAG_DATASET=dir05_common_test_v2 PIPELINE_ROUNDS=1 PIPELINE_EVAL_MAX_BATCHES=0 nohup /usr/bin/time -v bash scripts/RunScripts/run_20260713_one_experiment.sh --kind sft --method N9_common_dir05_normal_seed44 --agg normal --seed 44 --split-seed 44 --run-id-prefix common_test_20260723_dir05 --gpu "${GPU_ID:-1}" -- --force_retrain > "$RESULT_ROOT/launcher_logs/test20260723_common_dir05_normal_seed44.log" 2>&1 &
-```
+#### A2. v13a seed42
 
 ```bash
-cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && MODEL_PATH="$MODEL_135M" BENCHMARK_DIR_MAIN="$DIR05_COMMON_ROOT/seed_42" EXPECTED_NUM_CLIENTS=35 RUN_TAG_DATASET=dir05_common_test_v2 PIPELINE_ROUNDS=1 PIPELINE_EVAL_MAX_BATCHES=0 nohup /usr/bin/time -v bash scripts/RunScripts/run_20260713_one_experiment.sh --kind sft --method N7_ours_common_dir05_v13a_seed44 --agg fedplora_v13a_os --seed 44 --split-seed 44 --run-id-prefix common_test_20260723_dir05 --gpu "${GPU_ID:-1}" -- --force_retrain > "$RESULT_ROOT/launcher_logs/test20260723_common_dir05_v13a_seed44.log" 2>&1 &
+cd /data/yaominghao/gb/FedPLoRA
+RUN_ID=common_test_20260723_dir05_seed42
+METHOD=N7_ours_common_dir05_v13a_seed42
+RUN_TAG=SmolLM2-135M_dir05_common_test_v2_r1_e1_lr0.0002
+mkdir -p "$RESULT_ROOT/$RUN_ID/result_files/client_states/$METHOD" "$RESULT_ROOT/$RUN_ID/result_logs/$METHOD" "$MODEL_ROOT/$RUN_ID"
+CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v /data/yaominghao/miniconda3/envs/fedplora/bin/python -u tasks/fed_train_sft.py \
+  --model "$MODEL_135M" \
+  --benchmark_dir "$DIR05_COMMON_ROOT/seed_42" \
+  --num_clients 35 \
+  --agg_type fedplora_v13a_os \
+  --rounds 1 --local_epochs 1 --lr 0.0002 \
+  --lora_r 8 --lora_alpha 16 --lora_dropout 0.05 \
+  --batch_size 2 --max_seq_length 256 --torch_dtype bfloat16 \
+  --target_modules q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj \
+  --client_state_dir "$RESULT_ROOT/$RUN_ID/result_files/client_states/$METHOD" \
+  --metrics_output_dir "$RESULT_ROOT/$RUN_ID/result_logs/$METHOD" \
+  --save_run_checkpoint_dir "$MODEL_ROOT/$RUN_ID/${METHOD}_${RUN_TAG}_seed42" \
+  --trained_models_root "$MODEL_ROOT/$RUN_ID" \
+  --eval_max_batches 0 --seed 42 \
+  --save_client_state_to_disk --gradient_checkpointing \
+  --eval_personalization_metrics --eval_final_only --skip_post_agg_snapshots \
+  --force_retrain \
+  > "$RESULT_ROOT/launcher_logs/test20260723_common_dir05_v13a_seed42.log" 2>&1 &
+```
+
+#### A3. Normal seed43
+
+```bash
+cd /data/yaominghao/gb/FedPLoRA
+RUN_ID=common_test_20260723_dir05_seed43
+METHOD=N9_common_dir05_normal_seed43
+RUN_TAG=SmolLM2-135M_dir05_common_test_v2_r1_e1_lr0.0002
+mkdir -p "$RESULT_ROOT/$RUN_ID/result_files/client_states/$METHOD" "$RESULT_ROOT/$RUN_ID/result_logs/$METHOD" "$MODEL_ROOT/$RUN_ID"
+CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v /data/yaominghao/miniconda3/envs/fedplora/bin/python -u tasks/fed_train_sft.py \
+  --model "$MODEL_135M" \
+  --benchmark_dir "$DIR05_COMMON_ROOT/seed_43" \
+  --num_clients 35 \
+  --agg_type normal \
+  --rounds 1 --local_epochs 1 --lr 0.0002 \
+  --lora_r 8 --lora_alpha 16 --lora_dropout 0.05 \
+  --batch_size 2 --max_seq_length 256 --torch_dtype bfloat16 \
+  --target_modules q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj \
+  --client_state_dir "$RESULT_ROOT/$RUN_ID/result_files/client_states/$METHOD" \
+  --metrics_output_dir "$RESULT_ROOT/$RUN_ID/result_logs/$METHOD" \
+  --save_run_checkpoint_dir "$MODEL_ROOT/$RUN_ID/${METHOD}_${RUN_TAG}_seed43" \
+  --trained_models_root "$MODEL_ROOT/$RUN_ID" \
+  --eval_max_batches 0 --seed 43 \
+  --save_client_state_to_disk --gradient_checkpointing \
+  --eval_personalization_metrics --eval_final_only --skip_post_agg_snapshots \
+  --force_retrain \
+  > "$RESULT_ROOT/launcher_logs/test20260723_common_dir05_normal_seed43.log" 2>&1 &
+```
+
+#### A4. v13a seed43
+
+```bash
+cd /data/yaominghao/gb/FedPLoRA
+RUN_ID=common_test_20260723_dir05_seed43
+METHOD=N7_ours_common_dir05_v13a_seed43
+RUN_TAG=SmolLM2-135M_dir05_common_test_v2_r1_e1_lr0.0002
+mkdir -p "$RESULT_ROOT/$RUN_ID/result_files/client_states/$METHOD" "$RESULT_ROOT/$RUN_ID/result_logs/$METHOD" "$MODEL_ROOT/$RUN_ID"
+CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v /data/yaominghao/miniconda3/envs/fedplora/bin/python -u tasks/fed_train_sft.py \
+  --model "$MODEL_135M" \
+  --benchmark_dir "$DIR05_COMMON_ROOT/seed_43" \
+  --num_clients 35 \
+  --agg_type fedplora_v13a_os \
+  --rounds 1 --local_epochs 1 --lr 0.0002 \
+  --lora_r 8 --lora_alpha 16 --lora_dropout 0.05 \
+  --batch_size 2 --max_seq_length 256 --torch_dtype bfloat16 \
+  --target_modules q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj \
+  --client_state_dir "$RESULT_ROOT/$RUN_ID/result_files/client_states/$METHOD" \
+  --metrics_output_dir "$RESULT_ROOT/$RUN_ID/result_logs/$METHOD" \
+  --save_run_checkpoint_dir "$MODEL_ROOT/$RUN_ID/${METHOD}_${RUN_TAG}_seed43" \
+  --trained_models_root "$MODEL_ROOT/$RUN_ID" \
+  --eval_max_batches 0 --seed 43 \
+  --save_client_state_to_disk --gradient_checkpointing \
+  --eval_personalization_metrics --eval_final_only --skip_post_agg_snapshots \
+  --force_retrain \
+  > "$RESULT_ROOT/launcher_logs/test20260723_common_dir05_v13a_seed43.log" 2>&1 &
+```
+
+#### A5. Normal seed44
+
+```bash
+cd /data/yaominghao/gb/FedPLoRA
+RUN_ID=common_test_20260723_dir05_seed44
+METHOD=N9_common_dir05_normal_seed44
+RUN_TAG=SmolLM2-135M_dir05_common_test_v2_r1_e1_lr0.0002
+mkdir -p "$RESULT_ROOT/$RUN_ID/result_files/client_states/$METHOD" "$RESULT_ROOT/$RUN_ID/result_logs/$METHOD" "$MODEL_ROOT/$RUN_ID"
+CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v /data/yaominghao/miniconda3/envs/fedplora/bin/python -u tasks/fed_train_sft.py \
+  --model "$MODEL_135M" \
+  --benchmark_dir "$DIR05_COMMON_ROOT/seed_44" \
+  --num_clients 35 \
+  --agg_type normal \
+  --rounds 1 --local_epochs 1 --lr 0.0002 \
+  --lora_r 8 --lora_alpha 16 --lora_dropout 0.05 \
+  --batch_size 2 --max_seq_length 256 --torch_dtype bfloat16 \
+  --target_modules q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj \
+  --client_state_dir "$RESULT_ROOT/$RUN_ID/result_files/client_states/$METHOD" \
+  --metrics_output_dir "$RESULT_ROOT/$RUN_ID/result_logs/$METHOD" \
+  --save_run_checkpoint_dir "$MODEL_ROOT/$RUN_ID/${METHOD}_${RUN_TAG}_seed44" \
+  --trained_models_root "$MODEL_ROOT/$RUN_ID" \
+  --eval_max_batches 0 --seed 44 \
+  --save_client_state_to_disk --gradient_checkpointing \
+  --eval_personalization_metrics --eval_final_only --skip_post_agg_snapshots \
+  --force_retrain \
+  > "$RESULT_ROOT/launcher_logs/test20260723_common_dir05_normal_seed44.log" 2>&1 &
+```
+
+#### A6. v13a seed44
+
+```bash
+cd /data/yaominghao/gb/FedPLoRA
+RUN_ID=common_test_20260723_dir05_seed44
+METHOD=N7_ours_common_dir05_v13a_seed44
+RUN_TAG=SmolLM2-135M_dir05_common_test_v2_r1_e1_lr0.0002
+mkdir -p "$RESULT_ROOT/$RUN_ID/result_files/client_states/$METHOD" "$RESULT_ROOT/$RUN_ID/result_logs/$METHOD" "$MODEL_ROOT/$RUN_ID"
+CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v /data/yaominghao/miniconda3/envs/fedplora/bin/python -u tasks/fed_train_sft.py \
+  --model "$MODEL_135M" \
+  --benchmark_dir "$DIR05_COMMON_ROOT/seed_44" \
+  --num_clients 35 \
+  --agg_type fedplora_v13a_os \
+  --rounds 1 --local_epochs 1 --lr 0.0002 \
+  --lora_r 8 --lora_alpha 16 --lora_dropout 0.05 \
+  --batch_size 2 --max_seq_length 256 --torch_dtype bfloat16 \
+  --target_modules q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj \
+  --client_state_dir "$RESULT_ROOT/$RUN_ID/result_files/client_states/$METHOD" \
+  --metrics_output_dir "$RESULT_ROOT/$RUN_ID/result_logs/$METHOD" \
+  --save_run_checkpoint_dir "$MODEL_ROOT/$RUN_ID/${METHOD}_${RUN_TAG}_seed44" \
+  --trained_models_root "$MODEL_ROOT/$RUN_ID" \
+  --eval_max_batches 0 --seed 44 \
+  --save_client_state_to_disk --gradient_checkpointing \
+  --eval_personalization_metrics --eval_final_only --skip_post_agg_snapshots \
+  --force_retrain \
+  > "$RESULT_ROOT/launcher_logs/test20260723_common_dir05_v13a_seed44.log" 2>&1 &
 ```
 
 这 6 条是 GPU 训练，不是 eval-only。完成后可把新 dir0.5 与既有 IID/dir0.1 的同方法三 seed放入 shared-test heterogeneity 表；前提是上面的 full test `cmp` 完全相同。
@@ -590,15 +754,30 @@ cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs
 
 旧 C2/C3 已停用，所以 external eval 不再依赖 common-test eval-only 的副产物。这里直接从正式 D1 seed42 checkpoint 导出 PEFT adapter；只做 adapter 物化，不重新训练、不重评 common-test。
 
+**【gb】** resolve 为 0-GPU（前台）；两条 export 用 **nohup + 绝对 python 路径**。单卡 GPU1 上 **先 normal、等结束再 v13a**，不要两条同时 nohup。
+
 ```bash
-cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && export CKPT_SEARCH_ROOTS="/data/yaominghao/gb/models/trained_models_LW /data/yaominghao/gb/result/FedPLoRA"
+cd /data/yaominghao/gb/FedPLoRA
+export CODE_DIR=/data/yaominghao/gb/FedPLoRA
+export RESULT_ROOT=/data/yaominghao/gb/result/FedPLoRA/order_0723
+export MODEL_135M=/data/yaominghao/gb/models/SmolLM2-135M
+export D1_ROOT=/data/yaominghao/gb/FedPLoRA/data/domain_benchmark_35c_dir05
+export GPU_ID=1
+export CKPT_SEARCH_ROOTS="/data/yaominghao/gb/models/trained_models_LW /data/yaominghao/gb/result/FedPLoRA"
+mkdir -p "$RESULT_ROOT/launcher_logs" "$RESULT_ROOT/external_adapter_export" "$RESULT_ROOT/external_adapters"
+
+# --- 0-GPU：manifest + resolve（必须前台；失败则不要 nohup）---
 export CKPT_MANIFEST_EXT="$RESULT_ROOT/checkpoint_manifest_external_20260723.json"
-python scripts/Analysis/checkpoint_manifest.py --roots $CKPT_SEARCH_ROOTS --output "$CKPT_MANIFEST_EXT"
+/data/yaominghao/miniconda3/envs/fedplora/bin/python scripts/Analysis/checkpoint_manifest.py \
+  --roots $CKPT_SEARCH_ROOTS --output "$CKPT_MANIFEST_EXT"
 
-export CKPT_NORMAL_EXT_42="$(python scripts/Analysis/checkpoint_manifest.py --roots $CKPT_SEARCH_ROOTS --resolve --agg_type normal --seed 42 --model_contains SmolLM2-135M --benchmark_contains "domain_benchmark_35c_dir05/seed_42")"
-export CKPT_V13A_EXT_42="$(python scripts/Analysis/checkpoint_manifest.py --roots $CKPT_SEARCH_ROOTS --resolve --agg_type fedplora_v13a_os --seed 42 --model_contains SmolLM2-135M --benchmark_contains "domain_benchmark_35c_dir05/seed_42")"
+export CKPT_NORMAL_EXT_42="$(/data/yaominghao/miniconda3/envs/fedplora/bin/python scripts/Analysis/checkpoint_manifest.py --roots $CKPT_SEARCH_ROOTS --resolve --agg_type normal --seed 42 --model_contains SmolLM2-135M --benchmark_contains "domain_benchmark_35c_dir05/seed_42")"
+export CKPT_V13A_EXT_42="$(/data/yaominghao/miniconda3/envs/fedplora/bin/python scripts/Analysis/checkpoint_manifest.py --roots $CKPT_SEARCH_ROOTS --resolve --agg_type fedplora_v13a_os --seed 42 --model_contains SmolLM2-135M --benchmark_contains "domain_benchmark_35c_dir05/seed_42")"
+echo "[E-prep][ok] CKPT_NORMAL_EXT_42=$CKPT_NORMAL_EXT_42"
+echo "[E-prep][ok] CKPT_V13A_EXT_42=$CKPT_V13A_EXT_42"
 
-CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" python -u tasks/fed_train_sft.py \
+# --- GPU：E-prep-normal（nohup；占 GPU1 直到结束）---
+CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v /data/yaominghao/miniconda3/envs/fedplora/bin/python -u tasks/fed_train_sft.py \
   --model "$MODEL_135M" \
   --benchmark_dir "$D1_ROOT/seed_42" \
   --agg_type normal \
@@ -611,9 +790,19 @@ CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" python -u tasks/fed_train_sft.py \
   --batch_size 2 \
   --max_seq_length 256 \
   --torch_dtype bfloat16 \
-  --eval_personalization_metrics
+  --eval_personalization_metrics \
+  > "$RESULT_ROOT/launcher_logs/test20260723_eprep_export_normal_seed42.log" 2>&1 &
+echo "[E-prep] normal export pid=$! log=$RESULT_ROOT/launcher_logs/test20260723_eprep_export_normal_seed42.log"
+```
 
-CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" python -u tasks/fed_train_sft.py \
+等 normal 结束后再跑 v13a（**不要与上一条同时占 GPU1**）：
+
+```bash
+# 可选：确认 normal 已结束
+tail -n 20 "$RESULT_ROOT/launcher_logs/test20260723_eprep_export_normal_seed42.log"
+test -f "$RESULT_ROOT/external_adapters/normal_seed42/adapter_export_manifest.json"
+
+CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v /data/yaominghao/miniconda3/envs/fedplora/bin/python -u tasks/fed_train_sft.py \
   --model "$MODEL_135M" \
   --benchmark_dir "$D1_ROOT/seed_42" \
   --agg_type fedplora_v13a_os \
@@ -626,20 +815,51 @@ CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" python -u tasks/fed_train_sft.py \
   --batch_size 2 \
   --max_seq_length 256 \
   --torch_dtype bfloat16 \
-  --eval_personalization_metrics
+  --eval_personalization_metrics \
+  > "$RESULT_ROOT/launcher_logs/test20260723_eprep_export_v13a_seed42.log" 2>&1 &
+echo "[E-prep] v13a export pid=$! log=$RESULT_ROOT/launcher_logs/test20260723_eprep_export_v13a_seed42.log"
+```
 
+两条 export 都结束后验收：
+
+```bash
 test -f "$RESULT_ROOT/external_adapters/normal_seed42/adapter_export_manifest.json"
 test -f "$RESULT_ROOT/external_adapters/v13a_seed42/adapter_export_manifest.json"
+echo "[E-prep][ok] both adapter_export_manifest.json present"
 ```
 
 ### E0. 0-GPU 安装/任务注册硬检查
 
+**【gb】** 不要在交互 tmux 里用 `|| { ... exit 1; }`（会**直接退出当前 shell**，pane/session 像被 kill）。用子 shell 或 `FAILED=1` 汇总。
+
 ```bash
-cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && python -m pip show lm_eval >/dev/null 2>&1 || python -m pip install 'lm_eval[hf]>=0.4.8,<0.5'
-python -m lm_eval ls tasks > "$RESULT_ROOT/lm_eval_tasks_20260723.txt"
+cd /data/yaominghao/gb/FedPLoRA
+export RESULT_ROOT=/data/yaominghao/gb/result/FedPLoRA/order_0723
+export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}"
+mkdir -p "$RESULT_ROOT/launcher_logs"
+
+/data/yaominghao/miniconda3/envs/fedplora/bin/python -m pip show lm_eval >/dev/null 2>&1 \
+  || /data/yaominghao/miniconda3/envs/fedplora/bin/python -m pip install 'lm_eval[hf]>=0.4.8,<0.5'
+
+/data/yaominghao/miniconda3/envs/fedplora/bin/python -m lm_eval ls tasks \
+  > "$RESULT_ROOT/lm_eval_tasks_20260723.txt"
+
+bash -c '
+set -eo pipefail
+RESULT_ROOT="'"$RESULT_ROOT"'"
+TASK_FILE="$RESULT_ROOT/lm_eval_tasks_20260723.txt"
+FAILED=0
 for TASK in mmlu pubmedqa mbpp; do
-  grep -Eq "(^|[[:space:]])${TASK}([[:space:]]|$)" "$RESULT_ROOT/lm_eval_tasks_20260723.txt" || { echo "[external][error] task not registered: $TASK" >&2; exit 1; }
+  if ! grep -Eq "(^|[[:space:]])${TASK}([[:space:]]|$)" "$TASK_FILE"; then
+    echo "[external][error] task not registered: $TASK" >&2
+    FAILED=1
+  else
+    echo "[external][ok] task registered: $TASK"
+  fi
 done
+exit "$FAILED"
+'
+echo "[E0] exit code=$?"
 ```
 
 FiQA 在 lm-eval 版本间没有稳定内置 task 名，本批不伪造 task alias。若 `lm_eval ls tasks` 明确列出服务器版本的 FiQA task，再把该准确名称映射为 `:finance` 单独补跑。
@@ -957,7 +1177,7 @@ cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs
 ## SM1. YOCO FlowerTune seed42
 
 ```bash
-cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v python -u tasks/fed_train_sft.py \
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v /data/yaominghao/miniconda3/envs/fedplora/bin/python -u tasks/fed_train_sft.py \
   --model "$MODEL_135M" \
   --benchmark_dir "$FLOWER_ROOT/seed_42" \
   --num_clients 20 \
@@ -979,7 +1199,7 @@ echo $! > "$RESULT_ROOT/pids/smoke_yoco_flower_seed42.pid"
 ## SM2. YOCO SmolLM2-1.7B seed42
 
 ```bash
-cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v python -u tasks/fed_train_sft.py \
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v /data/yaominghao/miniconda3/envs/fedplora/bin/python -u tasks/fed_train_sft.py \
   --model "$MODEL_17B" \
   --benchmark_dir "$D1_ROOT/seed_42" \
   --num_clients 35 \
@@ -1001,7 +1221,7 @@ echo $! > "$RESULT_ROOT/pids/smoke_yoco_17b_seed42.pid"
 ## SM3. YOCO Qwen2.5-3B seed42
 
 ```bash
-cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v python -u tasks/fed_train_sft.py \
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v /data/yaominghao/miniconda3/envs/fedplora/bin/python -u tasks/fed_train_sft.py \
   --model "$MODEL_3B" \
   --benchmark_dir "$D1_ROOT/seed_42" \
   --num_clients 35 \
@@ -1023,7 +1243,7 @@ echo $! > "$RESULT_ROOT/pids/smoke_yoco_3b_seed42.pid"
 ## SM4. 70-client v13a seed42
 
 ```bash
-cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v python -u tasks/fed_train_sft.py \
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v /data/yaominghao/miniconda3/envs/fedplora/bin/python -u tasks/fed_train_sft.py \
   --model "$MODEL_135M" \
   --benchmark_dir "$D1_70C_ROOT/seed_42" \
   --num_clients 70 \
@@ -1045,7 +1265,7 @@ echo $! > "$RESULT_ROOT/pids/smoke_70c_v13a_seed42.pid"
 ## SM5. r16 v13a seed42
 
 ```bash
-cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v python -u tasks/fed_train_sft.py \
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v /data/yaominghao/miniconda3/envs/fedplora/bin/python -u tasks/fed_train_sft.py \
   --model "$MODEL_135M" \
   --benchmark_dir "$D1_ROOT/seed_42" \
   --num_clients 35 \
@@ -1080,7 +1300,7 @@ find "$RESULT_ROOT" -path '*smoke*/result_logs/*.json' -type f -print
 ## F1. FlowerTune YOCO seed42
 
 ```bash
-cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v python -u tasks/fed_train_sft.py \
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v /data/yaominghao/miniconda3/envs/fedplora/bin/python -u tasks/fed_train_sft.py \
   --model "$MODEL_135M" \
   --benchmark_dir "$FLOWER_ROOT/seed_42" \
   --num_clients 20 \
@@ -1100,7 +1320,7 @@ echo $! > "$RESULT_ROOT/pids/yoco_flower_seed42.pid"
 ## F2. FlowerTune YOCO seed43
 
 ```bash
-cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v python -u tasks/fed_train_sft.py \
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v /data/yaominghao/miniconda3/envs/fedplora/bin/python -u tasks/fed_train_sft.py \
   --model "$MODEL_135M" \
   --benchmark_dir "$FLOWER_ROOT/seed_43" \
   --num_clients 20 \
@@ -1120,7 +1340,7 @@ echo $! > "$RESULT_ROOT/pids/yoco_flower_seed43.pid"
 ## F3. FlowerTune YOCO seed44
 
 ```bash
-cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v python -u tasks/fed_train_sft.py \
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v /data/yaominghao/miniconda3/envs/fedplora/bin/python -u tasks/fed_train_sft.py \
   --model "$MODEL_135M" \
   --benchmark_dir "$FLOWER_ROOT/seed_44" \
   --num_clients 20 \
@@ -1156,7 +1376,7 @@ cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs
 ## S1. SmolLM2-1.7B YOCO seed42
 
 ```bash
-cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v python -u tasks/fed_train_sft.py \
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v /data/yaominghao/miniconda3/envs/fedplora/bin/python -u tasks/fed_train_sft.py \
   --model "$MODEL_17B" \
   --benchmark_dir "$D1_ROOT/seed_42" \
   --num_clients 35 \
@@ -1176,7 +1396,7 @@ echo $! > "$RESULT_ROOT/pids/yoco_17b_seed42.pid"
 ## S2. SmolLM2-1.7B YOCO seed43
 
 ```bash
-cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v python -u tasks/fed_train_sft.py \
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v /data/yaominghao/miniconda3/envs/fedplora/bin/python -u tasks/fed_train_sft.py \
   --model "$MODEL_17B" \
   --benchmark_dir "$D1_ROOT/seed_43" \
   --num_clients 35 \
@@ -1196,7 +1416,7 @@ echo $! > "$RESULT_ROOT/pids/yoco_17b_seed43.pid"
 ## S3. SmolLM2-1.7B YOCO seed44
 
 ```bash
-cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v python -u tasks/fed_train_sft.py \
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v /data/yaominghao/miniconda3/envs/fedplora/bin/python -u tasks/fed_train_sft.py \
   --model "$MODEL_17B" \
   --benchmark_dir "$D1_ROOT/seed_44" \
   --num_clients 35 \
@@ -1216,7 +1436,7 @@ echo $! > "$RESULT_ROOT/pids/yoco_17b_seed44.pid"
 ## S4. Qwen2.5-3B YOCO seed42
 
 ```bash
-cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v python -u tasks/fed_train_sft.py \
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v /data/yaominghao/miniconda3/envs/fedplora/bin/python -u tasks/fed_train_sft.py \
   --model "$MODEL_3B" \
   --benchmark_dir "$D1_ROOT/seed_42" \
   --num_clients 35 \
@@ -1236,7 +1456,7 @@ echo $! > "$RESULT_ROOT/pids/yoco_3b_seed42.pid"
 ## S5. Qwen2.5-3B YOCO seed43
 
 ```bash
-cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v python -u tasks/fed_train_sft.py \
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v /data/yaominghao/miniconda3/envs/fedplora/bin/python -u tasks/fed_train_sft.py \
   --model "$MODEL_3B" \
   --benchmark_dir "$D1_ROOT/seed_43" \
   --num_clients 35 \
@@ -1256,7 +1476,7 @@ echo $! > "$RESULT_ROOT/pids/yoco_3b_seed43.pid"
 ## S6. Qwen2.5-3B YOCO seed44
 
 ```bash
-cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v python -u tasks/fed_train_sft.py \
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v /data/yaominghao/miniconda3/envs/fedplora/bin/python -u tasks/fed_train_sft.py \
   --model "$MODEL_3B" \
   --benchmark_dir "$D1_ROOT/seed_44" \
   --num_clients 35 \
@@ -1280,63 +1500,63 @@ echo $! > "$RESULT_ROOT/pids/yoco_3b_seed44.pid"
 ## N1.1 70c Normal seed42
 
 ```bash
-cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v python -u tasks/fed_train_sft.py --model "$MODEL_135M" --benchmark_dir "$D1_70C_ROOT/seed_42" --num_clients 70 --agg_type normal "${COMMON_SFT_ARGS[@]}" "${LORA_R8_ARGS[@]}" --client_state_dir "$RESULT_ROOT/70c_normal_seed42/result_files/client_states/N1_70c_normal_seed42" --metrics_output_dir "$RESULT_ROOT/70c_normal_seed42/result_logs/N1_70c_normal_seed42" --save_run_checkpoint_dir "$MODEL_ROOT/70c_normal_seed42/N1_70c_normal_seed42" --trained_models_root "$MODEL_ROOT/70c_normal_seed42" --eval_max_batches 0 --seed 42 --force_retrain > "$RESULT_ROOT/launcher_logs/test20260723_sup_70c_normal_seed42.log" 2>&1 &
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v /data/yaominghao/miniconda3/envs/fedplora/bin/python -u tasks/fed_train_sft.py --model "$MODEL_135M" --benchmark_dir "$D1_70C_ROOT/seed_42" --num_clients 70 --agg_type normal "${COMMON_SFT_ARGS[@]}" "${LORA_R8_ARGS[@]}" --client_state_dir "$RESULT_ROOT/70c_normal_seed42/result_files/client_states/N1_70c_normal_seed42" --metrics_output_dir "$RESULT_ROOT/70c_normal_seed42/result_logs/N1_70c_normal_seed42" --save_run_checkpoint_dir "$MODEL_ROOT/70c_normal_seed42/N1_70c_normal_seed42" --trained_models_root "$MODEL_ROOT/70c_normal_seed42" --eval_max_batches 0 --seed 42 --force_retrain > "$RESULT_ROOT/launcher_logs/test20260723_sup_70c_normal_seed42.log" 2>&1 &
 echo $! > "$RESULT_ROOT/pids/70c_normal_seed42.pid"
 ```
 
 ## N1.2 70c FedALT seed42
 
 ```bash
-cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v python -u tasks/fed_train_sft.py --model "$MODEL_135M" --benchmark_dir "$D1_70C_ROOT/seed_42" --num_clients 70 --agg_type fedalt "${COMMON_SFT_ARGS[@]}" "${LORA_R8_ARGS[@]}" --client_state_dir "$RESULT_ROOT/70c_fedalt_seed42/result_files/client_states/N1_70c_fedalt_seed42" --metrics_output_dir "$RESULT_ROOT/70c_fedalt_seed42/result_logs/N1_70c_fedalt_seed42" --save_run_checkpoint_dir "$MODEL_ROOT/70c_fedalt_seed42/N1_70c_fedalt_seed42" --trained_models_root "$MODEL_ROOT/70c_fedalt_seed42" --eval_max_batches 0 --seed 42 --force_retrain > "$RESULT_ROOT/launcher_logs/test20260723_sup_70c_fedalt_seed42.log" 2>&1 &
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v /data/yaominghao/miniconda3/envs/fedplora/bin/python -u tasks/fed_train_sft.py --model "$MODEL_135M" --benchmark_dir "$D1_70C_ROOT/seed_42" --num_clients 70 --agg_type fedalt "${COMMON_SFT_ARGS[@]}" "${LORA_R8_ARGS[@]}" --client_state_dir "$RESULT_ROOT/70c_fedalt_seed42/result_files/client_states/N1_70c_fedalt_seed42" --metrics_output_dir "$RESULT_ROOT/70c_fedalt_seed42/result_logs/N1_70c_fedalt_seed42" --save_run_checkpoint_dir "$MODEL_ROOT/70c_fedalt_seed42/N1_70c_fedalt_seed42" --trained_models_root "$MODEL_ROOT/70c_fedalt_seed42" --eval_max_batches 0 --seed 42 --force_retrain > "$RESULT_ROOT/launcher_logs/test20260723_sup_70c_fedalt_seed42.log" 2>&1 &
 echo $! > "$RESULT_ROOT/pids/70c_fedalt_seed42.pid"
 ```
 
 ## N1.3 70c v13a seed42
 
 ```bash
-cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v python -u tasks/fed_train_sft.py --model "$MODEL_135M" --benchmark_dir "$D1_70C_ROOT/seed_42" --num_clients 70 --agg_type fedplora_v13a_os "${COMMON_SFT_ARGS[@]}" "${LORA_R8_ARGS[@]}" --client_state_dir "$RESULT_ROOT/70c_v13a_seed42/result_files/client_states/N1_70c_v13a_seed42" --metrics_output_dir "$RESULT_ROOT/70c_v13a_seed42/result_logs/N1_70c_v13a_seed42" --save_run_checkpoint_dir "$MODEL_ROOT/70c_v13a_seed42/N1_70c_v13a_seed42" --trained_models_root "$MODEL_ROOT/70c_v13a_seed42" --eval_max_batches 0 --seed 42 --force_retrain > "$RESULT_ROOT/launcher_logs/test20260723_sup_70c_v13a_seed42.log" 2>&1 &
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v /data/yaominghao/miniconda3/envs/fedplora/bin/python -u tasks/fed_train_sft.py --model "$MODEL_135M" --benchmark_dir "$D1_70C_ROOT/seed_42" --num_clients 70 --agg_type fedplora_v13a_os "${COMMON_SFT_ARGS[@]}" "${LORA_R8_ARGS[@]}" --client_state_dir "$RESULT_ROOT/70c_v13a_seed42/result_files/client_states/N1_70c_v13a_seed42" --metrics_output_dir "$RESULT_ROOT/70c_v13a_seed42/result_logs/N1_70c_v13a_seed42" --save_run_checkpoint_dir "$MODEL_ROOT/70c_v13a_seed42/N1_70c_v13a_seed42" --trained_models_root "$MODEL_ROOT/70c_v13a_seed42" --eval_max_batches 0 --seed 42 --force_retrain > "$RESULT_ROOT/launcher_logs/test20260723_sup_70c_v13a_seed42.log" 2>&1 &
 echo $! > "$RESULT_ROOT/pids/70c_v13a_seed42.pid"
 ```
 
 ## N1.4 70c Normal seed43
 
 ```bash
-cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v python -u tasks/fed_train_sft.py --model "$MODEL_135M" --benchmark_dir "$D1_70C_ROOT/seed_43" --num_clients 70 --agg_type normal "${COMMON_SFT_ARGS[@]}" "${LORA_R8_ARGS[@]}" --client_state_dir "$RESULT_ROOT/70c_normal_seed43/result_files/client_states/N1_70c_normal_seed43" --metrics_output_dir "$RESULT_ROOT/70c_normal_seed43/result_logs/N1_70c_normal_seed43" --save_run_checkpoint_dir "$MODEL_ROOT/70c_normal_seed43/N1_70c_normal_seed43" --trained_models_root "$MODEL_ROOT/70c_normal_seed43" --eval_max_batches 0 --seed 43 --force_retrain > "$RESULT_ROOT/launcher_logs/test20260723_sup_70c_normal_seed43.log" 2>&1 &
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v /data/yaominghao/miniconda3/envs/fedplora/bin/python -u tasks/fed_train_sft.py --model "$MODEL_135M" --benchmark_dir "$D1_70C_ROOT/seed_43" --num_clients 70 --agg_type normal "${COMMON_SFT_ARGS[@]}" "${LORA_R8_ARGS[@]}" --client_state_dir "$RESULT_ROOT/70c_normal_seed43/result_files/client_states/N1_70c_normal_seed43" --metrics_output_dir "$RESULT_ROOT/70c_normal_seed43/result_logs/N1_70c_normal_seed43" --save_run_checkpoint_dir "$MODEL_ROOT/70c_normal_seed43/N1_70c_normal_seed43" --trained_models_root "$MODEL_ROOT/70c_normal_seed43" --eval_max_batches 0 --seed 43 --force_retrain > "$RESULT_ROOT/launcher_logs/test20260723_sup_70c_normal_seed43.log" 2>&1 &
 echo $! > "$RESULT_ROOT/pids/70c_normal_seed43.pid"
 ```
 
 ## N1.5 70c FedALT seed43
 
 ```bash
-cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v python -u tasks/fed_train_sft.py --model "$MODEL_135M" --benchmark_dir "$D1_70C_ROOT/seed_43" --num_clients 70 --agg_type fedalt "${COMMON_SFT_ARGS[@]}" "${LORA_R8_ARGS[@]}" --client_state_dir "$RESULT_ROOT/70c_fedalt_seed43/result_files/client_states/N1_70c_fedalt_seed43" --metrics_output_dir "$RESULT_ROOT/70c_fedalt_seed43/result_logs/N1_70c_fedalt_seed43" --save_run_checkpoint_dir "$MODEL_ROOT/70c_fedalt_seed43/N1_70c_fedalt_seed43" --trained_models_root "$MODEL_ROOT/70c_fedalt_seed43" --eval_max_batches 0 --seed 43 --force_retrain > "$RESULT_ROOT/launcher_logs/test20260723_sup_70c_fedalt_seed43.log" 2>&1 &
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v /data/yaominghao/miniconda3/envs/fedplora/bin/python -u tasks/fed_train_sft.py --model "$MODEL_135M" --benchmark_dir "$D1_70C_ROOT/seed_43" --num_clients 70 --agg_type fedalt "${COMMON_SFT_ARGS[@]}" "${LORA_R8_ARGS[@]}" --client_state_dir "$RESULT_ROOT/70c_fedalt_seed43/result_files/client_states/N1_70c_fedalt_seed43" --metrics_output_dir "$RESULT_ROOT/70c_fedalt_seed43/result_logs/N1_70c_fedalt_seed43" --save_run_checkpoint_dir "$MODEL_ROOT/70c_fedalt_seed43/N1_70c_fedalt_seed43" --trained_models_root "$MODEL_ROOT/70c_fedalt_seed43" --eval_max_batches 0 --seed 43 --force_retrain > "$RESULT_ROOT/launcher_logs/test20260723_sup_70c_fedalt_seed43.log" 2>&1 &
 echo $! > "$RESULT_ROOT/pids/70c_fedalt_seed43.pid"
 ```
 
 ## N1.6 70c v13a seed43
 
 ```bash
-cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v python -u tasks/fed_train_sft.py --model "$MODEL_135M" --benchmark_dir "$D1_70C_ROOT/seed_43" --num_clients 70 --agg_type fedplora_v13a_os "${COMMON_SFT_ARGS[@]}" "${LORA_R8_ARGS[@]}" --client_state_dir "$RESULT_ROOT/70c_v13a_seed43/result_files/client_states/N1_70c_v13a_seed43" --metrics_output_dir "$RESULT_ROOT/70c_v13a_seed43/result_logs/N1_70c_v13a_seed43" --save_run_checkpoint_dir "$MODEL_ROOT/70c_v13a_seed43/N1_70c_v13a_seed43" --trained_models_root "$MODEL_ROOT/70c_v13a_seed43" --eval_max_batches 0 --seed 43 --force_retrain > "$RESULT_ROOT/launcher_logs/test20260723_sup_70c_v13a_seed43.log" 2>&1 &
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v /data/yaominghao/miniconda3/envs/fedplora/bin/python -u tasks/fed_train_sft.py --model "$MODEL_135M" --benchmark_dir "$D1_70C_ROOT/seed_43" --num_clients 70 --agg_type fedplora_v13a_os "${COMMON_SFT_ARGS[@]}" "${LORA_R8_ARGS[@]}" --client_state_dir "$RESULT_ROOT/70c_v13a_seed43/result_files/client_states/N1_70c_v13a_seed43" --metrics_output_dir "$RESULT_ROOT/70c_v13a_seed43/result_logs/N1_70c_v13a_seed43" --save_run_checkpoint_dir "$MODEL_ROOT/70c_v13a_seed43/N1_70c_v13a_seed43" --trained_models_root "$MODEL_ROOT/70c_v13a_seed43" --eval_max_batches 0 --seed 43 --force_retrain > "$RESULT_ROOT/launcher_logs/test20260723_sup_70c_v13a_seed43.log" 2>&1 &
 echo $! > "$RESULT_ROOT/pids/70c_v13a_seed43.pid"
 ```
 
 ## N1.7 70c Normal seed44
 
 ```bash
-cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v python -u tasks/fed_train_sft.py --model "$MODEL_135M" --benchmark_dir "$D1_70C_ROOT/seed_44" --num_clients 70 --agg_type normal "${COMMON_SFT_ARGS[@]}" "${LORA_R8_ARGS[@]}" --client_state_dir "$RESULT_ROOT/70c_normal_seed44/result_files/client_states/N1_70c_normal_seed44" --metrics_output_dir "$RESULT_ROOT/70c_normal_seed44/result_logs/N1_70c_normal_seed44" --save_run_checkpoint_dir "$MODEL_ROOT/70c_normal_seed44/N1_70c_normal_seed44" --trained_models_root "$MODEL_ROOT/70c_normal_seed44" --eval_max_batches 0 --seed 44 --force_retrain > "$RESULT_ROOT/launcher_logs/test20260723_sup_70c_normal_seed44.log" 2>&1 &
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v /data/yaominghao/miniconda3/envs/fedplora/bin/python -u tasks/fed_train_sft.py --model "$MODEL_135M" --benchmark_dir "$D1_70C_ROOT/seed_44" --num_clients 70 --agg_type normal "${COMMON_SFT_ARGS[@]}" "${LORA_R8_ARGS[@]}" --client_state_dir "$RESULT_ROOT/70c_normal_seed44/result_files/client_states/N1_70c_normal_seed44" --metrics_output_dir "$RESULT_ROOT/70c_normal_seed44/result_logs/N1_70c_normal_seed44" --save_run_checkpoint_dir "$MODEL_ROOT/70c_normal_seed44/N1_70c_normal_seed44" --trained_models_root "$MODEL_ROOT/70c_normal_seed44" --eval_max_batches 0 --seed 44 --force_retrain > "$RESULT_ROOT/launcher_logs/test20260723_sup_70c_normal_seed44.log" 2>&1 &
 echo $! > "$RESULT_ROOT/pids/70c_normal_seed44.pid"
 ```
 
 ## N1.8 70c FedALT seed44
 
 ```bash
-cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v python -u tasks/fed_train_sft.py --model "$MODEL_135M" --benchmark_dir "$D1_70C_ROOT/seed_44" --num_clients 70 --agg_type fedalt "${COMMON_SFT_ARGS[@]}" "${LORA_R8_ARGS[@]}" --client_state_dir "$RESULT_ROOT/70c_fedalt_seed44/result_files/client_states/N1_70c_fedalt_seed44" --metrics_output_dir "$RESULT_ROOT/70c_fedalt_seed44/result_logs/N1_70c_fedalt_seed44" --save_run_checkpoint_dir "$MODEL_ROOT/70c_fedalt_seed44/N1_70c_fedalt_seed44" --trained_models_root "$MODEL_ROOT/70c_fedalt_seed44" --eval_max_batches 0 --seed 44 --force_retrain > "$RESULT_ROOT/launcher_logs/test20260723_sup_70c_fedalt_seed44.log" 2>&1 &
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v /data/yaominghao/miniconda3/envs/fedplora/bin/python -u tasks/fed_train_sft.py --model "$MODEL_135M" --benchmark_dir "$D1_70C_ROOT/seed_44" --num_clients 70 --agg_type fedalt "${COMMON_SFT_ARGS[@]}" "${LORA_R8_ARGS[@]}" --client_state_dir "$RESULT_ROOT/70c_fedalt_seed44/result_files/client_states/N1_70c_fedalt_seed44" --metrics_output_dir "$RESULT_ROOT/70c_fedalt_seed44/result_logs/N1_70c_fedalt_seed44" --save_run_checkpoint_dir "$MODEL_ROOT/70c_fedalt_seed44/N1_70c_fedalt_seed44" --trained_models_root "$MODEL_ROOT/70c_fedalt_seed44" --eval_max_batches 0 --seed 44 --force_retrain > "$RESULT_ROOT/launcher_logs/test20260723_sup_70c_fedalt_seed44.log" 2>&1 &
 echo $! > "$RESULT_ROOT/pids/70c_fedalt_seed44.pid"
 ```
 
 ## N1.9 70c v13a seed44
 
 ```bash
-cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v python -u tasks/fed_train_sft.py --model "$MODEL_135M" --benchmark_dir "$D1_70C_ROOT/seed_44" --num_clients 70 --agg_type fedplora_v13a_os "${COMMON_SFT_ARGS[@]}" "${LORA_R8_ARGS[@]}" --client_state_dir "$RESULT_ROOT/70c_v13a_seed44/result_files/client_states/N1_70c_v13a_seed44" --metrics_output_dir "$RESULT_ROOT/70c_v13a_seed44/result_logs/N1_70c_v13a_seed44" --save_run_checkpoint_dir "$MODEL_ROOT/70c_v13a_seed44/N1_70c_v13a_seed44" --trained_models_root "$MODEL_ROOT/70c_v13a_seed44" --eval_max_batches 0 --seed 44 --force_retrain > "$RESULT_ROOT/launcher_logs/test20260723_sup_70c_v13a_seed44.log" 2>&1 &
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v /data/yaominghao/miniconda3/envs/fedplora/bin/python -u tasks/fed_train_sft.py --model "$MODEL_135M" --benchmark_dir "$D1_70C_ROOT/seed_44" --num_clients 70 --agg_type fedplora_v13a_os "${COMMON_SFT_ARGS[@]}" "${LORA_R8_ARGS[@]}" --client_state_dir "$RESULT_ROOT/70c_v13a_seed44/result_files/client_states/N1_70c_v13a_seed44" --metrics_output_dir "$RESULT_ROOT/70c_v13a_seed44/result_logs/N1_70c_v13a_seed44" --save_run_checkpoint_dir "$MODEL_ROOT/70c_v13a_seed44/N1_70c_v13a_seed44" --trained_models_root "$MODEL_ROOT/70c_v13a_seed44" --eval_max_batches 0 --seed 44 --force_retrain > "$RESULT_ROOT/launcher_logs/test20260723_sup_70c_v13a_seed44.log" 2>&1 &
 echo $! > "$RESULT_ROOT/pids/70c_v13a_seed44.pid"
 ```
 
@@ -1349,63 +1569,63 @@ echo $! > "$RESULT_ROOT/pids/70c_v13a_seed44.pid"
 ## N2.1 r16 Normal seed42
 
 ```bash
-cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v python -u tasks/fed_train_sft.py --model "$MODEL_135M" --benchmark_dir "$D1_ROOT/seed_42" --num_clients 35 --agg_type normal "${COMMON_SFT_ARGS[@]}" "${LORA_R16_ARGS[@]}" --client_state_dir "$RESULT_ROOT/r16_normal_seed42/result_files/client_states/N2_r16_normal_seed42" --metrics_output_dir "$RESULT_ROOT/r16_normal_seed42/result_logs/N2_r16_normal_seed42" --save_run_checkpoint_dir "$MODEL_ROOT/r16_normal_seed42/N2_r16_normal_seed42" --trained_models_root "$MODEL_ROOT/r16_normal_seed42" --eval_max_batches 0 --seed 42 --force_retrain > "$RESULT_ROOT/launcher_logs/test20260723_sup_r16_normal_seed42.log" 2>&1 &
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v /data/yaominghao/miniconda3/envs/fedplora/bin/python -u tasks/fed_train_sft.py --model "$MODEL_135M" --benchmark_dir "$D1_ROOT/seed_42" --num_clients 35 --agg_type normal "${COMMON_SFT_ARGS[@]}" "${LORA_R16_ARGS[@]}" --client_state_dir "$RESULT_ROOT/r16_normal_seed42/result_files/client_states/N2_r16_normal_seed42" --metrics_output_dir "$RESULT_ROOT/r16_normal_seed42/result_logs/N2_r16_normal_seed42" --save_run_checkpoint_dir "$MODEL_ROOT/r16_normal_seed42/N2_r16_normal_seed42" --trained_models_root "$MODEL_ROOT/r16_normal_seed42" --eval_max_batches 0 --seed 42 --force_retrain > "$RESULT_ROOT/launcher_logs/test20260723_sup_r16_normal_seed42.log" 2>&1 &
 echo $! > "$RESULT_ROOT/pids/r16_normal_seed42.pid"
 ```
 
 ## N2.2 r16 FedALT seed42
 
 ```bash
-cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v python -u tasks/fed_train_sft.py --model "$MODEL_135M" --benchmark_dir "$D1_ROOT/seed_42" --num_clients 35 --agg_type fedalt "${COMMON_SFT_ARGS[@]}" "${LORA_R16_ARGS[@]}" --client_state_dir "$RESULT_ROOT/r16_fedalt_seed42/result_files/client_states/N2_r16_fedalt_seed42" --metrics_output_dir "$RESULT_ROOT/r16_fedalt_seed42/result_logs/N2_r16_fedalt_seed42" --save_run_checkpoint_dir "$MODEL_ROOT/r16_fedalt_seed42/N2_r16_fedalt_seed42" --trained_models_root "$MODEL_ROOT/r16_fedalt_seed42" --eval_max_batches 0 --seed 42 --force_retrain > "$RESULT_ROOT/launcher_logs/test20260723_sup_r16_fedalt_seed42.log" 2>&1 &
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v /data/yaominghao/miniconda3/envs/fedplora/bin/python -u tasks/fed_train_sft.py --model "$MODEL_135M" --benchmark_dir "$D1_ROOT/seed_42" --num_clients 35 --agg_type fedalt "${COMMON_SFT_ARGS[@]}" "${LORA_R16_ARGS[@]}" --client_state_dir "$RESULT_ROOT/r16_fedalt_seed42/result_files/client_states/N2_r16_fedalt_seed42" --metrics_output_dir "$RESULT_ROOT/r16_fedalt_seed42/result_logs/N2_r16_fedalt_seed42" --save_run_checkpoint_dir "$MODEL_ROOT/r16_fedalt_seed42/N2_r16_fedalt_seed42" --trained_models_root "$MODEL_ROOT/r16_fedalt_seed42" --eval_max_batches 0 --seed 42 --force_retrain > "$RESULT_ROOT/launcher_logs/test20260723_sup_r16_fedalt_seed42.log" 2>&1 &
 echo $! > "$RESULT_ROOT/pids/r16_fedalt_seed42.pid"
 ```
 
 ## N2.3 r16 v13a seed42
 
 ```bash
-cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v python -u tasks/fed_train_sft.py --model "$MODEL_135M" --benchmark_dir "$D1_ROOT/seed_42" --num_clients 35 --agg_type fedplora_v13a_os "${COMMON_SFT_ARGS[@]}" "${LORA_R16_ARGS[@]}" --client_state_dir "$RESULT_ROOT/r16_v13a_seed42/result_files/client_states/N2_r16_v13a_seed42" --metrics_output_dir "$RESULT_ROOT/r16_v13a_seed42/result_logs/N2_r16_v13a_seed42" --save_run_checkpoint_dir "$MODEL_ROOT/r16_v13a_seed42/N2_r16_v13a_seed42" --trained_models_root "$MODEL_ROOT/r16_v13a_seed42" --eval_max_batches 0 --seed 42 --force_retrain > "$RESULT_ROOT/launcher_logs/test20260723_sup_r16_v13a_seed42.log" 2>&1 &
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v /data/yaominghao/miniconda3/envs/fedplora/bin/python -u tasks/fed_train_sft.py --model "$MODEL_135M" --benchmark_dir "$D1_ROOT/seed_42" --num_clients 35 --agg_type fedplora_v13a_os "${COMMON_SFT_ARGS[@]}" "${LORA_R16_ARGS[@]}" --client_state_dir "$RESULT_ROOT/r16_v13a_seed42/result_files/client_states/N2_r16_v13a_seed42" --metrics_output_dir "$RESULT_ROOT/r16_v13a_seed42/result_logs/N2_r16_v13a_seed42" --save_run_checkpoint_dir "$MODEL_ROOT/r16_v13a_seed42/N2_r16_v13a_seed42" --trained_models_root "$MODEL_ROOT/r16_v13a_seed42" --eval_max_batches 0 --seed 42 --force_retrain > "$RESULT_ROOT/launcher_logs/test20260723_sup_r16_v13a_seed42.log" 2>&1 &
 echo $! > "$RESULT_ROOT/pids/r16_v13a_seed42.pid"
 ```
 
 ## N2.4 r16 Normal seed43
 
 ```bash
-cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v python -u tasks/fed_train_sft.py --model "$MODEL_135M" --benchmark_dir "$D1_ROOT/seed_43" --num_clients 35 --agg_type normal "${COMMON_SFT_ARGS[@]}" "${LORA_R16_ARGS[@]}" --client_state_dir "$RESULT_ROOT/r16_normal_seed43/result_files/client_states/N2_r16_normal_seed43" --metrics_output_dir "$RESULT_ROOT/r16_normal_seed43/result_logs/N2_r16_normal_seed43" --save_run_checkpoint_dir "$MODEL_ROOT/r16_normal_seed43/N2_r16_normal_seed43" --trained_models_root "$MODEL_ROOT/r16_normal_seed43" --eval_max_batches 0 --seed 43 --force_retrain > "$RESULT_ROOT/launcher_logs/test20260723_sup_r16_normal_seed43.log" 2>&1 &
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v /data/yaominghao/miniconda3/envs/fedplora/bin/python -u tasks/fed_train_sft.py --model "$MODEL_135M" --benchmark_dir "$D1_ROOT/seed_43" --num_clients 35 --agg_type normal "${COMMON_SFT_ARGS[@]}" "${LORA_R16_ARGS[@]}" --client_state_dir "$RESULT_ROOT/r16_normal_seed43/result_files/client_states/N2_r16_normal_seed43" --metrics_output_dir "$RESULT_ROOT/r16_normal_seed43/result_logs/N2_r16_normal_seed43" --save_run_checkpoint_dir "$MODEL_ROOT/r16_normal_seed43/N2_r16_normal_seed43" --trained_models_root "$MODEL_ROOT/r16_normal_seed43" --eval_max_batches 0 --seed 43 --force_retrain > "$RESULT_ROOT/launcher_logs/test20260723_sup_r16_normal_seed43.log" 2>&1 &
 echo $! > "$RESULT_ROOT/pids/r16_normal_seed43.pid"
 ```
 
 ## N2.5 r16 FedALT seed43
 
 ```bash
-cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v python -u tasks/fed_train_sft.py --model "$MODEL_135M" --benchmark_dir "$D1_ROOT/seed_43" --num_clients 35 --agg_type fedalt "${COMMON_SFT_ARGS[@]}" "${LORA_R16_ARGS[@]}" --client_state_dir "$RESULT_ROOT/r16_fedalt_seed43/result_files/client_states/N2_r16_fedalt_seed43" --metrics_output_dir "$RESULT_ROOT/r16_fedalt_seed43/result_logs/N2_r16_fedalt_seed43" --save_run_checkpoint_dir "$MODEL_ROOT/r16_fedalt_seed43/N2_r16_fedalt_seed43" --trained_models_root "$MODEL_ROOT/r16_fedalt_seed43" --eval_max_batches 0 --seed 43 --force_retrain > "$RESULT_ROOT/launcher_logs/test20260723_sup_r16_fedalt_seed43.log" 2>&1 &
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v /data/yaominghao/miniconda3/envs/fedplora/bin/python -u tasks/fed_train_sft.py --model "$MODEL_135M" --benchmark_dir "$D1_ROOT/seed_43" --num_clients 35 --agg_type fedalt "${COMMON_SFT_ARGS[@]}" "${LORA_R16_ARGS[@]}" --client_state_dir "$RESULT_ROOT/r16_fedalt_seed43/result_files/client_states/N2_r16_fedalt_seed43" --metrics_output_dir "$RESULT_ROOT/r16_fedalt_seed43/result_logs/N2_r16_fedalt_seed43" --save_run_checkpoint_dir "$MODEL_ROOT/r16_fedalt_seed43/N2_r16_fedalt_seed43" --trained_models_root "$MODEL_ROOT/r16_fedalt_seed43" --eval_max_batches 0 --seed 43 --force_retrain > "$RESULT_ROOT/launcher_logs/test20260723_sup_r16_fedalt_seed43.log" 2>&1 &
 echo $! > "$RESULT_ROOT/pids/r16_fedalt_seed43.pid"
 ```
 
 ## N2.6 r16 v13a seed43
 
 ```bash
-cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v python -u tasks/fed_train_sft.py --model "$MODEL_135M" --benchmark_dir "$D1_ROOT/seed_43" --num_clients 35 --agg_type fedplora_v13a_os "${COMMON_SFT_ARGS[@]}" "${LORA_R16_ARGS[@]}" --client_state_dir "$RESULT_ROOT/r16_v13a_seed43/result_files/client_states/N2_r16_v13a_seed43" --metrics_output_dir "$RESULT_ROOT/r16_v13a_seed43/result_logs/N2_r16_v13a_seed43" --save_run_checkpoint_dir "$MODEL_ROOT/r16_v13a_seed43/N2_r16_v13a_seed43" --trained_models_root "$MODEL_ROOT/r16_v13a_seed43" --eval_max_batches 0 --seed 43 --force_retrain > "$RESULT_ROOT/launcher_logs/test20260723_sup_r16_v13a_seed43.log" 2>&1 &
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v /data/yaominghao/miniconda3/envs/fedplora/bin/python -u tasks/fed_train_sft.py --model "$MODEL_135M" --benchmark_dir "$D1_ROOT/seed_43" --num_clients 35 --agg_type fedplora_v13a_os "${COMMON_SFT_ARGS[@]}" "${LORA_R16_ARGS[@]}" --client_state_dir "$RESULT_ROOT/r16_v13a_seed43/result_files/client_states/N2_r16_v13a_seed43" --metrics_output_dir "$RESULT_ROOT/r16_v13a_seed43/result_logs/N2_r16_v13a_seed43" --save_run_checkpoint_dir "$MODEL_ROOT/r16_v13a_seed43/N2_r16_v13a_seed43" --trained_models_root "$MODEL_ROOT/r16_v13a_seed43" --eval_max_batches 0 --seed 43 --force_retrain > "$RESULT_ROOT/launcher_logs/test20260723_sup_r16_v13a_seed43.log" 2>&1 &
 echo $! > "$RESULT_ROOT/pids/r16_v13a_seed43.pid"
 ```
 
 ## N2.7 r16 Normal seed44
 
 ```bash
-cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v python -u tasks/fed_train_sft.py --model "$MODEL_135M" --benchmark_dir "$D1_ROOT/seed_44" --num_clients 35 --agg_type normal "${COMMON_SFT_ARGS[@]}" "${LORA_R16_ARGS[@]}" --client_state_dir "$RESULT_ROOT/r16_normal_seed44/result_files/client_states/N2_r16_normal_seed44" --metrics_output_dir "$RESULT_ROOT/r16_normal_seed44/result_logs/N2_r16_normal_seed44" --save_run_checkpoint_dir "$MODEL_ROOT/r16_normal_seed44/N2_r16_normal_seed44" --trained_models_root "$MODEL_ROOT/r16_normal_seed44" --eval_max_batches 0 --seed 44 --force_retrain > "$RESULT_ROOT/launcher_logs/test20260723_sup_r16_normal_seed44.log" 2>&1 &
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v /data/yaominghao/miniconda3/envs/fedplora/bin/python -u tasks/fed_train_sft.py --model "$MODEL_135M" --benchmark_dir "$D1_ROOT/seed_44" --num_clients 35 --agg_type normal "${COMMON_SFT_ARGS[@]}" "${LORA_R16_ARGS[@]}" --client_state_dir "$RESULT_ROOT/r16_normal_seed44/result_files/client_states/N2_r16_normal_seed44" --metrics_output_dir "$RESULT_ROOT/r16_normal_seed44/result_logs/N2_r16_normal_seed44" --save_run_checkpoint_dir "$MODEL_ROOT/r16_normal_seed44/N2_r16_normal_seed44" --trained_models_root "$MODEL_ROOT/r16_normal_seed44" --eval_max_batches 0 --seed 44 --force_retrain > "$RESULT_ROOT/launcher_logs/test20260723_sup_r16_normal_seed44.log" 2>&1 &
 echo $! > "$RESULT_ROOT/pids/r16_normal_seed44.pid"
 ```
 
 ## N2.8 r16 FedALT seed44
 
 ```bash
-cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v python -u tasks/fed_train_sft.py --model "$MODEL_135M" --benchmark_dir "$D1_ROOT/seed_44" --num_clients 35 --agg_type fedalt "${COMMON_SFT_ARGS[@]}" "${LORA_R16_ARGS[@]}" --client_state_dir "$RESULT_ROOT/r16_fedalt_seed44/result_files/client_states/N2_r16_fedalt_seed44" --metrics_output_dir "$RESULT_ROOT/r16_fedalt_seed44/result_logs/N2_r16_fedalt_seed44" --save_run_checkpoint_dir "$MODEL_ROOT/r16_fedalt_seed44/N2_r16_fedalt_seed44" --trained_models_root "$MODEL_ROOT/r16_fedalt_seed44" --eval_max_batches 0 --seed 44 --force_retrain > "$RESULT_ROOT/launcher_logs/test20260723_sup_r16_fedalt_seed44.log" 2>&1 &
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v /data/yaominghao/miniconda3/envs/fedplora/bin/python -u tasks/fed_train_sft.py --model "$MODEL_135M" --benchmark_dir "$D1_ROOT/seed_44" --num_clients 35 --agg_type fedalt "${COMMON_SFT_ARGS[@]}" "${LORA_R16_ARGS[@]}" --client_state_dir "$RESULT_ROOT/r16_fedalt_seed44/result_files/client_states/N2_r16_fedalt_seed44" --metrics_output_dir "$RESULT_ROOT/r16_fedalt_seed44/result_logs/N2_r16_fedalt_seed44" --save_run_checkpoint_dir "$MODEL_ROOT/r16_fedalt_seed44/N2_r16_fedalt_seed44" --trained_models_root "$MODEL_ROOT/r16_fedalt_seed44" --eval_max_batches 0 --seed 44 --force_retrain > "$RESULT_ROOT/launcher_logs/test20260723_sup_r16_fedalt_seed44.log" 2>&1 &
 echo $! > "$RESULT_ROOT/pids/r16_fedalt_seed44.pid"
 ```
 
 ## N2.9 r16 v13a seed44
 
 ```bash
-cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v python -u tasks/fed_train_sft.py --model "$MODEL_135M" --benchmark_dir "$D1_ROOT/seed_44" --num_clients 35 --agg_type fedplora_v13a_os "${COMMON_SFT_ARGS[@]}" "${LORA_R16_ARGS[@]}" --client_state_dir "$RESULT_ROOT/r16_v13a_seed44/result_files/client_states/N2_r16_v13a_seed44" --metrics_output_dir "$RESULT_ROOT/r16_v13a_seed44/result_logs/N2_r16_v13a_seed44" --save_run_checkpoint_dir "$MODEL_ROOT/r16_v13a_seed44/N2_r16_v13a_seed44" --trained_models_root "$MODEL_ROOT/r16_v13a_seed44" --eval_max_batches 0 --seed 44 --force_retrain > "$RESULT_ROOT/launcher_logs/test20260723_sup_r16_v13a_seed44.log" 2>&1 &
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v /data/yaominghao/miniconda3/envs/fedplora/bin/python -u tasks/fed_train_sft.py --model "$MODEL_135M" --benchmark_dir "$D1_ROOT/seed_44" --num_clients 35 --agg_type fedplora_v13a_os "${COMMON_SFT_ARGS[@]}" "${LORA_R16_ARGS[@]}" --client_state_dir "$RESULT_ROOT/r16_v13a_seed44/result_files/client_states/N2_r16_v13a_seed44" --metrics_output_dir "$RESULT_ROOT/r16_v13a_seed44/result_logs/N2_r16_v13a_seed44" --save_run_checkpoint_dir "$MODEL_ROOT/r16_v13a_seed44/N2_r16_v13a_seed44" --trained_models_root "$MODEL_ROOT/r16_v13a_seed44" --eval_max_batches 0 --seed 44 --force_retrain > "$RESULT_ROOT/launcher_logs/test20260723_sup_r16_v13a_seed44.log" 2>&1 &
 echo $! > "$RESULT_ROOT/pids/r16_v13a_seed44.pid"
 ```
 
