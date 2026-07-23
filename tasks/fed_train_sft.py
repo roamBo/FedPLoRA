@@ -131,6 +131,7 @@ from utilities.utils import (
     is_fedplora_multiround_agg,
     is_lora_a_disk_agg,
     is_lora_a_param_name,
+    is_lora_b_param_name,
     is_lora_expert_agg,
     is_lora_expert_b_only_agg,
     is_memory_global_agg_agg,
@@ -231,6 +232,18 @@ parser.add_argument(
     "skips training and runs the same eval as the end of a round (domain macro + optional "
     "--eval_personalization_metrics). Does not replace mechanism ablation (those need retraining). "
     "Pass the same --model as in meta.",
+)
+parser.add_argument(
+    "--export_eval_adapter_dir",
+    type=str,
+    default="",
+    help="Eval-only: materialize the reconstructed global PEFT adapter and exact per-client "
+    "deployment adapters for external-task evaluation.",
+)
+parser.add_argument(
+    "--export_eval_adapter_only",
+    action="store_true",
+    help="With --export_eval_adapter_dir, stop after export instead of running the internal benchmark eval.",
 )
 parser.add_argument("--gp_align_lambda", type=float, default=0.01)
 parser.add_argument("--gp_prox_lambda", type=float, default=0.001)
@@ -2531,6 +2544,95 @@ def _save_run_checkpoint(
         raise
 
 
+def _export_eval_adapters(global_model, client_ids, client_store, benchmark, args, ckpt):
+    """Materialize PEFT adapters exactly as the reconstructed evaluator deploys them."""
+    root = os.path.abspath(os.path.expanduser(args.export_eval_adapter_dir))
+    os.makedirs(root, exist_ok=True)
+    global_state = extract_trainable_state_dict(global_model)
+    domain_by_client = _client_id_to_home_domain(benchmark["clients"])
+
+    def _tensor_bytes(state):
+        return int(sum(
+            int(value.numel()) * int(value.element_size())
+            for value in state.values() if torch.is_tensor(value)
+        ))
+
+    def _save_state_adapter(state, path):
+        load_partial_state_dict(global_model, state)
+        os.makedirs(path, exist_ok=True)
+        global_model.save_pretrained(path, safe_serialization=True)
+
+    personalized = getattr(args, "_lora_expert_personalized_local_states", {}) or {}
+    shared_state = {
+        k: v.detach().cpu().clone()
+        for k, v in global_model.state_dict().items()
+        if is_fedplora_shared_param_name(k, get_trainable_param_names(global_model))
+    }
+    manifest_clients = {}
+    exported_client_states = {}
+    for idx, cid in enumerate(client_ids):
+        cid = int(cid)
+        basis = "global"
+        if cid in personalized:
+            state = dict(global_state)
+            state.update(personalized[cid])
+            basis = "global_plus_exact_routed_local_state"
+        elif is_lora_a_disk_agg(args.agg_type) or is_fedalt_sequential_agg(args.agg_type):
+            _load_client_eval_state(global_model, client_store, cid, shared_state, args)
+            state = extract_trainable_state_dict(global_model)
+            basis = "exact_disk_client_deployment"
+        elif not is_memory_global_agg_agg(args.agg_type) or _memory_agg_eval_use_local_clients(args):
+            state = _get_client_local_state(client_store, cid)
+            basis = "local_client_snapshot"
+        else:
+            state = global_state
+        adapter_dir = os.path.join(root, "clients", f"client_{cid:03d}")
+        _save_state_adapter(state, adapter_dir)
+        exported_client_states[cid] = {
+            key: value.detach().cpu().clone() for key, value in state.items()
+        }
+        manifest_clients[str(cid)] = {
+            "domain": domain_by_client.get(cid, "?"),
+            "adapter_dir": adapter_dir,
+            "deployment_basis": basis,
+            "tensor_bytes": _tensor_bytes(state),
+        }
+    global_basis = "reconstructed_server_global"
+    if is_lora_expert_agg(args.agg_type) and exported_client_states:
+        # Disk bundles retain exact routed client B but not the server's
+        # convenience mean-B tensor. Recreate the same unweighted mean used by
+        # lora_expert_baselines before saving the global comparison adapter.
+        for key in list(global_state):
+            if not is_lora_b_param_name(key):
+                continue
+            tensors = [state[key].float() for state in exported_client_states.values() if key in state]
+            if tensors:
+                global_state[key] = torch.stack(tensors, 0).mean(0).to(global_state[key].dtype)
+        global_basis = "reconstructed_server_mean_of_exact_routed_client_B"
+    global_dir = os.path.join(root, "global")
+    _save_state_adapter(global_state, global_dir)
+    load_partial_state_dict(global_model, global_state)
+    manifest = {
+        "schema_version": 1,
+        "checkpoint": ckpt,
+        "agg_type": args.agg_type,
+        "model": args.model,
+        "global_adapter_dir": global_dir,
+        "global_deployment_basis": global_basis,
+        "global_tensor_bytes": _tensor_bytes(global_state),
+        "clients": manifest_clients,
+        "external_evaluation_rule": (
+            "Report global separately. For routed deployment, evaluate every client adapter "
+            "in the task's declared domain and macro-average; do not select the best client."
+        ),
+    }
+    manifest_path = os.path.join(root, "adapter_export_manifest.json")
+    with open(manifest_path, "w", encoding="utf-8") as handle:
+        json.dump(manifest, handle, indent=2, ensure_ascii=False)
+    print(f"[adapter-export] wrote global + {len(manifest_clients)} client adapters -> {root}", flush=True)
+    return manifest_path
+
+
 def eval_only_from_checkpoint(args):
     ckpt = os.path.abspath(os.path.expanduser(args.eval_only_from_checkpoint))
     meta_path = os.path.join(ckpt, "run_checkpoint_meta.json")
@@ -2564,6 +2666,8 @@ def eval_only_from_checkpoint(args):
     by_c = group_rows_by_client(benchmark["train"])
     client_ids = sorted(by_c.keys())
     args.num_clients = len(client_ids)
+    args._fedplora_client_domains = _client_id_to_home_domain(benchmark["clients"])
+    args._fedplora_round_client_ids = list(client_ids)
     _relocate_legacy_artifact_dirs(args, args.num_clients)
     print(
         f"[setup] eval-only client_state_dir={args.client_state_dir} "
@@ -2660,6 +2764,13 @@ def eval_only_from_checkpoint(args):
             global_model = _reaggregate_memory_global_model(
                 global_model, client_states_for_agg, args
             )
+
+    if str(getattr(args, "export_eval_adapter_dir", "") or "").strip():
+        _export_eval_adapters(
+            global_model, client_ids, client_store, benchmark, args, ckpt
+        )
+        if bool(getattr(args, "export_eval_adapter_only", False)):
+            return
 
     comm_info = _comm_info_for_args(global_model, args)
     metrics_history = {
