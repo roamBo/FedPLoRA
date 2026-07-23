@@ -756,28 +756,79 @@ CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v /data/yaominghao/mini
 
 **【gb】** resolve 为 0-GPU（前台）；两条 export 用 **nohup + 绝对 python 路径**。单卡 GPU1 上 **先 normal、等结束再 v13a**，不要两条同时 nohup。
 
+**resolve 常见失败原因**
+
+| 现象 | 原因 | 处理 |
+|------|------|------|
+| `found 0` | 旧 run 无 `run_checkpoint_meta.json`，或 benchmark 子串不匹配 | 用下方 **主表 result JSON** 路径（推荐） |
+| `found >1` | 7.2-A common-test 重训 + os_20260709 同时 valid | 加 `--bundle_contains os_20260709` / `v13_20260712` |
+| `CKPT_*` 为空 | resolve 失败但 `$()` 未阻断 | 必须看到非空路径再 nohup |
+
 ```bash
 cd /data/yaominghao/gb/FedPLoRA
 export CODE_DIR=/data/yaominghao/gb/FedPLoRA
 export RESULT_ROOT=/data/yaominghao/gb/result/FedPLoRA/order_0723
+export FED_RESULT_ROOT=/data/yaominghao/gb/result/FedPLoRA
 export MODEL_135M=/data/yaominghao/gb/models/SmolLM2-135M
 export D1_ROOT=/data/yaominghao/gb/FedPLoRA/data/domain_benchmark_35c_dir05
 export GPU_ID=1
+export PY=/data/yaominghao/miniconda3/envs/fedplora/bin/python
 export CKPT_SEARCH_ROOTS="/data/yaominghao/gb/models/trained_models_LW /data/yaominghao/gb/result/FedPLoRA"
 mkdir -p "$RESULT_ROOT/launcher_logs" "$RESULT_ROOT/external_adapter_export" "$RESULT_ROOT/external_adapters"
 
-# --- 0-GPU：manifest + resolve（必须前台；失败则不要 nohup）---
+# --- 0-GPU：诊断（可选；看清 valid 候选）---
 export CKPT_MANIFEST_EXT="$RESULT_ROOT/checkpoint_manifest_external_20260723.json"
-/data/yaominghao/miniconda3/envs/fedplora/bin/python scripts/Analysis/checkpoint_manifest.py \
-  --roots $CKPT_SEARCH_ROOTS --output "$CKPT_MANIFEST_EXT"
+"$PY" scripts/Analysis/checkpoint_manifest.py --roots $CKPT_SEARCH_ROOTS --output "$CKPT_MANIFEST_EXT"
+"$PY" - <<'PY'
+import json, pathlib
+manifest = pathlib.Path("'"$CKPT_MANIFEST_EXT"'")
+rows = json.loads(manifest.read_text(encoding="utf-8"))
+for want, agg, bundle_hint in [
+    ("normal seed42", "normal", "os_20260709"),
+    ("v13a seed42", "fedplora_v13a_os", "v13_20260712"),
+]:
+    hits = [
+        r for r in rows
+        if r.get("valid") and r.get("agg_type") == agg and r.get("seed") == 42
+        and "seed_42" in str(r.get("benchmark_dir", ""))
+        and "SmolLM2-135M" in str(r.get("model", ""))
+    ]
+    print(f"[E-prep][audit] {want}: {len(hits)} valid candidate(s)")
+    for r in hits[:5]:
+        mark = " <-- main" if bundle_hint in str(r.get("bundle", "")) else ""
+        print(" ", r.get("bundle"), mark)
+PY
 
-export CKPT_NORMAL_EXT_42="$(/data/yaominghao/miniconda3/envs/fedplora/bin/python scripts/Analysis/checkpoint_manifest.py --roots $CKPT_SEARCH_ROOTS --resolve --agg_type normal --seed 42 --model_contains SmolLM2-135M --benchmark_contains "domain_benchmark_35c_dir05/seed_42")"
-export CKPT_V13A_EXT_42="$(/data/yaominghao/miniconda3/envs/fedplora/bin/python scripts/Analysis/checkpoint_manifest.py --roots $CKPT_SEARCH_ROOTS --resolve --agg_type fedplora_v13a_os --seed 42 --model_contains SmolLM2-135M --benchmark_contains "domain_benchmark_35c_dir05/seed_42")"
+# --- 0-GPU：resolve（推荐：主表 result JSON → 与 I1 同源）---
+NORMAL_RESULT_JSON="$(find "$FED_RESULT_ROOT/os_20260709_baseline_35c_dir05_r1_finaleval_seed42/result_logs/OS1_normal" -maxdepth 1 -type f -name '*.json' | sort | head -n 1)"
+V13A_RESULT_JSON="$(find "$FED_RESULT_ROOT/v13_20260712_nx0_35c_dir05_r1_finaleval_seed42/result_logs/NX0_v13a_os_split42_train42" -maxdepth 1 -type f -name '*.json' | sort | head -n 1)"
+test -f "$NORMAL_RESULT_JSON"
+test -f "$V13A_RESULT_JSON"
+echo "[E-prep] NORMAL_RESULT_JSON=$NORMAL_RESULT_JSON"
+echo "[E-prep] V13A_RESULT_JSON=$V13A_RESULT_JSON"
+
+export CKPT_NORMAL_EXT_42="$("$PY" scripts/Analysis/checkpoint_manifest.py --from_result_json "$NORMAL_RESULT_JSON")"
+export CKPT_V13A_EXT_42="$("$PY" scripts/Analysis/checkpoint_manifest.py --from_result_json "$V13A_RESULT_JSON")"
 echo "[E-prep][ok] CKPT_NORMAL_EXT_42=$CKPT_NORMAL_EXT_42"
 echo "[E-prep][ok] CKPT_V13A_EXT_42=$CKPT_V13A_EXT_42"
+test -n "$CKPT_NORMAL_EXT_42"
+test -n "$CKPT_V13A_EXT_42"
+test -f "$CKPT_NORMAL_EXT_42/run_checkpoint_meta.json"
+test -f "$CKPT_V13A_EXT_42/run_checkpoint_meta.json"
+```
 
+若 `--from_result_json` 报 `missing run_checkpoint_meta.json`，说明该主表 run 是旧格式 checkpoint，需用新代码重训或换有 meta 的 bundle。
+
+**备用：manifest resolve**（仅当 result JSON 路径漂移时用；若 7.2-A 已跑，必须加 `--bundle_contains` 锁主表）：
+
+```bash
+export CKPT_NORMAL_EXT_42="$("$PY" scripts/Analysis/checkpoint_manifest.py --roots $CKPT_SEARCH_ROOTS --resolve --agg_type normal --seed 42 --model_contains SmolLM2-135M --benchmark_contains "domain_benchmark_35c_dir05/seed_42" --bundle_contains os_20260709_baseline_35c_dir05_r1_finaleval)"
+export CKPT_V13A_EXT_42="$("$PY" scripts/Analysis/checkpoint_manifest.py --roots $CKPT_SEARCH_ROOTS --resolve --agg_type fedplora_v13a_os --seed 42 --model_contains SmolLM2-135M --benchmark_contains "domain_benchmark_35c_dir05/seed_42" --bundle_contains v13_20260712_nx0_35c_dir05_r1_finaleval_seed42)"
+```
+
+```bash
 # --- GPU：E-prep-normal（nohup；占 GPU1 直到结束）---
-CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v /data/yaominghao/miniconda3/envs/fedplora/bin/python -u tasks/fed_train_sft.py \
+CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v "$PY" -u tasks/fed_train_sft.py \
   --model "$MODEL_135M" \
   --benchmark_dir "$D1_ROOT/seed_42" \
   --agg_type normal \
@@ -802,7 +853,7 @@ echo "[E-prep] normal export pid=$! log=$RESULT_ROOT/launcher_logs/test20260723_
 tail -n 20 "$RESULT_ROOT/launcher_logs/test20260723_eprep_export_normal_seed42.log"
 test -f "$RESULT_ROOT/external_adapters/normal_seed42/adapter_export_manifest.json"
 
-CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v /data/yaominghao/miniconda3/envs/fedplora/bin/python -u tasks/fed_train_sft.py \
+CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v "$PY" -u tasks/fed_train_sft.py \
   --model "$MODEL_135M" \
   --benchmark_dir "$D1_ROOT/seed_42" \
   --agg_type fedplora_v13a_os \
@@ -891,22 +942,46 @@ echo "[E0] exit code=$?"
 
 FiQA 在 lm-eval 版本间没有稳定内置 task 名，本批不伪造 task alias。若 `lm_eval ls tasks` 明确列出服务器版本的 FiQA task，再把该准确名称映射为 `:finance` 单独补跑。
 
+**E-smoke / E1 / E2 前置条件**：必须先完成 **E-prep** 并存在两个 manifest；否则 `FileNotFoundError: ... adapter_export_manifest.json`。
+
+```bash
+export RESULT_ROOT=/data/yaominghao/gb/result/FedPLoRA/order_0723
+ls -la "$RESULT_ROOT/external_adapters/normal_seed42/adapter_export_manifest.json" \
+       "$RESULT_ROOT/external_adapters/v13a_seed42/adapter_export_manifest.json"
+# 任一 missing → 回 §E-prep 跑 export，不要直接 E1
+```
+
 ### E-smoke. 10 examples（GPU eval，不训练）
 
 ```bash
-cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v /data/yaominghao/miniconda3/envs/fedplora/bin/python scripts/Analysis/run_external_lm_eval.py --adapter_manifest "$RESULT_ROOT/external_adapters/v13a_seed42/adapter_export_manifest.json" --tasks pubmedqa:medical --mode both --limit 10 --device cuda:0 --batch_size auto --output_dir "$RESULT_ROOT/external_eval_smoke/v13a_seed42" > "$RESULT_ROOT/launcher_logs/test20260723_external_smoke_v13a_seed42.log" 2>&1 &
+cd /data/yaominghao/gb/FedPLoRA
+export RESULT_ROOT=/data/yaominghao/gb/result/FedPLoRA/order_0723
+export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}"
+test -f "$RESULT_ROOT/external_adapters/v13a_seed42/adapter_export_manifest.json"
+
+CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v /data/yaominghao/miniconda3/envs/fedplora/bin/python scripts/Analysis/run_external_lm_eval.py --adapter_manifest "$RESULT_ROOT/external_adapters/v13a_seed42/adapter_export_manifest.json" --tasks pubmedqa:medical --mode both --limit 10 --device cuda:0 --batch_size auto --output_dir "$RESULT_ROOT/external_eval_smoke/v13a_seed42" > "$RESULT_ROOT/launcher_logs/test20260723_external_smoke_v13a_seed42.log" 2>&1 &
 ```
 
 ### E1. Normal global / MMLU + PubMedQA + MBPP
 
 ```bash
-cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v /data/yaominghao/miniconda3/envs/fedplora/bin/python scripts/Analysis/run_external_lm_eval.py --adapter_manifest "$RESULT_ROOT/external_adapters/normal_seed42/adapter_export_manifest.json" --tasks mmlu:general,pubmedqa:medical,mbpp:code --mode global --device cuda:0 --batch_size auto --confirm_run_unsafe_code --output_dir "$RESULT_ROOT/external_eval/normal_seed42" > "$RESULT_ROOT/launcher_logs/test20260723_external_normal_seed42.log" 2>&1 &
+cd /data/yaominghao/gb/FedPLoRA
+export RESULT_ROOT=/data/yaominghao/gb/result/FedPLoRA/order_0723
+export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}"
+test -f "$RESULT_ROOT/external_adapters/normal_seed42/adapter_export_manifest.json"
+
+CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v /data/yaominghao/miniconda3/envs/fedplora/bin/python scripts/Analysis/run_external_lm_eval.py --adapter_manifest "$RESULT_ROOT/external_adapters/normal_seed42/adapter_export_manifest.json" --tasks mmlu:general,pubmedqa:medical,mbpp:code --mode global --device cuda:0 --batch_size auto --confirm_run_unsafe_code --output_dir "$RESULT_ROOT/external_eval/normal_seed42" > "$RESULT_ROOT/launcher_logs/test20260723_external_normal_seed42.log" 2>&1 &
 ```
 
 ### E2. v13a global + declared-domain routed-client macro
 
 ```bash
-cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v /data/yaominghao/miniconda3/envs/fedplora/bin/python scripts/Analysis/run_external_lm_eval.py --adapter_manifest "$RESULT_ROOT/external_adapters/v13a_seed42/adapter_export_manifest.json" --tasks mmlu:general,pubmedqa:medical,mbpp:code --mode both --device cuda:0 --batch_size auto --confirm_run_unsafe_code --output_dir "$RESULT_ROOT/external_eval/v13a_seed42" > "$RESULT_ROOT/launcher_logs/test20260723_external_v13a_seed42.log" 2>&1 &
+cd /data/yaominghao/gb/FedPLoRA
+export RESULT_ROOT=/data/yaominghao/gb/result/FedPLoRA/order_0723
+export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}"
+test -f "$RESULT_ROOT/external_adapters/v13a_seed42/adapter_export_manifest.json"
+
+CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v /data/yaominghao/miniconda3/envs/fedplora/bin/python scripts/Analysis/run_external_lm_eval.py --adapter_manifest "$RESULT_ROOT/external_adapters/v13a_seed42/adapter_export_manifest.json" --tasks mmlu:general,pubmedqa:medical,mbpp:code --mode both --device cuda:0 --batch_size auto --confirm_run_unsafe_code --output_dir "$RESULT_ROOT/external_eval/v13a_seed42" > "$RESULT_ROOT/launcher_logs/test20260723_external_v13a_seed42.log" 2>&1 &
 ```
 
 E2 会对每个 task 顺序跑 global + 该域全部 client adapters，并在 `external_eval_summary.json` 做无权宏平均。MBPP 会执行生成代码，只能在隔离环境运行；若服务器不是隔离执行环境，去掉 MBPP 和 `--confirm_run_unsafe_code`，不要绕过安全门。
