@@ -752,6 +752,7 @@ CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v /data/yaominghao/mini
 
 ### E-prep. checkpoint 解析 + seed42 adapter export（不训练）
 
+<<<<<<< HEAD
 旧 C2/C3 已停用，所以 external eval 不再依赖 common-test eval-only 的副产物。这里直接从 **D1 dir0.5 seed42** 的 Normal/v13a checkpoint 导出 PEFT adapter。
 
 **【gb 实测 20260723】** 本机 **没有** minghao 侧 `os_20260709` / `v13_20260712` 主表 result；仅有 `v10_35c_r10_dir10`、0718 route ablation 等。**gb 上 E-prep 应使用 7.2-A `common_test_v2` 重训产物（A1/A2）**，不要用 dir10 的 `baseline_normal_dir05_*`。
@@ -842,6 +843,11 @@ test -f "$RESULT_ROOT/external_adapters/normal_seed42/adapter_export_manifest.js
 test -f "$RESULT_ROOT/external_adapters/v13a_seed42/adapter_export_manifest.json"
 echo "[E-prep][ok] both manifests ready → E0 → E-smoke → E1"
 ```
+=======
+旧 C2/C3 已停用，所以 external eval 不再依赖 common-test eval-only 的副产物。这里直接从正式 D1 seed42 checkpoint 导出 PEFT adapter；只做 adapter 物化，不重新训练、不重评 common-test。
+
+**【gb】** resolve 为 0-GPU（前台）；两条 export 用 **nohup + 绝对 python 路径**。单卡 GPU1 上 **先 normal、等结束再 v13a**，不要两条同时 nohup。
+>>>>>>> 604bd264148a6c6b446055152dab09eee9ff6c6f
 
 **resolve 常见失败原因**
 
@@ -1891,12 +1897,21 @@ PY
 order/order_gb_eval_only_worst_indomain_20260723.md
 ```
 
+<<<<<<< HEAD
 该任务必须在 gb 节点 `/data/yaominghao/gb/FedPLoRA` 上运行。读源 result JSON 在 `FedPLoRA/order_MMDD/`；**I1 输出必须在** `FedPLoRA/order_0723/eval_only_worst_indomain_20260723/`。验收标准是：
 
 ```text
 order_0723/eval_only_worst_indomain_20260723/d1:         39 个 *_matched_domain.json
 order_0723/eval_only_worst_indomain_20260723/flowertune: 21 个 *_matched_domain.json
 summary: d1_summary.tsv 和 flowertune_summary.tsv（同上目录）
+=======
+该任务必须在原始训练节点 `/data/yaominghao/gb/FedPLoRA` 上运行，因为正式 checkpoint 根在 `/data/yaominghao/gb/models/trained_models_LW`。验收标准是：
+
+```text
+D1: 39 个 *_matched_domain.json
+FlowerTune: 21 个 *_matched_domain.json
+summary: d1_summary.tsv 和 flowertune_summary.tsv
+>>>>>>> 604bd264148a6c6b446055152dab09eee9ff6c6f
 ```
 
 ## 7.4 X1 external task eval-only
