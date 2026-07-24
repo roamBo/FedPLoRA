@@ -752,9 +752,96 @@ CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v /data/yaominghao/mini
 
 ### E-prep. checkpoint 解析 + seed42 adapter export（不训练）
 
-旧 C2/C3 已停用，所以 external eval 不再依赖 common-test eval-only 的副产物。这里直接从正式 D1 seed42 checkpoint 导出 PEFT adapter；只做 adapter 物化，不重新训练、不重评 common-test。
+旧 C2/C3 已停用，所以 external eval 不再依赖 common-test eval-only 的副产物。这里直接从 **D1 dir0.5 seed42** 的 Normal/v13a checkpoint 导出 PEFT adapter。
 
-**【gb】** resolve 为 0-GPU（前台）；两条 export 用 **nohup + 绝对 python 路径**。单卡 GPU1 上 **先 normal、等结束再 v13a**，不要两条同时 nohup。
+**【gb 实测 20260723】** 本机 **没有** minghao 侧 `os_20260709` / `v13_20260712` 主表 result；仅有 `v10_35c_r10_dir10`、0718 route ablation 等。**gb 上 E-prep 应使用 7.2-A `common_test_v2` 重训产物（A1/A2）**，不要用 dir10 的 `baseline_normal_dir05_*`。
+
+**【gb】** resolve 为 0-GPU（前台）；两条 export 用 **nohup + 绝对 python 路径**。单卡 GPU1 上 **先 normal、等结束再 v13a**，不要两条同时 nohup。export 时 `--benchmark_dir` 必须与 checkpoint 训练 split 一致 → **`domain_benchmark_35c_dir05_common_test_v2/seed_42`**。
+
+#### E-prep-gb. 按实测布局 resolve + export（整段粘贴）
+
+```bash
+cd /data/yaominghao/gb/FedPLoRA
+git pull   # 需要 --from_result_json / --list_matches 修复
+
+export CODE_DIR=/data/yaominghao/gb/FedPLoRA
+export RESULT_ROOT=/data/yaominghao/gb/result/FedPLoRA/order_0723
+export MODEL_135M=/data/yaominghao/gb/models/SmolLM2-135M
+export DIR05_COMMON_ROOT="$CODE_DIR/data/domain_benchmark_35c_dir05_common_test_v2"
+export GPU_ID=1
+export PY=/data/yaominghao/miniconda3/envs/fedplora/bin/python
+export CKPT_SEARCH_ROOTS="/data/yaominghao/gb/models/trained_models_LW/order_0723"
+mkdir -p "$RESULT_ROOT/launcher_logs" "$RESULT_ROOT/external_adapter_export" "$RESULT_ROOT/external_adapters"
+
+# --- 0) 7.2-A A1/A2 checkpoint 是否已落盘 ---
+NORMAL_BUNDLE="$CKPT_SEARCH_ROOTS/common_test_20260723_dir05_seed42/N9_common_dir05_normal_seed42_SmolLM2-135M_dir05_common_test_v2_r1_e1_lr0.0002_seed42"
+V13A_BUNDLE="$CKPT_SEARCH_ROOTS/common_test_20260723_dir05_seed42/N7_ours_common_dir05_v13a_seed42_SmolLM2-135M_dir05_common_test_v2_r1_e1_lr0.0002_seed42"
+
+ls -la "$NORMAL_BUNDLE/run_checkpoint_meta.json" "$V13A_BUNDLE/run_checkpoint_meta.json" 2>&1
+
+# 若上面 missing → 先跑 §7.2-A1、A2，不要 E-prep
+# tail -n 30 "$RESULT_ROOT/launcher_logs/test20260723_common_dir05_normal_seed42.log"
+# tail -n 30 "$RESULT_ROOT/launcher_logs/test20260723_common_dir05_v13a_seed42.log"
+
+# --- 1) resolve（manifest；A1/A2 路径固定时可手设 CKPT_*）---
+export CKPT_NORMAL_EXT_42="$("$PY" scripts/Analysis/checkpoint_manifest.py --roots $CKPT_SEARCH_ROOTS --resolve \
+  --agg_type normal --seed 42 --model_contains SmolLM2-135M \
+  --benchmark_contains "domain_benchmark_35c_dir05_common_test_v2/seed_42" \
+  --bundle_contains N9_common_dir05_normal_seed42)"
+
+export CKPT_V13A_EXT_42="$("$PY" scripts/Analysis/checkpoint_manifest.py --roots $CKPT_SEARCH_ROOTS --resolve \
+  --agg_type fedplora_v13a_os --seed 42 --model_contains SmolLM2-135M \
+  --benchmark_contains "domain_benchmark_35c_dir05_common_test_v2/seed_42" \
+  --bundle_contains N7_ours_common_dir05_v13a_seed42)"
+
+# 或 resolve 失败时直接：
+# export CKPT_NORMAL_EXT_42="$NORMAL_BUNDLE"
+# export CKPT_V13A_EXT_42="$V13A_BUNDLE"
+
+echo "CKPT_NORMAL_EXT_42=$CKPT_NORMAL_EXT_42"
+echo "CKPT_V13A_EXT_42=$CKPT_V13A_EXT_42"
+test -f "$CKPT_NORMAL_EXT_42/run_checkpoint_meta.json"
+test -f "$CKPT_V13A_EXT_42/run_checkpoint_meta.json"
+test -d "$DIR05_COMMON_ROOT/seed_42"
+
+# --- 2) export normal（GPU1）---
+CUDA_VISIBLE_DEVICES=1 nohup /usr/bin/time -v "$PY" -u tasks/fed_train_sft.py \
+  --model "$MODEL_135M" \
+  --benchmark_dir "$DIR05_COMMON_ROOT/seed_42" \
+  --agg_type normal \
+  --eval_only_from_checkpoint "$CKPT_NORMAL_EXT_42" \
+  --metrics_output_dir "$RESULT_ROOT/external_adapter_export/normal_seed42" \
+  --client_state_dir "$RESULT_ROOT/external_adapter_export/scratch_normal_seed42" \
+  --export_eval_adapter_dir "$RESULT_ROOT/external_adapters/normal_seed42" \
+  --export_eval_adapter_only \
+  --eval_max_batches 0 --batch_size 2 --max_seq_length 256 --torch_dtype bfloat16 \
+  --eval_personalization_metrics \
+  > "$RESULT_ROOT/launcher_logs/test20260723_eprep_export_normal_seed42.log" 2>&1 &
+echo "[E-prep] normal pid=$! ; tail -f $RESULT_ROOT/launcher_logs/test20260723_eprep_export_normal_seed42.log"
+```
+
+normal export 结束且 manifest 存在后再跑 v13a：
+
+```bash
+test -f "$RESULT_ROOT/external_adapters/normal_seed42/adapter_export_manifest.json"
+
+CUDA_VISIBLE_DEVICES=1 nohup /usr/bin/time -v "$PY" -u tasks/fed_train_sft.py \
+  --model "$MODEL_135M" \
+  --benchmark_dir "$DIR05_COMMON_ROOT/seed_42" \
+  --agg_type fedplora_v13a_os \
+  --eval_only_from_checkpoint "$CKPT_V13A_EXT_42" \
+  --metrics_output_dir "$RESULT_ROOT/external_adapter_export/v13a_seed42" \
+  --client_state_dir "$RESULT_ROOT/external_adapter_export/scratch_v13a_seed42" \
+  --export_eval_adapter_dir "$RESULT_ROOT/external_adapters/v13a_seed42" \
+  --export_eval_adapter_only \
+  --eval_max_batches 0 --batch_size 2 --max_seq_length 256 --torch_dtype bfloat16 \
+  --eval_personalization_metrics \
+  > "$RESULT_ROOT/launcher_logs/test20260723_eprep_export_v13a_seed42.log" 2>&1 &
+
+test -f "$RESULT_ROOT/external_adapters/normal_seed42/adapter_export_manifest.json"
+test -f "$RESULT_ROOT/external_adapters/v13a_seed42/adapter_export_manifest.json"
+echo "[E-prep][ok] both manifests ready → E0 → E-smoke → E1"
+```
 
 **resolve 常见失败原因**
 
@@ -1804,12 +1891,12 @@ PY
 order/order_gb_eval_only_worst_indomain_20260723.md
 ```
 
-该任务必须在原始训练节点 `/data/yaominghao/gb/FedPLoRA` 上运行，因为正式 checkpoint 根在 `/data/yaominghao/gb/models/trained_models_LW`。验收标准是：
+该任务必须在 gb 节点 `/data/yaominghao/gb/FedPLoRA` 上运行。读源 result JSON 在 `FedPLoRA/order_MMDD/`；**I1 输出必须在** `FedPLoRA/order_0723/eval_only_worst_indomain_20260723/`。验收标准是：
 
 ```text
-D1: 39 个 *_matched_domain.json
-FlowerTune: 21 个 *_matched_domain.json
-summary: d1_summary.tsv 和 flowertune_summary.tsv
+order_0723/eval_only_worst_indomain_20260723/d1:         39 个 *_matched_domain.json
+order_0723/eval_only_worst_indomain_20260723/flowertune: 21 个 *_matched_domain.json
+summary: d1_summary.tsv 和 flowertune_summary.tsv（同上目录）
 ```
 
 ## 7.4 X1 external task eval-only
