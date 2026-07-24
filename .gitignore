@@ -4,3 +4,6 @@ __pycache__/
 .pytest_cache/
 .mypy_cache/
 #*.log
+
+# Offline HF cache for external lm-eval (mmlu / pubmedqa / mbpp); keep local/rsync only
+data/external_lm_eval_hf_cache/
