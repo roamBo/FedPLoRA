@@ -16,15 +16,20 @@ import sys
 from collections import defaultdict
 from pathlib import Path
 
+_SCRIPT_DIR = Path(__file__).resolve().parent
+if str(_SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(_SCRIPT_DIR))
+
+from external_lm_eval_datasets import (
+    MMLU_PATH,
+    TASK_DATASETS,
+    assert_mmlu_cache_complete,
+)
+
 
 SAFE_NAME = re.compile(r"^[A-Za-z0-9_.:-]+$")
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_HF_CACHE_ROOT = REPO_ROOT / "data" / "external_lm_eval_hf_cache"
-TASK_DATASETS = {
-    "mmlu": ("cais/mmlu", "all"),
-    "pubmedqa": ("pubmed_qa", "pqa_labeled"),
-    "mbpp": ("google-research-datasets/mbpp", "full"),
-}
 
 
 def _resolve_hf_cache_root(explicit=None):
@@ -57,7 +62,7 @@ def _hf_subprocess_env(cache_root, offline=True):
     return env
 
 
-def _preflight_offline_datasets(task_names, env):
+def _preflight_offline_datasets(task_names, env, cache_root):
     try:
         from datasets import load_dataset
         import datasets as datasets_pkg
@@ -69,6 +74,18 @@ def _preflight_offline_datasets(task_names, env):
         flush=True,
     )
     for task in task_names:
+        if task == "mmlu":
+            configs = assert_mmlu_cache_complete(cache_root)
+            print(
+                f"[external-eval][preflight] mmlu subjects={len(configs)} "
+                f"(lm_eval uses per-subject configs, not 'all')",
+                flush=True,
+            )
+            with _temporary_environ(env):
+                for config in configs:
+                    load_dataset(MMLU_PATH, config, trust_remote_code=False)
+            print(f"[external-eval][preflight][ok] mmlu subjects={len(configs)}", flush=True)
+            continue
         spec = TASK_DATASETS.get(task)
         if spec is None:
             continue
@@ -201,7 +218,7 @@ def main():
     hf_env = _hf_subprocess_env(cache_root, offline=not args.allow_hf_network)
     unique_tasks = sorted({task for task, _ in tasks})
     if not args.dry_run and not args.skip_dataset_preflight:
-        _preflight_offline_datasets(unique_tasks, hf_env)
+        _preflight_offline_datasets(unique_tasks, hf_env, cache_root)
 
     jobs = []
     for task, domain in tasks:
