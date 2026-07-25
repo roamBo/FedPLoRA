@@ -20,12 +20,7 @@ _SCRIPT_DIR = Path(__file__).resolve().parent
 if str(_SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(_SCRIPT_DIR))
 
-from external_lm_eval_datasets import (
-    MMLU_PATH,
-    TASK_DATASETS,
-    assert_mmlu_cache_complete,
-)
-
+from external_lm_eval_datasets import preflight_offline_tasks  # noqa: E402
 
 SAFE_NAME = re.compile(r"^[A-Za-z0-9_.:-]+$")
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -43,7 +38,7 @@ def _resolve_hf_cache_root(explicit=None):
     raise SystemExit(
         "[external-eval][error] offline HF cache missing: "
         f"{DEFAULT_HF_CACHE_ROOT}\n"
-        "rsync data/external_lm_eval_hf_cache/ to the repo, or pass --hf_cache_dir."
+        "Run: python scripts/Analysis/prepare_external_lm_eval_hf_cache.py"
     )
 
 
@@ -60,60 +55,6 @@ def _hf_subprocess_env(cache_root, offline=True):
         env["TRANSFORMERS_OFFLINE"] = "1"
         env.pop("HF_ENDPOINT", None)
     return env
-
-
-def _preflight_offline_datasets(task_names, env, cache_root):
-    try:
-        from datasets import load_dataset
-        import datasets as datasets_pkg
-    except ImportError as exc:
-        raise SystemExit("[external-eval][error] datasets package required for offline preflight") from exc
-    print(
-        "[external-eval][preflight] datasets="
-        f"{datasets_pkg.__version__} cache={env['HF_DATASETS_CACHE']}",
-        flush=True,
-    )
-    for task in task_names:
-        if task == "mmlu":
-            configs = assert_mmlu_cache_complete(cache_root)
-            print(
-                f"[external-eval][preflight] mmlu subjects={len(configs)} "
-                f"(lm_eval uses per-subject configs, not 'all')",
-                flush=True,
-            )
-            with _temporary_environ(env):
-                for config in configs:
-                    load_dataset(MMLU_PATH, config, trust_remote_code=False)
-            print(f"[external-eval][preflight][ok] mmlu subjects={len(configs)}", flush=True)
-            continue
-        spec = TASK_DATASETS.get(task)
-        if spec is None:
-            continue
-        name, config = spec
-        print(f"[external-eval][preflight] load_dataset {name!r} config={config!r}", flush=True)
-        with _temporary_environ(env):
-            ds = load_dataset(name, config, trust_remote_code=False)
-        print(f"[external-eval][preflight][ok] {task} splits={list(ds.keys())}", flush=True)
-
-
-class _temporary_environ:
-    def __init__(self, values):
-        self._values = values
-        self._backup = {}
-
-    def __enter__(self):
-        for key, value in self._values.items():
-            self._backup[key] = os.environ.get(key)
-            os.environ[key] = value
-        return self
-
-    def __exit__(self, exc_type, exc, tb):
-        for key, old in self._backup.items():
-            if old is None:
-                os.environ.pop(key, None)
-            else:
-                os.environ[key] = old
-        return False
 
 
 def _parse_tasks(text):
@@ -138,6 +79,17 @@ def _find_result(root):
         if isinstance(data, dict) and isinstance(data.get("results"), dict):
             return path, data
     raise RuntimeError(f"no lm-eval results JSON under {root}")
+
+
+def _job_has_results(run_dir: Path, task: str) -> bool:
+    try:
+        _, data = _find_result(run_dir)
+    except RuntimeError:
+        return False
+    rows = data.get("results") or {}
+    if task in rows or task in (data.get("groups") or {}):
+        return True
+    return any(str(key).startswith(f"{task}_") for key in rows)
 
 
 def _numeric_metrics(result, task):
@@ -175,7 +127,11 @@ def main():
     parser.add_argument("--output_dir", required=True)
     parser.add_argument("--mode", choices=["global", "domain_clients", "both"], default="both")
     parser.add_argument("--device", default="cuda:0")
-    parser.add_argument("--batch_size", default="auto")
+    parser.add_argument(
+        "--batch_size",
+        default="4",
+        help="lm-eval batch size; avoid 'auto' on shared GPUs.",
+    )
     parser.add_argument("--dtype", default="bfloat16")
     parser.add_argument("--num_fewshot", type=int, default=0)
     parser.add_argument("--limit", default="")
@@ -200,7 +156,20 @@ def main():
         action="store_true",
         help="Skip offline load_dataset checks before launching lm_eval.",
     )
+    parser.add_argument(
+        "--resume",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Skip jobs whose output dir already contains lm_eval results (default: true).",
+    )
     args = parser.parse_args()
+
+    if str(args.batch_size).strip().lower() == "auto":
+        print(
+            "[external-eval][warn] batch_size=auto on shared GPUs often OOM; "
+            "use --batch_size 4 (or 2).",
+            flush=True,
+        )
 
     manifest_path = Path(args.adapter_manifest).expanduser().resolve()
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
@@ -218,7 +187,7 @@ def main():
     hf_env = _hf_subprocess_env(cache_root, offline=not args.allow_hf_network)
     unique_tasks = sorted({task for task, _ in tasks})
     if not args.dry_run and not args.skip_dataset_preflight:
-        _preflight_offline_datasets(unique_tasks, hf_env, cache_root)
+        preflight_offline_tasks(unique_tasks, hf_env, cache_root)
 
     jobs = []
     for task, domain in tasks:
@@ -234,6 +203,23 @@ def main():
     for task, domain, deployment, adapter in jobs:
         run_dir = output / task / deployment
         run_dir.mkdir(parents=True, exist_ok=True)
+        if args.resume and _job_has_results(run_dir, task):
+            result_path, result = _find_result(run_dir)
+            print(
+                f"[external-eval][resume] skip existing task={task} deployment={deployment} "
+                f"result={result_path}",
+                flush=True,
+            )
+            completed.append({
+                "task": task,
+                "domain": domain,
+                "deployment": deployment,
+                "adapter": adapter,
+                "result_path": str(result_path),
+                "metrics": _numeric_metrics(result, task),
+            })
+            continue
+
         model_args = f"pretrained={model},peft={adapter},dtype={args.dtype},trust_remote_code=False"
         command = [
             sys.executable, "-m", "lm_eval", "--model", "hf",

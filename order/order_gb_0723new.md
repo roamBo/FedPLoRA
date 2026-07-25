@@ -1170,6 +1170,35 @@ ls -la "$RESULT_ROOT/external_adapters/normal_seed42/adapter_export_manifest.jso
 # 任一 missing → 回 §E-prep 跑 export，不要直接 E1
 ```
 
+### E0.5 离线 HF cache（0 GPU，E1 前必跑）
+
+lm_eval 0.4.x 实际加载的数据集（**不是** `pubmed_qa`）：
+
+```text
+mmlu     -> cais/mmlu  （57 个 subject config，不是 config=all）
+pubmedqa -> bigbio/pubmed_qa / pubmed_qa_labeled_fold0_source
+mbpp     -> google-research-datasets/mbpp / full
+```
+
+在 gb 上（有镜像时）：
+
+```bash
+cd /data/yaominghao/gb/FedPLoRA
+export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}"
+export HF_HOME="$PWD/data/external_lm_eval_hf_cache"
+export HF_DATASETS_CACHE="$HF_HOME/datasets"
+export HF_ENDPOINT=https://hf-mirror.com
+unset HF_HUB_OFFLINE HF_DATASETS_OFFLINE TRANSFORMERS_OFFLINE
+
+# 补 pubmedqa（mmlu 若已有可只 --tasks pubmedqa）
+python scripts/Analysis/prepare_external_lm_eval_hf_cache.py --tasks pubmedqa --purge
+python scripts/Analysis/prepare_external_lm_eval_hf_cache.py --verify_only
+
+export HF_HUB_OFFLINE=1 HF_DATASETS_OFFLINE=1 TRANSFORMERS_OFFLINE=1
+unset HF_ENDPOINT
+python scripts/Analysis/prepare_external_lm_eval_hf_cache.py --verify_only
+```
+
 
 
 ### E-smoke. 10 examples（GPU eval，不训练）
@@ -1180,33 +1209,55 @@ export RESULT_ROOT=/data/yaominghao/gb/result/FedPLoRA/order_0723
 export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}"
 test -f "$RESULT_ROOT/external_adapters/v13a_seed42/adapter_export_manifest.json"
 
-CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v /data/yaominghao/miniconda3/envs/fedplora/bin/python scripts/Analysis/run_external_lm_eval.py --adapter_manifest "$RESULT_ROOT/external_adapters/v13a_seed42/adapter_export_manifest.json" --tasks pubmedqa:medical --mode both --limit 10 --device cuda:0 --batch_size auto --output_dir "$RESULT_ROOT/external_eval_smoke/v13a_seed42" > "$RESULT_ROOT/launcher_logs/test20260723_external_smoke_v13a_seed42.log" 2>&1 &
+CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v /data/yaominghao/miniconda3/envs/fedplora/bin/python scripts/Analysis/run_external_lm_eval.py --adapter_manifest "$RESULT_ROOT/external_adapters/v13a_seed42/adapter_export_manifest.json" --tasks pubmedqa:medical --mode both --limit 10 --device cuda:0 --batch_size 4 --output_dir "$RESULT_ROOT/external_eval_smoke/v13a_seed42" > "$RESULT_ROOT/launcher_logs/test20260723_external_smoke_v13a_seed42.log" 2>&1 &
 ```
 
 
 
 ### E1. Normal global / MMLU + PubMedQA + MBPP
 
+**前置**：§E0.5 cache verify 通过；`--batch_size 4`（勿用 auto）；默认 `--resume` 跳过已完成的 MMLU。
+
 ```bash
 cd /data/yaominghao/gb/FedPLoRA
 export RESULT_ROOT=/data/yaominghao/gb/result/FedPLoRA/order_0723
 export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}"
+export GPU_ID=${GPU_ID:-1}
+export PY=/data/yaominghao/gb/FedPLoRA/scripts/Analysis/run_external_lm_eval.py
 test -f "$RESULT_ROOT/external_adapters/normal_seed42/adapter_export_manifest.json"
 
-CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v /data/yaominghao/miniconda3/envs/fedplora/bin/python scripts/Analysis/run_external_lm_eval.py --adapter_manifest "$RESULT_ROOT/external_adapters/normal_seed42/adapter_export_manifest.json" --tasks mmlu:general,pubmedqa:medical,mbpp:code --mode global --device cuda:0 --batch_size auto --confirm_run_unsafe_code --output_dir "$RESULT_ROOT/external_eval/normal_seed42" > "$RESULT_ROOT/launcher_logs/test20260723_external_normal_seed42.log" 2>&1 &
+CUDA_VISIBLE_DEVICES="$GPU_ID" nohup /usr/bin/time -v \
+  /data/yaominghao/miniconda3/envs/fedplora/bin/python "$PY" \
+  --adapter_manifest "$RESULT_ROOT/external_adapters/normal_seed42/adapter_export_manifest.json" \
+  --tasks mmlu:general,pubmedqa:medical,mbpp:code \
+  --mode global --device cuda:0 --batch_size 4 \
+  --confirm_run_unsafe_code \
+  --output_dir "$RESULT_ROOT/external_eval/normal_seed42" \
+  > "$RESULT_ROOT/launcher_logs/test20260723_external_normal_seed42.log" 2>&1 &
 ```
 
 
 
 ### E2. v13a global + declared-domain routed-client macro
 
+等 E1 结束后再跑。`--resume` 会跳过已完成的 mmlu/global。
+
 ```bash
 cd /data/yaominghao/gb/FedPLoRA
 export RESULT_ROOT=/data/yaominghao/gb/result/FedPLoRA/order_0723
 export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}"
+export GPU_ID=${GPU_ID:-1}
+export PY=/data/yaominghao/gb/FedPLoRA/scripts/Analysis/run_external_lm_eval.py
 test -f "$RESULT_ROOT/external_adapters/v13a_seed42/adapter_export_manifest.json"
 
-CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v /data/yaominghao/miniconda3/envs/fedplora/bin/python scripts/Analysis/run_external_lm_eval.py --adapter_manifest "$RESULT_ROOT/external_adapters/v13a_seed42/adapter_export_manifest.json" --tasks mmlu:general,pubmedqa:medical,mbpp:code --mode both --device cuda:0 --batch_size auto --confirm_run_unsafe_code --output_dir "$RESULT_ROOT/external_eval/v13a_seed42" > "$RESULT_ROOT/launcher_logs/test20260723_external_v13a_seed42.log" 2>&1 &
+CUDA_VISIBLE_DEVICES="$GPU_ID" nohup /usr/bin/time -v \
+  /data/yaominghao/miniconda3/envs/fedplora/bin/python "$PY" \
+  --adapter_manifest "$RESULT_ROOT/external_adapters/v13a_seed42/adapter_export_manifest.json" \
+  --tasks mmlu:general,pubmedqa:medical,mbpp:code \
+  --mode both --device cuda:0 --batch_size 4 \
+  --confirm_run_unsafe_code \
+  --output_dir "$RESULT_ROOT/external_eval/v13a_seed42" \
+  > "$RESULT_ROOT/launcher_logs/test20260723_external_v13a_seed42.log" 2>&1 &
 ```
 
 E2 会对每个 task 顺序跑 global + 该域全部 client adapters，并在 `external_eval_summary.json` 做无权宏平均。MBPP 会执行生成代码，只能在隔离环境运行；若服务器不是隔离执行环境，去掉 MBPP 和 `--confirm_run_unsafe_code`，不要绕过安全门。
