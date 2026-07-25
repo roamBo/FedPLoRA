@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import re
 from contextlib import contextmanager
 from pathlib import Path
 
@@ -10,10 +11,11 @@ MMLU_PATH = "cais/mmlu"
 MMLU_CACHE_SLUG = "cais___mmlu"
 MMLU_SKIP_CONFIGS = frozenset({"all", "auxiliary_train"})
 MMLU_MIN_SUBJECTS = 57
+PUBMEDQA_HUB_PATH = "bigbio/pubmed_qa"
+PUBMEDQA_HUB_CONFIG = "pubmed_qa_labeled_fold0_source"
 
-# lm_eval 0.4.x defaults (used if task yaml cannot be read).
 LM_EVAL_TASK_DATASETS = {
-    "pubmedqa": ("bigbio/pubmed_qa", "pubmed_qa_labeled_fold0_source"),
+    "pubmedqa": (PUBMEDQA_HUB_PATH, PUBMEDQA_HUB_CONFIG),
     "mbpp": ("google-research-datasets/mbpp", "full"),
 }
 
@@ -22,8 +24,15 @@ def cache_slug(name: str) -> str:
     return name.replace("/", "___")
 
 
+def pubmedqa_export_dir(cache_root: Path) -> Path:
+    return cache_root / "export" / "pubmedqa_bigbio"
+
+
+def pubmedqa_lm_eval_override_dir(cache_root: Path) -> Path:
+    return cache_root / "lm_eval_task_overrides"
+
+
 def read_lm_eval_dataset_spec(task_name: str) -> tuple[str, str | None]:
-    """Return (dataset_path, dataset_name) exactly as lm_eval task yaml declares."""
     try:
         import lm_eval
         import yaml
@@ -97,6 +106,26 @@ def assert_mmlu_cache_complete(cache_root: Path) -> list[str]:
     return configs
 
 
+def assert_pubmedqa_export_complete(cache_root: Path) -> Path:
+    export_dir = pubmedqa_export_dir(cache_root)
+    marker = export_dir / "dataset_dict.json"
+    if not marker.is_file():
+        raise SystemExit(
+            "[external-eval][error] PubMedQA offline export missing.\n"
+            f"Expected: {marker}\n"
+            "bigbio/pubmed_qa cannot load offline from Hub scripts alone.\n"
+            "Fix: python scripts/Analysis/prepare_external_lm_eval_hf_cache.py --tasks pubmedqa --purge"
+        )
+    override = pubmedqa_lm_eval_override_dir(cache_root) / "pubmedqa.yaml"
+    if not override.is_file():
+        raise SystemExit(
+            "[external-eval][error] PubMedQA lm_eval override yaml missing.\n"
+            f"Expected: {override}\n"
+            "Fix: python scripts/Analysis/prepare_external_lm_eval_hf_cache.py --tasks pubmedqa"
+        )
+    return export_dir
+
+
 def dataset_cache_dir(cache_root: Path, dataset_path: str) -> Path:
     return cache_root / "datasets" / cache_slug(dataset_path)
 
@@ -115,17 +144,69 @@ def temporary_environ(values: dict[str, str]):
                 os.environ[key] = old
 
 
-def _offline_load_dataset(path: str, name: str | None, env: dict[str, str]):
+def _load_dataset(path: str, name: str | None, *, trust_remote_code: bool = False):
     from datasets import load_dataset
 
-    kwargs = {"trust_remote_code": False}
+    kwargs = {"trust_remote_code": trust_remote_code}
     if name is None:
         return load_dataset(path, **kwargs)
     return load_dataset(path, name, **kwargs)
 
 
+def materialize_pubmedqa_lm_eval_yaml(cache_root: Path) -> Path:
+    """Patch installed pubmedqa.yaml to load from local save_to_disk export."""
+    import lm_eval
+
+    export_dir = assert_pubmedqa_export_complete(cache_root)
+    src = Path(lm_eval.__file__).resolve().parent / "tasks" / "pubmedqa" / "pubmedqa.yaml"
+    text = src.read_text(encoding="utf-8")
+    text = re.sub(
+        r"^dataset_path:.*$",
+        f"dataset_path: {export_dir.resolve().as_posix()}",
+        text,
+        count=1,
+        flags=re.MULTILINE,
+    )
+    text = re.sub(r"^dataset_name:.*\n", "", text, count=1, flags=re.MULTILINE)
+    out_dir = pubmedqa_lm_eval_override_dir(cache_root)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    out_yaml = out_dir / "pubmedqa.yaml"
+    out_yaml.write_text(text, encoding="utf-8")
+    print(f"[hf-cache][pubmedqa] lm_eval override -> {out_yaml}", flush=True)
+    return out_dir
+
+
+def export_pubmedqa_offline(cache_root: Path) -> Path:
+    import shutil
+    from datasets import load_from_disk
+
+    export_dir = pubmedqa_export_dir(cache_root)
+    marker = export_dir / "dataset_dict.json"
+    if marker.is_file():
+        print(f"[hf-cache][download][skip] pubmedqa export exists: {export_dir}", flush=True)
+        ds = load_from_disk(str(export_dir))
+        print(f"[hf-cache][download][ok] pubmedqa splits={list(ds.keys())}", flush=True)
+        materialize_pubmedqa_lm_eval_yaml(cache_root)
+        return export_dir
+
+    path, name = read_lm_eval_dataset_spec("pubmedqa")
+    print(
+        f"[hf-cache][download] pubmedqa online fetch {path!r} config={name!r} "
+        "(trust_remote_code=True)",
+        flush=True,
+    )
+    ds = _load_dataset(path, name, trust_remote_code=True)
+    if export_dir.is_dir():
+        shutil.rmtree(export_dir)
+    export_dir.parent.mkdir(parents=True, exist_ok=True)
+    ds.save_to_disk(str(export_dir))
+    print(f"[hf-cache][download][ok] pubmedqa exported -> {export_dir}", flush=True)
+    materialize_pubmedqa_lm_eval_yaml(cache_root)
+    return export_dir
+
+
 def preflight_offline_tasks(task_names: list[str], env: dict[str, str], cache_root: Path) -> None:
-    from datasets import load_dataset
+    from datasets import load_dataset, load_from_disk
     import datasets as datasets_pkg
 
     print(
@@ -147,6 +228,17 @@ def preflight_offline_tasks(task_names: list[str], env: dict[str, str], cache_ro
             print(f"[external-eval][preflight][ok] mmlu subjects={len(configs)}", flush=True)
             continue
 
+        if task == "pubmedqa":
+            export_dir = assert_pubmedqa_export_complete(cache_root)
+            print(
+                f"[external-eval][preflight] pubmedqa local export -> {export_dir}",
+                flush=True,
+            )
+            with temporary_environ(env):
+                ds = load_from_disk(str(export_dir))
+            print(f"[external-eval][preflight][ok] pubmedqa splits={list(ds.keys())}", flush=True)
+            continue
+
         path, name = read_lm_eval_dataset_spec(task)
         print(
             f"[external-eval][preflight] lm_eval task={task!r} -> "
@@ -154,7 +246,7 @@ def preflight_offline_tasks(task_names: list[str], env: dict[str, str], cache_ro
             flush=True,
         )
         with temporary_environ(env):
-            _offline_load_dataset(path, name, env)
+            _load_dataset(path, name, trust_remote_code=False)
         print(f"[external-eval][preflight][ok] {task}", flush=True)
 
 
@@ -177,9 +269,13 @@ def download_task_cache(task: str, cache_root: Path) -> None:
             print(f"[hf-cache][download][ok] mmlu {config} splits={list(ds.keys())}", flush=True)
         return
 
+    if task == "pubmedqa":
+        export_pubmedqa_offline(cache_root)
+        return
+
     path, name = read_lm_eval_dataset_spec(task)
     print(f"[hf-cache][download] task={task} dataset={path!r} config={name!r}", flush=True)
-    ds = _offline_load_dataset(path, name, {})
+    ds = _load_dataset(path, name, trust_remote_code=False)
     print(f"[hf-cache][download][ok] {task} splits={list(ds.keys())}", flush=True)
 
 
@@ -197,11 +293,27 @@ def verify_task_cache_offline(task: str, cache_root: Path) -> None:
 def purge_task_cache(task: str, cache_root: Path) -> None:
     import shutil
 
+    targets = []
     if task == "mmlu":
-        target = dataset_cache_dir(cache_root, MMLU_PATH)
+        targets.append(dataset_cache_dir(cache_root, MMLU_PATH))
+    elif task == "pubmedqa":
+        targets.append(dataset_cache_dir(cache_root, PUBMEDQA_HUB_PATH))
+        targets.append(cache_root / "hub" / "datasets--bigbio--pubmed_qa")
+        targets.append(pubmedqa_export_dir(cache_root))
+        targets.append(pubmedqa_lm_eval_override_dir(cache_root))
     else:
         path, _name = read_lm_eval_dataset_spec(task)
-        target = dataset_cache_dir(cache_root, path)
-    if target.is_dir():
-        print(f"[hf-cache][purge] {target}", flush=True)
-        shutil.rmtree(target)
+        targets.append(dataset_cache_dir(cache_root, path))
+        hub_slug = path.replace("/", "--")
+        targets.append(cache_root / "hub" / f"datasets--{hub_slug}")
+    for target in targets:
+        if target.is_dir():
+            print(f"[hf-cache][purge] {target}", flush=True)
+            shutil.rmtree(target)
+
+
+def lm_eval_include_path_for_tasks(task_names: list[str], cache_root: Path) -> str | None:
+    if "pubmedqa" not in task_names:
+        return None
+    assert_pubmedqa_export_complete(cache_root)
+    return str(pubmedqa_lm_eval_override_dir(cache_root).resolve())

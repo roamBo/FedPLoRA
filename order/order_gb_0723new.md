@@ -1172,11 +1172,11 @@ ls -la "$RESULT_ROOT/external_adapters/normal_seed42/adapter_export_manifest.jso
 
 ### E0.5 离线 HF cache（0 GPU，E1 前必跑）
 
-lm_eval 0.4.x 实际加载的数据集（**不是** `pubmed_qa`）：
+lm_eval 0.4.x 实际加载的数据集：
 
 ```text
-mmlu     -> cais/mmlu  （57 个 subject config，不是 config=all）
-pubmedqa -> bigbio/pubmed_qa / pubmed_qa_labeled_fold0_source
+mmlu     -> cais/mmlu  （57 个 subject config）
+pubmedqa -> bigbio/pubmed_qa 在线下载后 export 到本地 save_to_disk（离线无法直接用 Hub script）
 mbpp     -> google-research-datasets/mbpp / full
 ```
 
@@ -1184,13 +1184,13 @@ mbpp     -> google-research-datasets/mbpp / full
 
 ```bash
 cd /data/yaominghao/gb/FedPLoRA
+git pull
 export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}"
 export HF_HOME="$PWD/data/external_lm_eval_hf_cache"
 export HF_DATASETS_CACHE="$HF_HOME/datasets"
 export HF_ENDPOINT=https://hf-mirror.com
 unset HF_HUB_OFFLINE HF_DATASETS_OFFLINE TRANSFORMERS_OFFLINE
 
-# 补 pubmedqa（mmlu 若已有可只 --tasks pubmedqa）
 python scripts/Analysis/prepare_external_lm_eval_hf_cache.py --tasks pubmedqa --purge
 python scripts/Analysis/prepare_external_lm_eval_hf_cache.py --verify_only
 
@@ -1198,6 +1198,8 @@ export HF_HUB_OFFLINE=1 HF_DATASETS_OFFLINE=1 TRANSFORMERS_OFFLINE=1
 unset HF_ENDPOINT
 python scripts/Analysis/prepare_external_lm_eval_hf_cache.py --verify_only
 ```
+
+或一条命令：`bash scripts/RunScripts/run_external_eval_gb.sh prepare-cache pubmedqa`
 
 
 
@@ -1216,18 +1218,31 @@ CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v /data/yaominghao/mini
 
 ### E1. Normal global / MMLU + PubMedQA + MBPP
 
-**前置**：§E0.5 cache verify 通过；`--batch_size 4`（勿用 auto）；默认 `--resume` 跳过已完成的 MMLU。
+**推荐**：用 wrapper（自动 cd、cache 校验、绝对路径、batch=4、resume）：
+
+```bash
+cd /data/yaominghao/gb/FedPLoRA
+git pull
+export GPU_ID=1
+
+# 首次或 pubmedqa 报 bigbio/pubmed_qa 时先跑（约 1–5 分钟）
+bash scripts/RunScripts/run_external_eval_gb.sh prepare-cache pubmedqa
+
+# 启动 E1（会先 verify-cache，失败则直接退出，不会白跑 1h）
+bash scripts/RunScripts/run_external_eval_gb.sh e1-normal
+tail -f /data/yaominghao/gb/result/FedPLoRA/order_0723/launcher_logs/test20260723_external_normal_seed42.log
+```
+
+手动等价命令（**必须** `cd` 到 FedPLoRA，**勿用未定义的 `$PY`**）：
 
 ```bash
 cd /data/yaominghao/gb/FedPLoRA
 export RESULT_ROOT=/data/yaominghao/gb/result/FedPLoRA/order_0723
 export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}"
-export GPU_ID=${GPU_ID:-1}
-export PY=/data/yaominghao/gb/FedPLoRA/scripts/Analysis/run_external_lm_eval.py
-test -f "$RESULT_ROOT/external_adapters/normal_seed42/adapter_export_manifest.json"
+export GPU_ID=1
 
 CUDA_VISIBLE_DEVICES="$GPU_ID" nohup /usr/bin/time -v \
-  /data/yaominghao/miniconda3/envs/fedplora/bin/python "$PY" \
+  python /data/yaominghao/gb/FedPLoRA/scripts/Analysis/run_external_lm_eval.py \
   --adapter_manifest "$RESULT_ROOT/external_adapters/normal_seed42/adapter_export_manifest.json" \
   --tasks mmlu:general,pubmedqa:medical,mbpp:code \
   --mode global --device cuda:0 --batch_size 4 \
@@ -1240,24 +1255,13 @@ CUDA_VISIBLE_DEVICES="$GPU_ID" nohup /usr/bin/time -v \
 
 ### E2. v13a global + declared-domain routed-client macro
 
-等 E1 结束后再跑。`--resume` 会跳过已完成的 mmlu/global。
+等 E1 结束后再跑：
 
 ```bash
 cd /data/yaominghao/gb/FedPLoRA
-export RESULT_ROOT=/data/yaominghao/gb/result/FedPLoRA/order_0723
-export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}"
-export GPU_ID=${GPU_ID:-1}
-export PY=/data/yaominghao/gb/FedPLoRA/scripts/Analysis/run_external_lm_eval.py
-test -f "$RESULT_ROOT/external_adapters/v13a_seed42/adapter_export_manifest.json"
-
-CUDA_VISIBLE_DEVICES="$GPU_ID" nohup /usr/bin/time -v \
-  /data/yaominghao/miniconda3/envs/fedplora/bin/python "$PY" \
-  --adapter_manifest "$RESULT_ROOT/external_adapters/v13a_seed42/adapter_export_manifest.json" \
-  --tasks mmlu:general,pubmedqa:medical,mbpp:code \
-  --mode both --device cuda:0 --batch_size 4 \
-  --confirm_run_unsafe_code \
-  --output_dir "$RESULT_ROOT/external_eval/v13a_seed42" \
-  > "$RESULT_ROOT/launcher_logs/test20260723_external_v13a_seed42.log" 2>&1 &
+export GPU_ID=1
+bash scripts/RunScripts/run_external_eval_gb.sh e2-v13a
+tail -f /data/yaominghao/gb/result/FedPLoRA/order_0723/launcher_logs/test20260723_external_v13a_seed42.log
 ```
 
 E2 会对每个 task 顺序跑 global + 该域全部 client adapters，并在 `external_eval_summary.json` 做无权宏平均。MBPP 会执行生成代码，只能在隔离环境运行；若服务器不是隔离执行环境，去掉 MBPP 和 `--confirm_run_unsafe_code`，不要绕过安全门。

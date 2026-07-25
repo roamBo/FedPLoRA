@@ -20,7 +20,10 @@ _SCRIPT_DIR = Path(__file__).resolve().parent
 if str(_SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(_SCRIPT_DIR))
 
-from external_lm_eval_datasets import preflight_offline_tasks  # noqa: E402
+from external_lm_eval_datasets import (  # noqa: E402
+    lm_eval_include_path_for_tasks,
+    preflight_offline_tasks,
+)
 
 SAFE_NAME = re.compile(r"^[A-Za-z0-9_.:-]+$")
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -186,6 +189,7 @@ def main():
     cache_root = _resolve_hf_cache_root(args.hf_cache_dir or None)
     hf_env = _hf_subprocess_env(cache_root, offline=not args.allow_hf_network)
     unique_tasks = sorted({task for task, _ in tasks})
+    lm_eval_include = lm_eval_include_path_for_tasks(unique_tasks, cache_root)
     if not args.dry_run and not args.skip_dataset_preflight:
         preflight_offline_tasks(unique_tasks, hf_env, cache_root)
 
@@ -227,6 +231,8 @@ def main():
             "--device", args.device, "--batch_size", str(args.batch_size),
             "--num_fewshot", str(args.num_fewshot), "--output_path", str(run_dir),
         ]
+        if lm_eval_include:
+            command.extend(["--include_path", lm_eval_include])
         if args.limit:
             command.extend(["--limit", str(args.limit)])
         if args.confirm_run_unsafe_code:
