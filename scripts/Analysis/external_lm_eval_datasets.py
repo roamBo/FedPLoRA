@@ -106,7 +106,7 @@ def assert_mmlu_cache_complete(cache_root: Path) -> list[str]:
     return configs
 
 
-def assert_pubmedqa_export_complete(cache_root: Path) -> Path:
+def assert_pubmedqa_export_exists(cache_root: Path) -> Path:
     export_dir = pubmedqa_export_dir(cache_root)
     marker = export_dir / "dataset_dict.json"
     if not marker.is_file():
@@ -116,13 +116,19 @@ def assert_pubmedqa_export_complete(cache_root: Path) -> Path:
             "bigbio/pubmed_qa cannot load offline from Hub scripts alone.\n"
             "Fix: python scripts/Analysis/prepare_external_lm_eval_hf_cache.py --tasks pubmedqa --purge"
         )
+    return export_dir
+
+
+def ensure_pubmedqa_lm_eval_override(cache_root: Path) -> Path:
     override = pubmedqa_lm_eval_override_dir(cache_root) / "pubmedqa.yaml"
     if not override.is_file():
-        raise SystemExit(
-            "[external-eval][error] PubMedQA lm_eval override yaml missing.\n"
-            f"Expected: {override}\n"
-            "Fix: python scripts/Analysis/prepare_external_lm_eval_hf_cache.py --tasks pubmedqa"
-        )
+        materialize_pubmedqa_lm_eval_yaml(cache_root)
+    return override
+
+
+def assert_pubmedqa_export_complete(cache_root: Path) -> Path:
+    export_dir = assert_pubmedqa_export_exists(cache_root)
+    ensure_pubmedqa_lm_eval_override(cache_root)
     return export_dir
 
 
@@ -157,7 +163,7 @@ def materialize_pubmedqa_lm_eval_yaml(cache_root: Path) -> Path:
     """Patch installed pubmedqa.yaml to load from local save_to_disk export."""
     import lm_eval
 
-    export_dir = assert_pubmedqa_export_complete(cache_root)
+    export_dir = assert_pubmedqa_export_exists(cache_root)
     src = Path(lm_eval.__file__).resolve().parent / "tasks" / "pubmedqa" / "pubmedqa.yaml"
     text = src.read_text(encoding="utf-8")
     text = re.sub(
@@ -186,7 +192,7 @@ def export_pubmedqa_offline(cache_root: Path) -> Path:
         print(f"[hf-cache][download][skip] pubmedqa export exists: {export_dir}", flush=True)
         ds = load_from_disk(str(export_dir))
         print(f"[hf-cache][download][ok] pubmedqa splits={list(ds.keys())}", flush=True)
-        materialize_pubmedqa_lm_eval_yaml(cache_root)
+        ensure_pubmedqa_lm_eval_override(cache_root)
         return export_dir
 
     path, name = read_lm_eval_dataset_spec("pubmedqa")
@@ -201,7 +207,7 @@ def export_pubmedqa_offline(cache_root: Path) -> Path:
     export_dir.parent.mkdir(parents=True, exist_ok=True)
     ds.save_to_disk(str(export_dir))
     print(f"[hf-cache][download][ok] pubmedqa exported -> {export_dir}", flush=True)
-    materialize_pubmedqa_lm_eval_yaml(cache_root)
+    ensure_pubmedqa_lm_eval_override(cache_root)
     return export_dir
 
 
