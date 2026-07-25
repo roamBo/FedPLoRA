@@ -9,6 +9,7 @@ the macro mean; it never cherry-picks the best client.
 import argparse
 import json
 import math
+import os
 import re
 import subprocess
 import sys
@@ -17,6 +18,85 @@ from pathlib import Path
 
 
 SAFE_NAME = re.compile(r"^[A-Za-z0-9_.:-]+$")
+REPO_ROOT = Path(__file__).resolve().parents[2]
+DEFAULT_HF_CACHE_ROOT = REPO_ROOT / "data" / "external_lm_eval_hf_cache"
+TASK_DATASETS = {
+    "mmlu": ("cais/mmlu", "all"),
+    "pubmedqa": ("pubmed_qa", "pqa_labeled"),
+    "mbpp": ("google-research-datasets/mbpp", "full"),
+}
+
+
+def _resolve_hf_cache_root(explicit=None):
+    if explicit:
+        root = Path(explicit).expanduser().resolve()
+        if not root.is_dir():
+            raise SystemExit(f"[external-eval][error] HF cache dir not found: {root}")
+        return root
+    if DEFAULT_HF_CACHE_ROOT.is_dir():
+        return DEFAULT_HF_CACHE_ROOT
+    raise SystemExit(
+        "[external-eval][error] offline HF cache missing: "
+        f"{DEFAULT_HF_CACHE_ROOT}\n"
+        "rsync data/external_lm_eval_hf_cache/ to the repo, or pass --hf_cache_dir."
+    )
+
+
+def _hf_subprocess_env(cache_root, offline=True):
+    datasets_cache = cache_root / "datasets"
+    if not datasets_cache.is_dir():
+        datasets_cache = cache_root
+    env = os.environ.copy()
+    env["HF_HOME"] = str(cache_root)
+    env["HF_DATASETS_CACHE"] = str(datasets_cache)
+    if offline:
+        env["HF_HUB_OFFLINE"] = "1"
+        env["HF_DATASETS_OFFLINE"] = "1"
+        env["TRANSFORMERS_OFFLINE"] = "1"
+        env.pop("HF_ENDPOINT", None)
+    return env
+
+
+def _preflight_offline_datasets(task_names, env):
+    try:
+        from datasets import load_dataset
+        import datasets as datasets_pkg
+    except ImportError as exc:
+        raise SystemExit("[external-eval][error] datasets package required for offline preflight") from exc
+    print(
+        "[external-eval][preflight] datasets="
+        f"{datasets_pkg.__version__} cache={env['HF_DATASETS_CACHE']}",
+        flush=True,
+    )
+    for task in task_names:
+        spec = TASK_DATASETS.get(task)
+        if spec is None:
+            continue
+        name, config = spec
+        print(f"[external-eval][preflight] load_dataset {name!r} config={config!r}", flush=True)
+        with _temporary_environ(env):
+            ds = load_dataset(name, config, trust_remote_code=False)
+        print(f"[external-eval][preflight][ok] {task} splits={list(ds.keys())}", flush=True)
+
+
+class _temporary_environ:
+    def __init__(self, values):
+        self._values = values
+        self._backup = {}
+
+    def __enter__(self):
+        for key, value in self._values.items():
+            self._backup[key] = os.environ.get(key)
+            os.environ[key] = value
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        for key, old in self._backup.items():
+            if old is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = old
+        return False
 
 
 def _parse_tasks(text):
@@ -88,6 +168,21 @@ def main():
         help="Forward lm-eval's explicit opt-in required by code-execution tasks such as MBPP.",
     )
     parser.add_argument("--dry_run", action="store_true")
+    parser.add_argument(
+        "--hf_cache_dir",
+        default="",
+        help="Offline HuggingFace cache root (default: data/external_lm_eval_hf_cache under repo).",
+    )
+    parser.add_argument(
+        "--allow_hf_network",
+        action="store_true",
+        help="Do not force HF_HUB_OFFLINE; only use --hf_cache_dir as cache location.",
+    )
+    parser.add_argument(
+        "--skip_dataset_preflight",
+        action="store_true",
+        help="Skip offline load_dataset checks before launching lm_eval.",
+    )
     args = parser.parse_args()
 
     manifest_path = Path(args.adapter_manifest).expanduser().resolve()
@@ -101,6 +196,12 @@ def main():
         clients_by_domain[str(row.get("domain", "?"))].append((int(cid), row["adapter_dir"]))
     for domain in clients_by_domain:
         clients_by_domain[domain].sort()
+
+    cache_root = _resolve_hf_cache_root(args.hf_cache_dir or None)
+    hf_env = _hf_subprocess_env(cache_root, offline=not args.allow_hf_network)
+    unique_tasks = sorted({task for task, _ in tasks})
+    if not args.dry_run and not args.skip_dataset_preflight:
+        _preflight_offline_datasets(unique_tasks, hf_env)
 
     jobs = []
     for task, domain in tasks:
@@ -130,7 +231,7 @@ def main():
         print("[external-eval][command]", " ".join(command), flush=True)
         if args.dry_run:
             continue
-        subprocess.run(command, check=True)
+        subprocess.run(command, check=True, env=hf_env)
         result_path, result = _find_result(run_dir)
         completed.append({
             "task": task,

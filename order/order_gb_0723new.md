@@ -22,6 +22,8 @@
 9. 额外新增实验：YOCO-FlowerTune、YOCO-scale、70-client、r16，按资源放到最后跑。
 ```
 
+
+
 ## 如果已经卡在 common-test 报错
 
 如果日志出现类似：
@@ -38,6 +40,8 @@ Rebuild all heterogeneity splits from one frozen shared test set; do not use eva
 3. 直接从本文第七部分 `7.2-A0` 开始，先构建 `domain_benchmark_35c_dir05_common_test_v2`。
 4. 三个 seed 的 `cmp` 和 35-client 检查全部通过后，再跑 `A1-A6` 六条 GPU 重训。
 5. 如果 reference IID split 自身泄漏，说明旧数据不能修补，必须重建 IID/dir0.1/dir0.5 后重训；不要删 guard。
+
+
 
 ## 【命令介绍】
 
@@ -58,6 +62,8 @@ Rebuild all heterogeneity splits from one frozen shared test set; do not use eva
 - 为 canonical 9k 的 layer×module spectrum 补齐真实输入状态，避免继续使用旧 19k states。
 - 保持训练算法、v13a 聚合和既有 baseline 不变。
 
+
+
 ## 【重要口径】
 
 1. 当前 `eval_personalized.py` 中名为 `coldstart_geom` 的 held-out route，实际实现是**拼平后的 LoRA-B cosine**，不是 principal-angle router。下列命令验证的是当前部署 evaluator，不能把结果改写成“principal-angle router 60/60”。
@@ -65,6 +71,8 @@ Rebuild all heterogeneity splits from one frozen shared test set; do not use eva
 3. 每个 held-out fold 同时留出每个域一个 client；应写 `client-held-out fold, one client per domain`，不写经典 leave-one-client-out。
 4. full-fold 1-shot 的预注册通过条件：route match ≥95%、15/15 fold-seed 的 ΔGlobal 为正、Local 相对 10-shot 无实质退化。
 5. spectrum 的 CPU 分析不需要 GPU；gb 需先用 G14–G16 生成 dir05 的 35-client states。旧 19k / minghao A100 states 不得混用。
+
+
 
 ## 【命令设置】
 
@@ -109,14 +117,16 @@ smoke eval_max_batches=1, max_steps=1, max_train_samples_per_client=10
 
 【路径对照（minghao → gb）】
 
-| 项 | order_20260723.md | order_gb_0723new.md |
-| --- | --- | --- |
-| conda | `FedRepo2` | `fedplora` |
-| 代码 | `/data2/minghao/code/FedPLoRA-main` | `/data/yaominghao/gb/FedPLoRA` |
-| 模型根 | `/data2/minghao/model/` | `/data/yaominghao/gb/models/` |
-| 结果 | `/data2/minghao/result/FedPLoRA/` | `/data/yaominghao/gb/result/FedPLoRA/` |
-| D1 | `A100_domain_benchmark_35c_dir05` | `domain_benchmark_35c_dir05` |
-| GPU | `GPU_ID=0/1` | 默认 `GPU_ID=1` |
+
+| 项     | order_20260723.md                   | order_gb_0723new.md                    |
+| ----- | ----------------------------------- | -------------------------------------- |
+| conda | `FedRepo2`                          | `fedplora`                             |
+| 代码    | `/data2/minghao/code/FedPLoRA-main` | `/data/yaominghao/gb/FedPLoRA`         |
+| 模型根   | `/data2/minghao/model/`             | `/data/yaominghao/gb/models/`          |
+| 结果    | `/data2/minghao/result/FedPLoRA/`   | `/data/yaominghao/gb/result/FedPLoRA/` |
+| D1    | `A100_domain_benchmark_35c_dir05`   | `domain_benchmark_35c_dir05`           |
+| GPU   | `GPU_ID=0/1`                        | 默认 `GPU_ID=1`                          |
+
 
 【gb / preflight 防坑（必须遵守）】
 
@@ -132,6 +142,7 @@ smoke eval_max_batches=1, max_steps=1, max_train_samples_per_client=10
 8. 新脚本用 git pull；需含 repartition_with_frozen_test.py。
 9. 7.2-A0 第二个 cmp（dir05 vs dir01 test）失败说明 iid/dir01 未共 test，需先对齐三套 benchmark 再 repartition。
 ```
+
 
 
 ## 【实验产物位置说明】
@@ -156,6 +167,8 @@ launcher logs:
 /data/yaominghao/gb/result/FedPLoRA/order_0723/spectrum_9k/
 ```
 
+
+
 ## 【实验运行涉及场景】
 
 ```text
@@ -165,6 +178,8 @@ P1: D1 canonical 9k / 35 clients / 7 domains / v13a one-round states / CPU layer
 ```
 
 ---
+
+
 
 # 第一部分：已直接执行的 0-GPU 项
 
@@ -199,7 +214,11 @@ router_reliability.md/json
 
 ---
 
+
+
 # 第二部分：服务器前置命令
+
+
 
 ## 0.1 代码同步（gb）
 
@@ -244,6 +263,8 @@ python -m py_compile \
 bash -n scripts/RunScripts/run_20260713_one_experiment.sh
 ```
 
+
+
 ## 0.3 数据与模型检查
 
 ```bash
@@ -275,7 +296,11 @@ PY
 
 ---
 
+
+
 # 第三部分：GPU smoke（与正式命令分开）
+
+
 
 ## S1. FlowerTune offset1 / seed42 / 1-example
 
@@ -283,17 +308,23 @@ PY
 cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && MODEL_PATH="$MODEL_135M" BENCHMARK_DIR_MAIN="$FLOWER_ROOT/seed_42" EXPECTED_NUM_CLIENTS=20 RUN_TAG_DATASET=flowertune_mixed_20c_dir05 PIPELINE_EVAL_MAX_BATCHES=1 nohup /usr/bin/time -v bash scripts/RunScripts/run_20260713_one_experiment.sh --kind personalized_eval --method X2_flower_fullfold_probe1_offset1_smoke_seed42 --seed 42 --split-seed 42 --run-id-prefix flowertune_20260723_probe1_smoke --gpu "${GPU_ID:-1}" -- --held_out_clients auto_one_per_domain --held_out_policy offset --held_out_offset 1 --few_shot_caps 1 --held_out_route_probe_samples 1 --held_out_route_metrics flat_b_cosine,subspace,relative_l2,delta_w_cosine,nearest_client_subspace,largest_domain,random,oracle --onboarding_accounting --schemes base,global,coldstart,coldstart_geom --select_candidates global,coldstart,coldstart_geom --max_steps 1 --max_train_samples_per_client 10 > "$RESULT_ROOT/launcher_logs/test20260723_smoke_flower_probe1_offset1_seed42.launch.log" 2>&1 &
 ```
 
+
+
 ## S2. Qwen3B / seed42 / probe=1
 
 ```bash
 cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && MODEL_PATH="$MODEL_3B" RUN_TAG_MODEL=Qwen2.5-3B BENCHMARK_DIR_MAIN="$FLOWER_ROOT/seed_42" EXPECTED_NUM_CLIENTS=20 RUN_TAG_DATASET=flowertune_mixed_20c_dir05 PIPELINE_EVAL_MAX_BATCHES=1 nohup /usr/bin/time -v bash scripts/RunScripts/run_20260713_one_experiment.sh --kind personalized_eval --method X2_qwen3b_flower_probe1_smoke_seed42 --seed 42 --split-seed 42 --run-id-prefix qwen3b_20260723_probe1_smoke --gpu "${GPU_ID:-1}" -- --held_out_clients auto_one_per_domain --held_out_policy offset --held_out_offset 0 --few_shot_caps 1 --held_out_route_probe_samples 1 --held_out_route_metrics flat_b_cosine,subspace,relative_l2,delta_w_cosine,nearest_client_subspace,largest_domain,random,oracle --onboarding_accounting --schemes base,global,coldstart,coldstart_geom --select_candidates global,coldstart,coldstart_geom --max_steps 1 --max_train_samples_per_client 10 > "$RESULT_ROOT/launcher_logs/test20260723_smoke_qwen3b_probe1_seed42.launch.log" 2>&1 &
 ```
 
+
+
 ## S3. D1-9k state generation smoke
 
 ```bash
 cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && MODEL_PATH="$MODEL_135M" BENCHMARK_DIR_MAIN="$D1_ROOT/seed_42" EXPECTED_NUM_CLIENTS=35 RUN_TAG_DATASET=gb19k_35c_dir05 PIPELINE_ROUNDS=1 PIPELINE_EVAL_MAX_BATCHES=1 nohup /usr/bin/time -v bash scripts/RunScripts/run_20260713_one_experiment.sh --kind sft --method N7_ours_spectrum9k_v13a_smoke_seed42 --agg fedplora_v13a_os --seed 42 --split-seed 42 --run-id-prefix spectrum9k_20260723_smoke --gpu "${GPU_ID:-1}" -- --force_retrain --train_max_steps_per_client 1 --max_train_samples_per_client 10 > "$RESULT_ROOT/launcher_logs/test20260723_smoke_spectrum9k_state_seed42.launch.log" 2>&1 &
 ```
+
+
 
 ## S4. smoke 完成检查
 
@@ -307,6 +338,8 @@ find "$RESULT_ROOT" -path '*spectrum9k*smoke*client_states*client_*.pt' -type f 
 
 ---
 
+
+
 # 第四部分：P0-A FlowerTune full-fold 1-shot（12 条 GPU probe/eval）
 
 offset0 × seeds42/43/44 已完成并同步到本地，因此仅补 offset1–4。
@@ -317,11 +350,15 @@ offset0 × seeds42/43/44 已完成并同步到本地，因此仅补 offset1–4�
 cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && MODEL_PATH="$MODEL_135M" BENCHMARK_DIR_MAIN="$FLOWER_ROOT/seed_42" EXPECTED_NUM_CLIENTS=20 RUN_TAG_DATASET=flowertune_mixed_20c_dir05 PIPELINE_EVAL_MAX_BATCHES=0 nohup /usr/bin/time -v bash scripts/RunScripts/run_20260713_one_experiment.sh --kind personalized_eval --method X2_flower_fullfold_probe1_offset1_seed42 --seed 42 --split-seed 42 --run-id-prefix flowertune_20260723_probe1_offset1 --gpu "${GPU_ID:-1}" -- --held_out_clients auto_one_per_domain --held_out_policy offset --held_out_offset 1 --few_shot_caps 1 --held_out_route_probe_samples 1 --held_out_route_metrics flat_b_cosine,subspace,relative_l2,delta_w_cosine,nearest_client_subspace,largest_domain,random,oracle --onboarding_accounting --schemes base,global,coldstart,coldstart_geom --select_candidates global,coldstart,coldstart_geom > "$RESULT_ROOT/launcher_logs/test20260723_flower_probe1_offset1_seed42.launch.log" 2>&1 &
 ```
 
+
+
 ## G2. offset1 / seed43
 
 ```bash
 cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && MODEL_PATH="$MODEL_135M" BENCHMARK_DIR_MAIN="$FLOWER_ROOT/seed_42" EXPECTED_NUM_CLIENTS=20 RUN_TAG_DATASET=flowertune_mixed_20c_dir05 PIPELINE_EVAL_MAX_BATCHES=0 nohup /usr/bin/time -v bash scripts/RunScripts/run_20260713_one_experiment.sh --kind personalized_eval --method X2_flower_fullfold_probe1_offset1_seed43 --seed 43 --split-seed 43 --run-id-prefix flowertune_20260723_probe1_offset1 --gpu "${GPU_ID:-1}" -- --held_out_clients auto_one_per_domain --held_out_policy offset --held_out_offset 1 --few_shot_caps 1 --held_out_route_probe_samples 1 --held_out_route_metrics flat_b_cosine,subspace,relative_l2,delta_w_cosine,nearest_client_subspace,largest_domain,random,oracle --onboarding_accounting --schemes base,global,coldstart,coldstart_geom --select_candidates global,coldstart,coldstart_geom > "$RESULT_ROOT/launcher_logs/test20260723_flower_probe1_offset1_seed43.launch.log" 2>&1 &
 ```
+
+
 
 ## G3. offset1 / seed44
 
@@ -329,11 +366,15 @@ cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs
 cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && MODEL_PATH="$MODEL_135M" BENCHMARK_DIR_MAIN="$FLOWER_ROOT/seed_42" EXPECTED_NUM_CLIENTS=20 RUN_TAG_DATASET=flowertune_mixed_20c_dir05 PIPELINE_EVAL_MAX_BATCHES=0 nohup /usr/bin/time -v bash scripts/RunScripts/run_20260713_one_experiment.sh --kind personalized_eval --method X2_flower_fullfold_probe1_offset1_seed44 --seed 44 --split-seed 44 --run-id-prefix flowertune_20260723_probe1_offset1 --gpu "${GPU_ID:-1}" -- --held_out_clients auto_one_per_domain --held_out_policy offset --held_out_offset 1 --few_shot_caps 1 --held_out_route_probe_samples 1 --held_out_route_metrics flat_b_cosine,subspace,relative_l2,delta_w_cosine,nearest_client_subspace,largest_domain,random,oracle --onboarding_accounting --schemes base,global,coldstart,coldstart_geom --select_candidates global,coldstart,coldstart_geom > "$RESULT_ROOT/launcher_logs/test20260723_flower_probe1_offset1_seed44.launch.log" 2>&1 &
 ```
 
+
+
 ## G4. offset2 / seed42
 
 ```bash
 cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && MODEL_PATH="$MODEL_135M" BENCHMARK_DIR_MAIN="$FLOWER_ROOT/seed_42" EXPECTED_NUM_CLIENTS=20 RUN_TAG_DATASET=flowertune_mixed_20c_dir05 PIPELINE_EVAL_MAX_BATCHES=0 nohup /usr/bin/time -v bash scripts/RunScripts/run_20260713_one_experiment.sh --kind personalized_eval --method X2_flower_fullfold_probe1_offset2_seed42 --seed 42 --split-seed 42 --run-id-prefix flowertune_20260723_probe1_offset2 --gpu "${GPU_ID:-1}" -- --held_out_clients auto_one_per_domain --held_out_policy offset --held_out_offset 2 --few_shot_caps 1 --held_out_route_probe_samples 1 --held_out_route_metrics flat_b_cosine,subspace,relative_l2,delta_w_cosine,nearest_client_subspace,largest_domain,random,oracle --onboarding_accounting --schemes base,global,coldstart,coldstart_geom --select_candidates global,coldstart,coldstart_geom > "$RESULT_ROOT/launcher_logs/test20260723_flower_probe1_offset2_seed42.launch.log" 2>&1 &
 ```
+
+
 
 ## G5. offset2 / seed43
 
@@ -341,11 +382,15 @@ cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs
 cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && MODEL_PATH="$MODEL_135M" BENCHMARK_DIR_MAIN="$FLOWER_ROOT/seed_42" EXPECTED_NUM_CLIENTS=20 RUN_TAG_DATASET=flowertune_mixed_20c_dir05 PIPELINE_EVAL_MAX_BATCHES=0 nohup /usr/bin/time -v bash scripts/RunScripts/run_20260713_one_experiment.sh --kind personalized_eval --method X2_flower_fullfold_probe1_offset2_seed43 --seed 43 --split-seed 43 --run-id-prefix flowertune_20260723_probe1_offset2 --gpu "${GPU_ID:-1}" -- --held_out_clients auto_one_per_domain --held_out_policy offset --held_out_offset 2 --few_shot_caps 1 --held_out_route_probe_samples 1 --held_out_route_metrics flat_b_cosine,subspace,relative_l2,delta_w_cosine,nearest_client_subspace,largest_domain,random,oracle --onboarding_accounting --schemes base,global,coldstart,coldstart_geom --select_candidates global,coldstart,coldstart_geom > "$RESULT_ROOT/launcher_logs/test20260723_flower_probe1_offset2_seed43.launch.log" 2>&1 &
 ```
 
+
+
 ## G6. offset2 / seed44
 
 ```bash
 cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && MODEL_PATH="$MODEL_135M" BENCHMARK_DIR_MAIN="$FLOWER_ROOT/seed_42" EXPECTED_NUM_CLIENTS=20 RUN_TAG_DATASET=flowertune_mixed_20c_dir05 PIPELINE_EVAL_MAX_BATCHES=0 nohup /usr/bin/time -v bash scripts/RunScripts/run_20260713_one_experiment.sh --kind personalized_eval --method X2_flower_fullfold_probe1_offset2_seed44 --seed 44 --split-seed 44 --run-id-prefix flowertune_20260723_probe1_offset2 --gpu "${GPU_ID:-1}" -- --held_out_clients auto_one_per_domain --held_out_policy offset --held_out_offset 2 --few_shot_caps 1 --held_out_route_probe_samples 1 --held_out_route_metrics flat_b_cosine,subspace,relative_l2,delta_w_cosine,nearest_client_subspace,largest_domain,random,oracle --onboarding_accounting --schemes base,global,coldstart,coldstart_geom --select_candidates global,coldstart,coldstart_geom > "$RESULT_ROOT/launcher_logs/test20260723_flower_probe1_offset2_seed44.launch.log" 2>&1 &
 ```
+
+
 
 ## G7. offset3 / seed42
 
@@ -353,11 +398,15 @@ cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs
 cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && MODEL_PATH="$MODEL_135M" BENCHMARK_DIR_MAIN="$FLOWER_ROOT/seed_42" EXPECTED_NUM_CLIENTS=20 RUN_TAG_DATASET=flowertune_mixed_20c_dir05 PIPELINE_EVAL_MAX_BATCHES=0 nohup /usr/bin/time -v bash scripts/RunScripts/run_20260713_one_experiment.sh --kind personalized_eval --method X2_flower_fullfold_probe1_offset3_seed42 --seed 42 --split-seed 42 --run-id-prefix flowertune_20260723_probe1_offset3 --gpu "${GPU_ID:-1}" -- --held_out_clients auto_one_per_domain --held_out_policy offset --held_out_offset 3 --few_shot_caps 1 --held_out_route_probe_samples 1 --held_out_route_metrics flat_b_cosine,subspace,relative_l2,delta_w_cosine,nearest_client_subspace,largest_domain,random,oracle --onboarding_accounting --schemes base,global,coldstart,coldstart_geom --select_candidates global,coldstart,coldstart_geom > "$RESULT_ROOT/launcher_logs/test20260723_flower_probe1_offset3_seed42.launch.log" 2>&1 &
 ```
 
+
+
 ## G8. offset3 / seed43
 
 ```bash
 cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && MODEL_PATH="$MODEL_135M" BENCHMARK_DIR_MAIN="$FLOWER_ROOT/seed_42" EXPECTED_NUM_CLIENTS=20 RUN_TAG_DATASET=flowertune_mixed_20c_dir05 PIPELINE_EVAL_MAX_BATCHES=0 nohup /usr/bin/time -v bash scripts/RunScripts/run_20260713_one_experiment.sh --kind personalized_eval --method X2_flower_fullfold_probe1_offset3_seed43 --seed 43 --split-seed 43 --run-id-prefix flowertune_20260723_probe1_offset3 --gpu "${GPU_ID:-1}" -- --held_out_clients auto_one_per_domain --held_out_policy offset --held_out_offset 3 --few_shot_caps 1 --held_out_route_probe_samples 1 --held_out_route_metrics flat_b_cosine,subspace,relative_l2,delta_w_cosine,nearest_client_subspace,largest_domain,random,oracle --onboarding_accounting --schemes base,global,coldstart,coldstart_geom --select_candidates global,coldstart,coldstart_geom > "$RESULT_ROOT/launcher_logs/test20260723_flower_probe1_offset3_seed43.launch.log" 2>&1 &
 ```
+
+
 
 ## G9. offset3 / seed44
 
@@ -365,11 +414,15 @@ cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs
 cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && MODEL_PATH="$MODEL_135M" BENCHMARK_DIR_MAIN="$FLOWER_ROOT/seed_42" EXPECTED_NUM_CLIENTS=20 RUN_TAG_DATASET=flowertune_mixed_20c_dir05 PIPELINE_EVAL_MAX_BATCHES=0 nohup /usr/bin/time -v bash scripts/RunScripts/run_20260713_one_experiment.sh --kind personalized_eval --method X2_flower_fullfold_probe1_offset3_seed44 --seed 44 --split-seed 44 --run-id-prefix flowertune_20260723_probe1_offset3 --gpu "${GPU_ID:-1}" -- --held_out_clients auto_one_per_domain --held_out_policy offset --held_out_offset 3 --few_shot_caps 1 --held_out_route_probe_samples 1 --held_out_route_metrics flat_b_cosine,subspace,relative_l2,delta_w_cosine,nearest_client_subspace,largest_domain,random,oracle --onboarding_accounting --schemes base,global,coldstart,coldstart_geom --select_candidates global,coldstart,coldstart_geom > "$RESULT_ROOT/launcher_logs/test20260723_flower_probe1_offset3_seed44.launch.log" 2>&1 &
 ```
 
+
+
 ## G10. offset4 / seed42
 
 ```bash
 cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && MODEL_PATH="$MODEL_135M" BENCHMARK_DIR_MAIN="$FLOWER_ROOT/seed_42" EXPECTED_NUM_CLIENTS=20 RUN_TAG_DATASET=flowertune_mixed_20c_dir05 PIPELINE_EVAL_MAX_BATCHES=0 nohup /usr/bin/time -v bash scripts/RunScripts/run_20260713_one_experiment.sh --kind personalized_eval --method X2_flower_fullfold_probe1_offset4_seed42 --seed 42 --split-seed 42 --run-id-prefix flowertune_20260723_probe1_offset4 --gpu "${GPU_ID:-1}" -- --held_out_clients auto_one_per_domain --held_out_policy offset --held_out_offset 4 --few_shot_caps 1 --held_out_route_probe_samples 1 --held_out_route_metrics flat_b_cosine,subspace,relative_l2,delta_w_cosine,nearest_client_subspace,largest_domain,random,oracle --onboarding_accounting --schemes base,global,coldstart,coldstart_geom --select_candidates global,coldstart,coldstart_geom > "$RESULT_ROOT/launcher_logs/test20260723_flower_probe1_offset4_seed42.launch.log" 2>&1 &
 ```
+
+
 
 ## G11. offset4 / seed43
 
@@ -377,11 +430,15 @@ cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs
 cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && MODEL_PATH="$MODEL_135M" BENCHMARK_DIR_MAIN="$FLOWER_ROOT/seed_42" EXPECTED_NUM_CLIENTS=20 RUN_TAG_DATASET=flowertune_mixed_20c_dir05 PIPELINE_EVAL_MAX_BATCHES=0 nohup /usr/bin/time -v bash scripts/RunScripts/run_20260713_one_experiment.sh --kind personalized_eval --method X2_flower_fullfold_probe1_offset4_seed43 --seed 43 --split-seed 43 --run-id-prefix flowertune_20260723_probe1_offset4 --gpu "${GPU_ID:-1}" -- --held_out_clients auto_one_per_domain --held_out_policy offset --held_out_offset 4 --few_shot_caps 1 --held_out_route_probe_samples 1 --held_out_route_metrics flat_b_cosine,subspace,relative_l2,delta_w_cosine,nearest_client_subspace,largest_domain,random,oracle --onboarding_accounting --schemes base,global,coldstart,coldstart_geom --select_candidates global,coldstart,coldstart_geom > "$RESULT_ROOT/launcher_logs/test20260723_flower_probe1_offset4_seed43.launch.log" 2>&1 &
 ```
 
+
+
 ## G12. offset4 / seed44
 
 ```bash
 cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && MODEL_PATH="$MODEL_135M" BENCHMARK_DIR_MAIN="$FLOWER_ROOT/seed_42" EXPECTED_NUM_CLIENTS=20 RUN_TAG_DATASET=flowertune_mixed_20c_dir05 PIPELINE_EVAL_MAX_BATCHES=0 nohup /usr/bin/time -v bash scripts/RunScripts/run_20260713_one_experiment.sh --kind personalized_eval --method X2_flower_fullfold_probe1_offset4_seed44 --seed 44 --split-seed 44 --run-id-prefix flowertune_20260723_probe1_offset4 --gpu "${GPU_ID:-1}" -- --held_out_clients auto_one_per_domain --held_out_policy offset --held_out_offset 4 --few_shot_caps 1 --held_out_route_probe_samples 1 --held_out_route_metrics flat_b_cosine,subspace,relative_l2,delta_w_cosine,nearest_client_subspace,largest_domain,random,oracle --onboarding_accounting --schemes base,global,coldstart,coldstart_geom --select_candidates global,coldstart,coldstart_geom > "$RESULT_ROOT/launcher_logs/test20260723_flower_probe1_offset4_seed44.launch.log" 2>&1 &
 ```
+
+
 
 ## G1–G12 完成检查
 
@@ -419,6 +476,8 @@ PY
 
 ---
 
+
+
 # 第五部分：P0-B Qwen3B probe 配置对齐
 
 仅补 seed42 probe=1；seed43/44 probe=1 已完成。不要重复运行 D1 3B 的 Normal/FedALT/v13a。
@@ -433,6 +492,8 @@ cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs
 
 ---
 
+
+
 # 第六部分：P1 canonical 9k spectrum 输入状态生成
 
 这三条命令会重新训练 35 个 client LoRA，是真正的 GPU 训练。目的仅是生成 canonical 9k states；它们不替代现有主表结果。
@@ -443,17 +504,23 @@ cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs
 cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && MODEL_PATH="$MODEL_135M" BENCHMARK_DIR_MAIN="$D1_ROOT/seed_42" EXPECTED_NUM_CLIENTS=35 RUN_TAG_DATASET=gb19k_35c_dir05 PIPELINE_ROUNDS=1 PIPELINE_EVAL_MAX_BATCHES=1 nohup /usr/bin/time -v bash scripts/RunScripts/run_20260713_one_experiment.sh --kind sft --method N7_ours_spectrum9k_v13a_seed42 --agg fedplora_v13a_os --seed 42 --split-seed 42 --run-id-prefix spectrum9k_20260723_v13a --gpu "${GPU_ID:-1}" -- --force_retrain > "$RESULT_ROOT/launcher_logs/test20260723_spectrum9k_state_seed42.launch.log" 2>&1 &
 ```
 
+
+
 ## G15. D1-9k / seed43 states
 
 ```bash
 cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && MODEL_PATH="$MODEL_135M" BENCHMARK_DIR_MAIN="$D1_ROOT/seed_42" EXPECTED_NUM_CLIENTS=35 RUN_TAG_DATASET=gb19k_35c_dir05 PIPELINE_ROUNDS=1 PIPELINE_EVAL_MAX_BATCHES=1 nohup /usr/bin/time -v bash scripts/RunScripts/run_20260713_one_experiment.sh --kind sft --method N7_ours_spectrum9k_v13a_seed43 --agg fedplora_v13a_os --seed 43 --split-seed 43 --run-id-prefix spectrum9k_20260723_v13a --gpu "${GPU_ID:-1}" -- --force_retrain > "$RESULT_ROOT/launcher_logs/test20260723_spectrum9k_state_seed43.launch.log" 2>&1 &
 ```
 
+
+
 ## G16. D1-9k / seed44 states
 
 ```bash
 cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && MODEL_PATH="$MODEL_135M" BENCHMARK_DIR_MAIN="$D1_ROOT/seed_42" EXPECTED_NUM_CLIENTS=35 RUN_TAG_DATASET=gb19k_35c_dir05 PIPELINE_ROUNDS=1 PIPELINE_EVAL_MAX_BATCHES=1 nohup /usr/bin/time -v bash scripts/RunScripts/run_20260713_one_experiment.sh --kind sft --method N7_ours_spectrum9k_v13a_seed44 --agg fedplora_v13a_os --seed 44 --split-seed 44 --run-id-prefix spectrum9k_20260723_v13a --gpu "${GPU_ID:-1}" -- --force_retrain > "$RESULT_ROOT/launcher_logs/test20260723_spectrum9k_state_seed44.launch.log" 2>&1 &
 ```
+
+
 
 ## G14–G16 之后的 CPU-only postprocess
 
@@ -475,6 +542,8 @@ NPZ 中包含每个 projection 的 35×35 similarity、client/domain 顺序、la
 
 ---
 
+
+
 # 第七部分：补全实验闭环
 
 本部分已经有对应代码，不再是占位项。新 flag 默认关闭，因此不改变旧 evaluator 和已有算法：
@@ -486,6 +555,8 @@ NPZ 中包含每个 projection 的 35×35 similarity、client/domain 顺序、la
 - `--export_eval_adapter_dir`：从 checkpoint 物化全局 PEFT adapter 和每个客户端实际部署 adapter。
 - `run_external_lm_eval.py`：调用 lm-evaluation-harness；routed 结果对该任务域所有客户端 adapter 做宏平均，不挑最好客户端。
 
+
+
 ## 7.1 P0：补 offset0 的 router/onboarding（3 条 GPU probe/eval）
 
 G1–G12 已加入全部 router flag 和 onboarding 埋点；以下三条补 offset0，使完整协议为 5 offsets × 3 seeds。三条同级，可跨卡并行。
@@ -496,11 +567,15 @@ G1–G12 已加入全部 router flag 和 onboarding 埋点；以下三条补 off
 cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && MODEL_PATH="$MODEL_135M" BENCHMARK_DIR_MAIN="$FLOWER_ROOT/seed_42" EXPECTED_NUM_CLIENTS=20 RUN_TAG_DATASET=flowertune_mixed_20c_dir05 PIPELINE_EVAL_MAX_BATCHES=0 nohup /usr/bin/time -v bash scripts/RunScripts/run_20260713_one_experiment.sh --kind personalized_eval --method X2_flower_routeraudit_probe1_offset0_seed42 --seed 42 --split-seed 42 --run-id-prefix routeraudit_20260723_offset0 --gpu "${GPU_ID:-1}" -- --held_out_clients auto_one_per_domain --held_out_policy offset --held_out_offset 0 --few_shot_caps 1 --held_out_route_probe_samples 1 --held_out_route_metrics flat_b_cosine,subspace,relative_l2,delta_w_cosine,nearest_client_subspace,largest_domain,random,oracle --onboarding_accounting --schemes base,global,coldstart,coldstart_geom > "$RESULT_ROOT/launcher_logs/test20260723_routeraudit_offset0_seed42.launch.log" 2>&1 &
 ```
 
+
+
 ### R2. FlowerTune offset0 / seed43
 
 ```bash
 cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && MODEL_PATH="$MODEL_135M" BENCHMARK_DIR_MAIN="$FLOWER_ROOT/seed_42" EXPECTED_NUM_CLIENTS=20 RUN_TAG_DATASET=flowertune_mixed_20c_dir05 PIPELINE_EVAL_MAX_BATCHES=0 nohup /usr/bin/time -v bash scripts/RunScripts/run_20260713_one_experiment.sh --kind personalized_eval --method X2_flower_routeraudit_probe1_offset0_seed43 --seed 43 --split-seed 43 --run-id-prefix routeraudit_20260723_offset0 --gpu "${GPU_ID:-1}" -- --held_out_clients auto_one_per_domain --held_out_policy offset --held_out_offset 0 --few_shot_caps 1 --held_out_route_probe_samples 1 --held_out_route_metrics flat_b_cosine,subspace,relative_l2,delta_w_cosine,nearest_client_subspace,largest_domain,random,oracle --onboarding_accounting --schemes base,global,coldstart,coldstart_geom > "$RESULT_ROOT/launcher_logs/test20260723_routeraudit_offset0_seed43.launch.log" 2>&1 &
 ```
+
+
 
 ### R3. FlowerTune offset0 / seed44
 
@@ -516,6 +591,8 @@ cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs
 
 - **7.2-A（必须执行）**：冻结现有 IID 的完整 test，只把 IID 的 train/val/test_local 非测试池重新分配为 dir0.5，再重跑 dir0.5 Normal/v13a 共 6 条 GPU 训练。测试文件按字节复制，必须与 IID/dir0.1 完全一致。
 - **7.2-B（停用）**：旧 checkpoint intersection eval-only 不再作为默认运行路径，不要运行 C0/C1/C2-C7。
+
+
 
 ### 7.2-A0. 0-GPU 重建 full-common-test dir0.5
 
@@ -553,6 +630,7 @@ done
 ### 7.2-A1–A6. full-common-test dir0.5 重新训练（6 条 GPU）
 
 **【gb】** A1–A6 **全部直接** `$PY -u tasks/fed_train_sft.py`；**不要**再用 `run_20260713_one_experiment.sh`：
+
 1. `agg=normal` 会被 main preflight `[guard][main]` 拒绝。
 2. wrapper 里 `exec python` 在 nohup 子壳可能落到**无 numpy 的系统 python**；交互式 `(fedplora)` 里 `pip show numpy` 正常不代表 nohup 用的是同一个解释器。
 3. 必须用 **fedplora 绝对路径**（见各条 nohup 里的 python 路径）。**不要只粘贴 nohup 一行**：若 `$PY` / `$RESULT_ROOT` 未 export，会报 `cannot run : No such file`（exit 127）或找不到 benchmark。
@@ -571,6 +649,8 @@ export GPU_ID=1
 /data/yaominghao/miniconda3/envs/fedplora/bin/python -c "import numpy; print('[ok] numpy', numpy.__version__, 'python', __import__('sys').executable)"
 mkdir -p "$RESULT_ROOT/launcher_logs"
 ```
+
+
 
 #### A1. Normal seed42
 
@@ -600,6 +680,8 @@ CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v /data/yaominghao/mini
   > "$RESULT_ROOT/launcher_logs/test20260723_common_dir05_normal_seed42.log" 2>&1 &
 ```
 
+
+
 #### A2. v13a seed42
 
 ```bash
@@ -627,6 +709,8 @@ CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v /data/yaominghao/mini
   --force_retrain \
   > "$RESULT_ROOT/launcher_logs/test20260723_common_dir05_v13a_seed42.log" 2>&1 &
 ```
+
+
 
 #### A3. Normal seed43
 
@@ -656,6 +740,8 @@ CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v /data/yaominghao/mini
   > "$RESULT_ROOT/launcher_logs/test20260723_common_dir05_normal_seed43.log" 2>&1 &
 ```
 
+
+
 #### A4. v13a seed43
 
 ```bash
@@ -684,6 +770,8 @@ CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v /data/yaominghao/mini
   > "$RESULT_ROOT/launcher_logs/test20260723_common_dir05_v13a_seed43.log" 2>&1 &
 ```
 
+
+
 #### A5. Normal seed44
 
 ```bash
@@ -711,6 +799,8 @@ CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v /data/yaominghao/mini
   --force_retrain \
   > "$RESULT_ROOT/launcher_logs/test20260723_common_dir05_normal_seed44.log" 2>&1 &
 ```
+
+
 
 #### A6. v13a seed44
 
@@ -750,14 +840,16 @@ CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v /data/yaominghao/mini
 
 ## 7.3 P2：标准外部任务（checkpoint adapter，不重新训练）
 
+
+
 ### E-prep. checkpoint 解析 + seed42 adapter export（不训练）
 
 <<<<<<< HEAD
 旧 C2/C3 已停用，所以 external eval 不再依赖 common-test eval-only 的副产物。这里直接从 **D1 dir0.5 seed42** 的 Normal/v13a checkpoint 导出 PEFT adapter。
 
-**【gb 实测 20260723】** 本机 **没有** minghao 侧 `os_20260709` / `v13_20260712` 主表 result；仅有 `v10_35c_r10_dir10`、0718 route ablation 等。**gb 上 E-prep 应使用 7.2-A `common_test_v2` 重训产物（A1/A2）**，不要用 dir10 的 `baseline_normal_dir05_*`。
+**【gb 实测 20260723】** 本机 **没有** minghao 侧 `os_20260709` / `v13_20260712` 主表 result；仅有 `v10_35c_r10_dir10`、0718 route ablation 等。**gb 上 E-prep 应使用 7.2-A** `common_test_v2` **重训产物（A1/A2）**，不要用 dir10 的 `baseline_normal_dir05_`*。
 
-**【gb】** resolve 为 0-GPU（前台）；两条 export 用 **nohup + 绝对 python 路径**。单卡 GPU1 上 **先 normal、等结束再 v13a**，不要两条同时 nohup。export 时 `--benchmark_dir` 必须与 checkpoint 训练 split 一致 → **`domain_benchmark_35c_dir05_common_test_v2/seed_42`**。
+**【gb】** resolve 为 0-GPU（前台）；两条 export 用 **nohup + 绝对 python 路径**。单卡 GPU1 上 **先 normal、等结束再 v13a**，不要两条同时 nohup。export 时 `--benchmark_dir` 必须与 checkpoint 训练 split 一致 → `domain_benchmark_35c_dir05_common_test_v2/seed_42`。
 
 #### E-prep-gb. 按实测布局 resolve + export（整段粘贴）
 
@@ -843,20 +935,26 @@ test -f "$RESULT_ROOT/external_adapters/normal_seed42/adapter_export_manifest.js
 test -f "$RESULT_ROOT/external_adapters/v13a_seed42/adapter_export_manifest.json"
 echo "[E-prep][ok] both manifests ready → E0 → E-smoke → E1"
 ```
+
 =======
 旧 C2/C3 已停用，所以 external eval 不再依赖 common-test eval-only 的副产物。这里直接从正式 D1 seed42 checkpoint 导出 PEFT adapter；只做 adapter 物化，不重新训练、不重评 common-test。
 
 **【gb】** resolve 为 0-GPU（前台）；两条 export 用 **nohup + 绝对 python 路径**。单卡 GPU1 上 **先 normal、等结束再 v13a**，不要两条同时 nohup。
->>>>>>> 604bd264148a6c6b446055152dab09eee9ff6c6f
+
+> > > > > > > 604bd264148a6c6b446055152dab09eee9ff6c6f
 
 **resolve 常见失败原因**
 
-| 现象 | 原因 | 处理 |
-|------|------|------|
-| `found 0` | gb 上无 D1 主表 result / checkpoint，或旧 bundle 无 meta | 先跑下方 **E-prep-0 发现**；仅有 checkpoint 时用 manifest resolve |
-| `found >1` | 7.2-A common-test 重训 + 主表同时 valid | 加 `--bundle_contains` 或手选 bundle |
-| `CKPT_*` 为空 | resolve 失败但 `$()` 未阻断 | 必须看到非空路径再 nohup |
-| `--roots is required` | gb 代码未 pull 最新 `checkpoint_manifest.py` | `git pull` 后再跑 |
+
+| 现象                    | 原因                                               | 处理                                                     |
+| --------------------- | ------------------------------------------------ | ------------------------------------------------------ |
+| `found 0`             | gb 上无 D1 主表 result / checkpoint，或旧 bundle 无 meta | 先跑下方 **E-prep-0 发现**；仅有 checkpoint 时用 manifest resolve |
+| `found >1`            | 7.2-A common-test 重训 + 主表同时 valid                | 加 `--bundle_contains` 或手选 bundle                       |
+| `CKPT_*` 为空           | resolve 失败但 `$()` 未阻断                            | 必须看到非空路径再 nohup                                        |
+| `--roots is required` | gb 代码未 pull 最新 `checkpoint_manifest.py`          | `git pull` 后再跑                                         |
+
+
+
 
 #### E-prep-0. 发现 gb 上实际产物（0 GPU，先跑）
 
@@ -998,6 +1096,8 @@ test -f "$RESULT_ROOT/external_adapters/v13a_seed42/adapter_export_manifest.json
 echo "[E-prep][ok] both adapter_export_manifest.json present"
 ```
 
+
+
 ### E0. 0-GPU 安装/任务注册硬检查
 
 **【gb】** 不要在交互 tmux 里用 `|| { ... exit 1; }`（会**直接退出当前 shell**，pane/session 像被 kill）。用子 shell 或 `FAILED=1` 汇总。
@@ -1070,6 +1170,8 @@ ls -la "$RESULT_ROOT/external_adapters/normal_seed42/adapter_export_manifest.jso
 # 任一 missing → 回 §E-prep 跑 export，不要直接 E1
 ```
 
+
+
 ### E-smoke. 10 examples（GPU eval，不训练）
 
 ```bash
@@ -1081,6 +1183,8 @@ test -f "$RESULT_ROOT/external_adapters/v13a_seed42/adapter_export_manifest.json
 CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v /data/yaominghao/miniconda3/envs/fedplora/bin/python scripts/Analysis/run_external_lm_eval.py --adapter_manifest "$RESULT_ROOT/external_adapters/v13a_seed42/adapter_export_manifest.json" --tasks pubmedqa:medical --mode both --limit 10 --device cuda:0 --batch_size auto --output_dir "$RESULT_ROOT/external_eval_smoke/v13a_seed42" > "$RESULT_ROOT/launcher_logs/test20260723_external_smoke_v13a_seed42.log" 2>&1 &
 ```
 
+
+
 ### E1. Normal global / MMLU + PubMedQA + MBPP
 
 ```bash
@@ -1091,6 +1195,8 @@ test -f "$RESULT_ROOT/external_adapters/normal_seed42/adapter_export_manifest.js
 
 CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v /data/yaominghao/miniconda3/envs/fedplora/bin/python scripts/Analysis/run_external_lm_eval.py --adapter_manifest "$RESULT_ROOT/external_adapters/normal_seed42/adapter_export_manifest.json" --tasks mmlu:general,pubmedqa:medical,mbpp:code --mode global --device cuda:0 --batch_size auto --confirm_run_unsafe_code --output_dir "$RESULT_ROOT/external_eval/normal_seed42" > "$RESULT_ROOT/launcher_logs/test20260723_external_normal_seed42.log" 2>&1 &
 ```
+
+
 
 ### E2. v13a global + declared-domain routed-client macro
 
@@ -1106,6 +1212,8 @@ CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v /data/yaominghao/mini
 E2 会对每个 task 顺序跑 global + 该域全部 client adapters，并在 `external_eval_summary.json` 做无权宏平均。MBPP 会执行生成代码，只能在隔离环境运行；若服务器不是隔离执行环境，去掉 MBPP 和 `--confirm_run_unsafe_code`，不要绕过安全门。
 
 ---
+
+
 
 # 第八部分：串行与并行逻辑
 
@@ -1149,6 +1257,8 @@ Stage 7（P2 external；不训练）
   不再把 1-example 放 headline；正文保持已成立的 10-example 60/60。
 ```
 
+
+
 ## 【注意事项】
 
 1. 每复制一条命令前先设置 `GPU_ID`，例如 `export GPU_ID=1`；不要让多个正式任务挤在同一卡。
@@ -1160,7 +1270,10 @@ Stage 7（P2 external；不训练）
 7. `subspace` 是逐层 B 列空间 canonical-correlation；`delta_w_cosine` 用恒等式计算 BA 余弦而不物化稠密 ΔW。两者与 legacy `coldstart_geom` 分开命名。
 8. onboarding 的 wall time 依赖硬件，只能在同机同负载条件比较；论文同时报告不依赖硬件的 tensor bytes。
 9. external eval 的 PEFT adapter 必须由 `--export_eval_adapter_dir` 生成；不得直接对 base model 跑 lm-eval 后标成 FedPLoRA。
+
 ---
+
+
 
 # 第九部分以后：额外新增实验队列
 
@@ -1168,19 +1281,23 @@ Stage 7（P2 external；不训练）
 
 ## 【额外新增实验覆盖评估】
 
-| require 项 | 本次判断 | 命令落地 |
-|---|---|---|
-| G1 YOCO on FlowerTune ×3 | 缺，最高优先 | 本文第十一部分 F1-F3 |
-| G2 YOCO on 1.7B/3B ×3 | 缺，scale one-shot 对照 | 本文第十二部分 S1-S6 |
-| R1 检索型 cold-start baseline | 已落地，无需新训练 | `order_gb_0723new.md` 的 `--held_out_route_metrics ... nearest_client_subspace ...` |
-| W1-W10 诚实性改稿 | 写作/制图项，不是服务器实验 | 不放 GPU 命令；写稿时按清单改 |
-| H1 non-IID common-test | 已修正为 frozen-test repartition + 重训 | `order_gb_0723new.md` 第 7.2-A |
-| I1 matched-domain eval-only | 已单独落地，60 个正式 checkpoint | `order_gb_eval_only_worst_indomain_20260723.md` |
-| N1 70-client | 缺，P1 加分 | 本文第十三部分 N1.1-N1.9 |
-| N2 rank r=16 | 缺，P1 加分 | 本文第十四部分 N2.1-N2.9 |
-| E4 per-client Local | 当前训练 JSON 已有 `client_local_macro_*`，但未落盘逐 client/逐域正式表 | 暂不伪造命令；若要正文逐域 Local，需要再补代码输出 per-client artifact |
-| X1 official task eval-only | 已落地 | `order_gb_0723new.md` 第 7.3 |
-| L1-9k spectrum | 已落地 | `order_gb_0723new.md` 第 6 节 |
+
+| require 项                   | 本次判断                                                   | 命令落地                                                                               |
+| --------------------------- | ------------------------------------------------------ | ---------------------------------------------------------------------------------- |
+| G1 YOCO on FlowerTune ×3    | 缺，最高优先                                                 | 本文第十一部分 F1-F3                                                                      |
+| G2 YOCO on 1.7B/3B ×3       | 缺，scale one-shot 对照                                    | 本文第十二部分 S1-S6                                                                      |
+| R1 检索型 cold-start baseline  | 已落地，无需新训练                                              | `order_gb_0723new.md` 的 `--held_out_route_metrics ... nearest_client_subspace ...` |
+| W1-W10 诚实性改稿                | 写作/制图项，不是服务器实验                                         | 不放 GPU 命令；写稿时按清单改                                                                  |
+| H1 non-IID common-test      | 已修正为 frozen-test repartition + 重训                      | `order_gb_0723new.md` 第 7.2-A                                                      |
+| I1 matched-domain eval-only | 已单独落地，60 个正式 checkpoint                                | `order_gb_eval_only_worst_indomain_20260723.md`                                    |
+| N1 70-client                | 缺，P1 加分                                                | 本文第十三部分 N1.1-N1.9                                                                  |
+| N2 rank r=16                | 缺，P1 加分                                                | 本文第十四部分 N2.1-N2.9                                                                  |
+| E4 per-client Local         | 当前训练 JSON 已有 `client_local_macro_*`，但未落盘逐 client/逐域正式表 | 暂不伪造命令；若要正文逐域 Local，需要再补代码输出 per-client artifact                                   |
+| X1 official task eval-only  | 已落地                                                    | `order_gb_0723new.md` 第 7.3                                                        |
+| L1-9k spectrum              | 已落地                                                    | `order_gb_0723new.md` 第 6 节                                                        |
+
+
+
 
 ## 【额外新增实验命令设置】
 
@@ -1218,6 +1335,8 @@ formal eval_max_batches=0
 smoke eval_max_batches=1, max_steps=1, max_train_samples_per_client=10
 ```
 
+
+
 ## 【额外新增实验产物位置说明】
 
 ```text
@@ -1237,6 +1356,8 @@ pids:
 /data/yaominghao/gb/result/FedPLoRA/order_0723_sup/pids/*.pid
 ```
 
+
+
 ## 【额外新增实验运行涉及场景】
 
 ```text
@@ -1248,7 +1369,11 @@ P1/N2: D1 canonical 9k / LoRA rank r=16 / rank-scale robustness and communicatio
 
 ---
 
+
+
 # 第九部分：额外新增实验服务器前置命令
+
+
 
 ## 0.1 登录与环境变量
 
@@ -1272,6 +1397,8 @@ export GPU_ID=${GPU_ID:-1}
 cd "$CODE_DIR"
 mkdir -p "$RESULT_ROOT/launcher_logs" "$RESULT_ROOT/pids" "$RESULT_ROOT/comm_profile" "$MODEL_ROOT"
 ```
+
+
 
 ## 0.2 公共参数
 
@@ -1303,6 +1430,8 @@ YOCO_ARGS=(
   --yoco_sign_lambda 0.01
 )
 ```
+
+
 
 ## 0.3 代码、模型和数据检查
 
@@ -1343,6 +1472,8 @@ for model in (
 PY
 ```
 
+
+
 ## 0.4 构建 70-client frozen-test split（0-GPU）
 
 说明：70-client 用 canonical D1 的 full test 冻结为同一测试集，只重分配非测试池。`--min_samples_per_client 25` 是为了避免小域在 10 clients/domain 下样本下限不可达；该实验只作 participant-scale robustness，不替代主表。
@@ -1378,6 +1509,8 @@ PY
 done
 ```
 
+
+
 ## 0.5 r16 通信公式输出（0-GPU/CPU）
 
 ```bash
@@ -1390,6 +1523,8 @@ cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs
 ```
 
 ---
+
+
 
 # 第十部分：额外新增实验 GPU smoke（与正式命令分开）
 
@@ -1417,6 +1552,8 @@ cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs
 echo $! > "$RESULT_ROOT/pids/smoke_yoco_flower_seed42.pid"
 ```
 
+
+
 ## SM2. YOCO SmolLM2-1.7B seed42
 
 ```bash
@@ -1438,6 +1575,8 @@ cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs
   > "$RESULT_ROOT/launcher_logs/test20260723_sup_smoke_yoco_17b_seed42.log" 2>&1 &
 echo $! > "$RESULT_ROOT/pids/smoke_yoco_17b_seed42.pid"
 ```
+
+
 
 ## SM3. YOCO Qwen2.5-3B seed42
 
@@ -1461,6 +1600,8 @@ cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs
 echo $! > "$RESULT_ROOT/pids/smoke_yoco_3b_seed42.pid"
 ```
 
+
+
 ## SM4. 70-client v13a seed42
 
 ```bash
@@ -1482,6 +1623,8 @@ cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs
   > "$RESULT_ROOT/launcher_logs/test20260723_sup_smoke_70c_v13a_seed42.log" 2>&1 &
 echo $! > "$RESULT_ROOT/pids/smoke_70c_v13a_seed42.pid"
 ```
+
+
 
 ## SM5. r16 v13a seed42
 
@@ -1505,6 +1648,8 @@ cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs
 echo $! > "$RESULT_ROOT/pids/smoke_r16_v13a_seed42.pid"
 ```
 
+
+
 ## SM6. smoke 完成检查
 
 ```bash
@@ -1516,7 +1661,13 @@ find "$RESULT_ROOT" -path '*smoke*/result_logs/*.json' -type f -print
 
 ---
 
+
+
 # 第十一部分：P0-a/G1 YOCO on FlowerTune-Mixed（3 条 GPU）
+
+export GPU_ID=0
+
+
 
 ## F1. FlowerTune YOCO seed42
 
@@ -1538,6 +1689,8 @@ cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs
 echo $! > "$RESULT_ROOT/pids/yoco_flower_seed42.pid"
 ```
 
+
+
 ## F2. FlowerTune YOCO seed43
 
 ```bash
@@ -1557,6 +1710,8 @@ cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs
   > "$RESULT_ROOT/launcher_logs/test20260723_sup_yoco_flower_seed43.log" 2>&1 &
 echo $! > "$RESULT_ROOT/pids/yoco_flower_seed43.pid"
 ```
+
+
 
 ## F3. FlowerTune YOCO seed44
 
@@ -1578,6 +1733,8 @@ cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs
 echo $! > "$RESULT_ROOT/pids/yoco_flower_seed44.pid"
 ```
 
+
+
 ## F-check
 
 ```bash
@@ -1589,6 +1746,8 @@ cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs
 ```
 
 ---
+
+
 
 # 第十二部分：P0-a/G2 YOCO on scale axis（6 条 GPU）
 
@@ -1614,6 +1773,8 @@ cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs
 echo $! > "$RESULT_ROOT/pids/yoco_17b_seed42.pid"
 ```
 
+
+
 ## S2. SmolLM2-1.7B YOCO seed43
 
 ```bash
@@ -1633,6 +1794,8 @@ cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs
   > "$RESULT_ROOT/launcher_logs/test20260723_sup_yoco_17b_seed43.log" 2>&1 &
 echo $! > "$RESULT_ROOT/pids/yoco_17b_seed43.pid"
 ```
+
+
 
 ## S3. SmolLM2-1.7B YOCO seed44
 
@@ -1654,6 +1817,8 @@ cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs
 echo $! > "$RESULT_ROOT/pids/yoco_17b_seed44.pid"
 ```
 
+
+
 ## S4. Qwen2.5-3B YOCO seed42
 
 ```bash
@@ -1674,6 +1839,8 @@ cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs
 echo $! > "$RESULT_ROOT/pids/yoco_3b_seed42.pid"
 ```
 
+
+
 ## S5. Qwen2.5-3B YOCO seed43
 
 ```bash
@@ -1693,6 +1860,8 @@ cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs
   > "$RESULT_ROOT/launcher_logs/test20260723_sup_yoco_3b_seed43.log" 2>&1 &
 echo $! > "$RESULT_ROOT/pids/yoco_3b_seed43.pid"
 ```
+
+
 
 ## S6. Qwen2.5-3B YOCO seed44
 
@@ -1716,7 +1885,11 @@ echo $! > "$RESULT_ROOT/pids/yoco_3b_seed44.pid"
 
 ---
 
+
+
 # 第十三部分：P1/N1 70-client participant-scale（9 条 GPU）
+
+
 
 ## N1.1 70c Normal seed42
 
@@ -1725,12 +1898,16 @@ cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs
 echo $! > "$RESULT_ROOT/pids/70c_normal_seed42.pid"
 ```
 
+
+
 ## N1.2 70c FedALT seed42
 
 ```bash
 cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v /data/yaominghao/miniconda3/envs/fedplora/bin/python -u tasks/fed_train_sft.py --model "$MODEL_135M" --benchmark_dir "$D1_70C_ROOT/seed_42" --num_clients 70 --agg_type fedalt "${COMMON_SFT_ARGS[@]}" "${LORA_R8_ARGS[@]}" --client_state_dir "$RESULT_ROOT/70c_fedalt_seed42/result_files/client_states/N1_70c_fedalt_seed42" --metrics_output_dir "$RESULT_ROOT/70c_fedalt_seed42/result_logs/N1_70c_fedalt_seed42" --save_run_checkpoint_dir "$MODEL_ROOT/70c_fedalt_seed42/N1_70c_fedalt_seed42" --trained_models_root "$MODEL_ROOT/70c_fedalt_seed42" --eval_max_batches 0 --seed 42 --force_retrain > "$RESULT_ROOT/launcher_logs/test20260723_sup_70c_fedalt_seed42.log" 2>&1 &
 echo $! > "$RESULT_ROOT/pids/70c_fedalt_seed42.pid"
 ```
+
+
 
 ## N1.3 70c v13a seed42
 
@@ -1739,12 +1916,16 @@ cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs
 echo $! > "$RESULT_ROOT/pids/70c_v13a_seed42.pid"
 ```
 
+
+
 ## N1.4 70c Normal seed43
 
 ```bash
 cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v /data/yaominghao/miniconda3/envs/fedplora/bin/python -u tasks/fed_train_sft.py --model "$MODEL_135M" --benchmark_dir "$D1_70C_ROOT/seed_43" --num_clients 70 --agg_type normal "${COMMON_SFT_ARGS[@]}" "${LORA_R8_ARGS[@]}" --client_state_dir "$RESULT_ROOT/70c_normal_seed43/result_files/client_states/N1_70c_normal_seed43" --metrics_output_dir "$RESULT_ROOT/70c_normal_seed43/result_logs/N1_70c_normal_seed43" --save_run_checkpoint_dir "$MODEL_ROOT/70c_normal_seed43/N1_70c_normal_seed43" --trained_models_root "$MODEL_ROOT/70c_normal_seed43" --eval_max_batches 0 --seed 43 --force_retrain > "$RESULT_ROOT/launcher_logs/test20260723_sup_70c_normal_seed43.log" 2>&1 &
 echo $! > "$RESULT_ROOT/pids/70c_normal_seed43.pid"
 ```
+
+
 
 ## N1.5 70c FedALT seed43
 
@@ -1753,12 +1934,16 @@ cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs
 echo $! > "$RESULT_ROOT/pids/70c_fedalt_seed43.pid"
 ```
 
+
+
 ## N1.6 70c v13a seed43
 
 ```bash
 cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v /data/yaominghao/miniconda3/envs/fedplora/bin/python -u tasks/fed_train_sft.py --model "$MODEL_135M" --benchmark_dir "$D1_70C_ROOT/seed_43" --num_clients 70 --agg_type fedplora_v13a_os "${COMMON_SFT_ARGS[@]}" "${LORA_R8_ARGS[@]}" --client_state_dir "$RESULT_ROOT/70c_v13a_seed43/result_files/client_states/N1_70c_v13a_seed43" --metrics_output_dir "$RESULT_ROOT/70c_v13a_seed43/result_logs/N1_70c_v13a_seed43" --save_run_checkpoint_dir "$MODEL_ROOT/70c_v13a_seed43/N1_70c_v13a_seed43" --trained_models_root "$MODEL_ROOT/70c_v13a_seed43" --eval_max_batches 0 --seed 43 --force_retrain > "$RESULT_ROOT/launcher_logs/test20260723_sup_70c_v13a_seed43.log" 2>&1 &
 echo $! > "$RESULT_ROOT/pids/70c_v13a_seed43.pid"
 ```
+
+
 
 ## N1.7 70c Normal seed44
 
@@ -1767,12 +1952,16 @@ cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs
 echo $! > "$RESULT_ROOT/pids/70c_normal_seed44.pid"
 ```
 
+
+
 ## N1.8 70c FedALT seed44
 
 ```bash
 cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v /data/yaominghao/miniconda3/envs/fedplora/bin/python -u tasks/fed_train_sft.py --model "$MODEL_135M" --benchmark_dir "$D1_70C_ROOT/seed_44" --num_clients 70 --agg_type fedalt "${COMMON_SFT_ARGS[@]}" "${LORA_R8_ARGS[@]}" --client_state_dir "$RESULT_ROOT/70c_fedalt_seed44/result_files/client_states/N1_70c_fedalt_seed44" --metrics_output_dir "$RESULT_ROOT/70c_fedalt_seed44/result_logs/N1_70c_fedalt_seed44" --save_run_checkpoint_dir "$MODEL_ROOT/70c_fedalt_seed44/N1_70c_fedalt_seed44" --trained_models_root "$MODEL_ROOT/70c_fedalt_seed44" --eval_max_batches 0 --seed 44 --force_retrain > "$RESULT_ROOT/launcher_logs/test20260723_sup_70c_fedalt_seed44.log" 2>&1 &
 echo $! > "$RESULT_ROOT/pids/70c_fedalt_seed44.pid"
 ```
+
+
 
 ## N1.9 70c v13a seed44
 
@@ -1782,6 +1971,8 @@ echo $! > "$RESULT_ROOT/pids/70c_v13a_seed44.pid"
 ```
 
 ---
+
+
 
 # 第十四部分：P1/N2 rank r=16 单点（9 条 GPU）
 
@@ -1794,12 +1985,16 @@ cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs
 echo $! > "$RESULT_ROOT/pids/r16_normal_seed42.pid"
 ```
 
+
+
 ## N2.2 r16 FedALT seed42
 
 ```bash
 cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v /data/yaominghao/miniconda3/envs/fedplora/bin/python -u tasks/fed_train_sft.py --model "$MODEL_135M" --benchmark_dir "$D1_ROOT/seed_42" --num_clients 35 --agg_type fedalt "${COMMON_SFT_ARGS[@]}" "${LORA_R16_ARGS[@]}" --client_state_dir "$RESULT_ROOT/r16_fedalt_seed42/result_files/client_states/N2_r16_fedalt_seed42" --metrics_output_dir "$RESULT_ROOT/r16_fedalt_seed42/result_logs/N2_r16_fedalt_seed42" --save_run_checkpoint_dir "$MODEL_ROOT/r16_fedalt_seed42/N2_r16_fedalt_seed42" --trained_models_root "$MODEL_ROOT/r16_fedalt_seed42" --eval_max_batches 0 --seed 42 --force_retrain > "$RESULT_ROOT/launcher_logs/test20260723_sup_r16_fedalt_seed42.log" 2>&1 &
 echo $! > "$RESULT_ROOT/pids/r16_fedalt_seed42.pid"
 ```
+
+
 
 ## N2.3 r16 v13a seed42
 
@@ -1808,12 +2003,16 @@ cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs
 echo $! > "$RESULT_ROOT/pids/r16_v13a_seed42.pid"
 ```
 
+
+
 ## N2.4 r16 Normal seed43
 
 ```bash
 cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v /data/yaominghao/miniconda3/envs/fedplora/bin/python -u tasks/fed_train_sft.py --model "$MODEL_135M" --benchmark_dir "$D1_ROOT/seed_43" --num_clients 35 --agg_type normal "${COMMON_SFT_ARGS[@]}" "${LORA_R16_ARGS[@]}" --client_state_dir "$RESULT_ROOT/r16_normal_seed43/result_files/client_states/N2_r16_normal_seed43" --metrics_output_dir "$RESULT_ROOT/r16_normal_seed43/result_logs/N2_r16_normal_seed43" --save_run_checkpoint_dir "$MODEL_ROOT/r16_normal_seed43/N2_r16_normal_seed43" --trained_models_root "$MODEL_ROOT/r16_normal_seed43" --eval_max_batches 0 --seed 43 --force_retrain > "$RESULT_ROOT/launcher_logs/test20260723_sup_r16_normal_seed43.log" 2>&1 &
 echo $! > "$RESULT_ROOT/pids/r16_normal_seed43.pid"
 ```
+
+
 
 ## N2.5 r16 FedALT seed43
 
@@ -1822,12 +2021,16 @@ cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs
 echo $! > "$RESULT_ROOT/pids/r16_fedalt_seed43.pid"
 ```
 
+
+
 ## N2.6 r16 v13a seed43
 
 ```bash
 cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v /data/yaominghao/miniconda3/envs/fedplora/bin/python -u tasks/fed_train_sft.py --model "$MODEL_135M" --benchmark_dir "$D1_ROOT/seed_43" --num_clients 35 --agg_type fedplora_v13a_os "${COMMON_SFT_ARGS[@]}" "${LORA_R16_ARGS[@]}" --client_state_dir "$RESULT_ROOT/r16_v13a_seed43/result_files/client_states/N2_r16_v13a_seed43" --metrics_output_dir "$RESULT_ROOT/r16_v13a_seed43/result_logs/N2_r16_v13a_seed43" --save_run_checkpoint_dir "$MODEL_ROOT/r16_v13a_seed43/N2_r16_v13a_seed43" --trained_models_root "$MODEL_ROOT/r16_v13a_seed43" --eval_max_batches 0 --seed 43 --force_retrain > "$RESULT_ROOT/launcher_logs/test20260723_sup_r16_v13a_seed43.log" 2>&1 &
 echo $! > "$RESULT_ROOT/pids/r16_v13a_seed43.pid"
 ```
+
+
 
 ## N2.7 r16 Normal seed44
 
@@ -1836,12 +2039,16 @@ cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs
 echo $! > "$RESULT_ROOT/pids/r16_normal_seed44.pid"
 ```
 
+
+
 ## N2.8 r16 FedALT seed44
 
 ```bash
 cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-1}" nohup /usr/bin/time -v /data/yaominghao/miniconda3/envs/fedplora/bin/python -u tasks/fed_train_sft.py --model "$MODEL_135M" --benchmark_dir "$D1_ROOT/seed_44" --num_clients 35 --agg_type fedalt "${COMMON_SFT_ARGS[@]}" "${LORA_R16_ARGS[@]}" --client_state_dir "$RESULT_ROOT/r16_fedalt_seed44/result_files/client_states/N2_r16_fedalt_seed44" --metrics_output_dir "$RESULT_ROOT/r16_fedalt_seed44/result_logs/N2_r16_fedalt_seed44" --save_run_checkpoint_dir "$MODEL_ROOT/r16_fedalt_seed44/N2_r16_fedalt_seed44" --trained_models_root "$MODEL_ROOT/r16_fedalt_seed44" --eval_max_batches 0 --seed 44 --force_retrain > "$RESULT_ROOT/launcher_logs/test20260723_sup_r16_fedalt_seed44.log" 2>&1 &
 echo $! > "$RESULT_ROOT/pids/r16_fedalt_seed44.pid"
 ```
+
+
 
 ## N2.9 r16 v13a seed44
 
@@ -1852,7 +2059,11 @@ echo $! > "$RESULT_ROOT/pids/r16_v13a_seed44.pid"
 
 ---
 
+
+
 # 第十五部分：已落地 require 项的验收入口
+
+
 
 ## 7.1 R1 retrieval cold-start baseline
 
@@ -1884,6 +2095,8 @@ if ok == 0:
     raise SystemExit("[R1][error] retrieval baseline not found")
 PY
 ```
+
+
 
 ## 7.2 H1 non-IID common-test
 
@@ -2025,3 +2238,4 @@ Stage 5（P0-a scale 轴补强）
 3. 70c 使用 frozen D1 test，可与 D1 35c 同 test 比较；但 `min_samples_per_client=25` 与主表 35c 不同，论文中应写成 participant-scale appendix。
 4. r16 采用 alpha32 保持 alpha/r=2；若审稿补问“固定 alpha 的纯 rank 敏感性”，那是另一组实验，不与本组混表。
 5. E4 per-client/per-domain Local 当前不是命令问题，而是 artifact 粒度问题；不要把现有 `client_local_macro_*` 强行写成逐域 Local 表。
+
