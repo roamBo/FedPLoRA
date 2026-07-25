@@ -2,7 +2,7 @@
 
 ######### FedPLoRA-OS 主方法：主实验、正文实验与附录实验补齐-20260725 #########
 
-> 本文件只安排 **FedPLoRA-OS 主算法及其内部路由诊断**，不重复启动 external baseline。baseline 训练与评估见 `order_baseline_20260725.md`。原始缺口编号严格对应 `Paper/AAAI-2027/Result/codex_CN_Result_20260725.md` 的 1--10 项。
+> 本文件只安排 **FedPLoRA-OS 主算法及其内部路由诊断**，不重复启动 external baseline。baseline 训练与评估见 `order_baseline_20260725.md`。
 
 ## 【命令介绍】
 
