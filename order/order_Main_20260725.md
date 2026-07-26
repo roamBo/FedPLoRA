@@ -2,7 +2,7 @@
 
 ######### FedPLoRA-OS 主方法：主实验、正文实验与附录实验补齐-20260725 #########
 
-> 本文件只安排 **FedPLoRA-OS 主算法及其内部路由诊断**，不重复启动 external baseline。baseline 训练与评估见 `order_baseline_20260725.md`。
+> 本文件只安排 **FedPLoRA-OS 主算法及其内部路由诊断**，不重复启动 external baseline。baseline 训练与评估见 `order_baseline_20260725.md`。原始缺口编号严格对应 `Paper/AAAI-2027/Result/codex_CN_Result_20260725.md` 的 1--10 项。
 
 ## 【命令介绍】
 
@@ -83,6 +83,8 @@ A100 主方法 checkpoint:
 ```bash
 scp -o RemoteCommand=none -o RequestTTY=no \
   /Users/hawaiii/codex/FedPLoRA/FedPLoRA-main/scripts/RunScripts/run_eval_only_matched_domain.sh \
+  /Users/hawaiii/codex/FedPLoRA/FedPLoRA-main/scripts/RunScripts/launch_eval_only_matched_domain_one.sh \
+  /Users/hawaiii/codex/FedPLoRA/FedPLoRA-main/scripts/RunScripts/check_eval_only_matched_domain_jobs.sh \
   minghao@172.26.191.30:/data2/minghao/code/FedPLoRA-main/scripts/RunScripts/
 
 scp -o RemoteCommand=none -o RequestTTY=no \
@@ -92,7 +94,7 @@ scp -o RemoteCommand=none -o RequestTTY=no \
   minghao@172.26.191.30:/data2/minghao/code/FedPLoRA-main/scripts/Analysis/
 ```
 
-原训练节点 `/data/yaominghao/gb/FedPLoRA` 也必须同步修复后的 `run_eval_only_matched_domain.sh`、`fed_train_sft.py` 与 `summarize_matched_domain_eval.py`。该节点地址未写入现有实验记录，因此这里不伪造 SSH host；登录原节点后将文件放到相同相对路径再执行第 1.1 节。
+原训练节点 `/data/yaominghao/gb/FedPLoRA` 也必须同步修复后的 `run_eval_only_matched_domain.sh`、`launch_eval_only_matched_domain_one.sh`、`check_eval_only_matched_domain_jobs.sh`、`fed_train_sft.py` 与 `summarize_matched_domain_eval.py`。该节点地址未写入现有实验记录，因此这里不伪造 SSH host；登录原节点后将文件放到相同相对路径再执行第 1.1 节。
 
 ## 0.2 A100 环境变量与代码硬检查
 
@@ -128,6 +130,8 @@ python -m py_compile \
   scripts/DataProcessScripts/repartition_with_frozen_test.py
 bash -n scripts/RunScripts/run_20260713_one_experiment.sh
 bash -n scripts/RunScripts/run_eval_only_matched_domain.sh
+bash -n scripts/RunScripts/launch_eval_only_matched_domain_one.sh
+bash -n scripts/RunScripts/check_eval_only_matched_domain_jobs.sh
 
 grep -q 'EVAL_MAX_SEQ_LENGTH="${EVAL_MAX_SEQ_LENGTH:-256}"' scripts/RunScripts/run_eval_only_matched_domain.sh
 grep -q -- '--max_seq_length "${EVAL_MAX_SEQ_LENGTH}"' scripts/RunScripts/run_eval_only_matched_domain.sh
@@ -261,9 +265,11 @@ cd /data/yaominghao/gb/FedPLoRA
 
 export GB_RESULT_ROOT=/data/yaominghao/gb/result/FedPLoRA
 export MD_ROOT="$GB_RESULT_ROOT/eval_only_main_20260725"
-export MD_RUNNER=FedPLoRA-main/scripts/RunScripts/run_eval_only_matched_domain.sh
-export MD_SUMMARIZER=FedPLoRA-main/scripts/Analysis/summarize_matched_domain_eval.py
-mkdir -p "$MD_ROOT/d1" "$MD_ROOT/flowertune" "$MD_ROOT/logs" "$MD_ROOT/pids"
+export MD_RUNNER="${MD_RUNNER:-scripts/RunScripts/run_eval_only_matched_domain.sh}"
+export MD_LAUNCHER="${MD_LAUNCHER:-scripts/RunScripts/launch_eval_only_matched_domain_one.sh}"
+export MD_STATUS="${MD_STATUS:-scripts/RunScripts/check_eval_only_matched_domain_jobs.sh}"
+export MD_SUMMARIZER="${MD_SUMMARIZER:-scripts/Analysis/summarize_matched_domain_eval.py}"
+mkdir -p "$MD_ROOT/d1" "$MD_ROOT/flowertune" "$MD_ROOT/logs" "$MD_ROOT/pids" "$MD_ROOT/meta"
 
 find_one_json () {
   local dir="$1"
@@ -279,29 +285,25 @@ FLOWER_OURS_42=$(find_one_json "$GB_RESULT_ROOT/order_0715/flowertune_20260715_c
 FLOWER_OURS_43=$(find_one_json "$GB_RESULT_ROOT/order_0715/flowertune_20260715_core8_seed43/result_logs/N7_ours_flower_v13a")
 FLOWER_OURS_44=$(find_one_json "$GB_RESULT_ROOT/order_0715/flowertune_20260715_core8_seed44/result_logs/N7_ours_flower_v13a")
 
-launch_md () {
-  local tag="$1" source_json="$2" output="$3" gpu="$4"
-  nohup env CUDA_VISIBLE_DEVICES="$gpu" EVAL_MAX_BATCHES=0 EVAL_MAX_SEQ_LENGTH=256 \
-    EVAL_BATCH_SIZE=2 EVAL_TORCH_DTYPE=bfloat16 MATCHED_DOMAIN_OUTPUT_ROOT="$output" \
-    bash "$MD_RUNNER" "$source_json" > "$MD_ROOT/logs/${tag}.log" 2>&1 &
-  echo $! > "$MD_ROOT/pids/${tag}.pid"
-}
-
-launch_md d1_ours_seed42 "$D1_OURS_42" "$MD_ROOT/d1" 0
-launch_md d1_ours_seed43 "$D1_OURS_43" "$MD_ROOT/d1" 1
-launch_md d1_ours_seed44 "$D1_OURS_44" "$MD_ROOT/d1" 2
-launch_md flower_ours_seed42 "$FLOWER_OURS_42" "$MD_ROOT/flowertune" 3
-launch_md flower_ours_seed43 "$FLOWER_OURS_43" "$MD_ROOT/flowertune" 4
-launch_md flower_ours_seed44 "$FLOWER_OURS_44" "$MD_ROOT/flowertune" 5
+bash "$MD_LAUNCHER" d1_ours_seed42 "$D1_OURS_42" "$MD_ROOT/d1" 0
+bash "$MD_LAUNCHER" d1_ours_seed43 "$D1_OURS_43" "$MD_ROOT/d1" 1
+bash "$MD_LAUNCHER" d1_ours_seed44 "$D1_OURS_44" "$MD_ROOT/d1" 2
+bash "$MD_LAUNCHER" flower_ours_seed42 "$FLOWER_OURS_42" "$MD_ROOT/flowertune" 3
+bash "$MD_LAUNCHER" flower_ours_seed43 "$FLOWER_OURS_43" "$MD_ROOT/flowertune" 4
+bash "$MD_LAUNCHER" flower_ours_seed44 "$FLOWER_OURS_44" "$MD_ROOT/flowertune" 5
 ```
 
-完成与汇总：
+上面六条只负责启动，正常情况下每条只打印 `pid/log` 后立刻返回；不要在这个启动块里写 `wait`。之后可以关闭 SSH 或继续复制其它实验命令，日志与 pid 会保留在 `$MD_ROOT/logs` 和 `$MD_ROOT/pids`。
+
+随时查看状态（不阻塞）：
 
 ```bash
-for p in "$MD_ROOT"/pids/*.pid; do
-  PID=$(cat "$p")
-  while kill -0 "$PID" 2>/dev/null; do sleep 30; done
-done
+bash "$MD_STATUS" "$MD_ROOT"
+```
+
+全部完成后再汇总（只在 `bash "$MD_STATUS" "$MD_ROOT"` 显示 `running=0 failed=0 unknown=0` 后执行）：
+
+```bash
 [[ "$(find "$MD_ROOT/d1" -name '*_matched_domain.json' | wc -l)" -eq 3 ]]
 [[ "$(find "$MD_ROOT/flowertune" -name '*_matched_domain.json' | wc -l)" -eq 3 ]]
 python "$MD_SUMMARIZER" "$MD_ROOT/d1" | tee "$MD_ROOT/d1_ours_summary.tsv"
@@ -338,13 +340,13 @@ export CKPT_SEARCH_ROOTS="/data2/minghao/model/trained_models_LW /data2/minghao/
 python scripts/Analysis/checkpoint_manifest.py --roots $CKPT_SEARCH_ROOTS \
   --output "$RESULT_ROOT/analysis/checkpoint_manifest_external.json"
 
-export_ours_adapter () {
-  local seed="$1"
+export_ours_adapter_async () {
+  local seed="$1" gpu="$2"
   local ckpt
   ckpt=$(python scripts/Analysis/checkpoint_manifest.py --roots $CKPT_SEARCH_ROOTS --resolve \
     --agg_type fedplora_v13a_os --seed "$seed" --model_contains SmolLM2-135M \
     --benchmark_contains "A100_domain_benchmark_35c_dir05/seed_${seed}")
-  CUDA_VISIBLE_DEVICES="${GPU_ID:-0}" python -u tasks/fed_train_sft.py \
+  nohup env CUDA_VISIBLE_DEVICES="$gpu" /usr/bin/time -v python -u tasks/fed_train_sft.py \
     --model "$MODEL_135M" --benchmark_dir "$D1_ROOT/seed_${seed}" \
     --agg_type fedplora_v13a_os --seed "$seed" \
     --eval_only_from_checkpoint "$ckpt" \
@@ -352,16 +354,39 @@ export_ours_adapter () {
     --client_state_dir "$RESULT_ROOT/external_export/ours_seed${seed}/scratch" \
     --export_eval_adapter_dir "$RESULT_ROOT/external_adapters/ours_seed${seed}" \
     --export_eval_adapter_only --eval_max_batches 0 --batch_size 2 \
-    --max_seq_length 256 --torch_dtype bfloat16 --eval_personalization_metrics
+    --max_seq_length 256 --torch_dtype bfloat16 --eval_personalization_metrics \
+    > "$RESULT_ROOT/launcher_logs/test20260725_export_ours_seed${seed}.log" 2>&1 &
+  echo $! > "$RESULT_ROOT/pids/export_ours_seed${seed}.pid"
+  echo "[export][launch] seed=${seed} gpu=${gpu} pid=$(cat "$RESULT_ROOT/pids/export_ours_seed${seed}.pid") log=$RESULT_ROOT/launcher_logs/test20260725_export_ours_seed${seed}.log"
 }
 
-GPU_ID=0 export_ours_adapter 42
-GPU_ID=0 export_ours_adapter 43
-GPU_ID=0 export_ours_adapter 44
+export_ours_adapter_async 42 0
+export_ours_adapter_async 43 1
+export_ours_adapter_async 44 2
+```
+
+查看 adapter export 状态（不阻塞）：
+
+```bash
+for p in "$RESULT_ROOT"/pids/export_ours_seed*.pid; do
+  pid=$(cat "$p")
+  tag=$(basename "$p" .pid)
+  if kill -0 "$pid" 2>/dev/null; then
+    echo "[export][running] $tag pid=$pid"
+  elif grep -Eiq 'Traceback|CUDA out of memory|\\[error\\]|Exit status: [1-9]' "$RESULT_ROOT/launcher_logs/test20260725_${tag}.log"; then
+    echo "[export][failed] $tag log=$RESULT_ROOT/launcher_logs/test20260725_${tag}.log"
+  else
+    echo "[export][exited] $tag"
+  fi
+done
 for SEED in 42 43 44; do
-  test -f "$RESULT_ROOT/external_adapters/ours_seed${SEED}/adapter_export_manifest.json"
+  test -f "$RESULT_ROOT/external_adapters/ours_seed${SEED}/adapter_export_manifest.json" \
+    && echo "[export][ok] seed=${SEED}" \
+    || echo "[export][pending] seed=${SEED}"
 done
 ```
+
+只有三份 `adapter_export_manifest.json` 都显示 `[export][ok]` 后，才执行 1.2.3 的 smoke 与正式 external eval。
 
 ### 1.2.3 smoke 与正式评估
 
@@ -428,8 +453,28 @@ launch_flower_route 1 43 4
 launch_flower_route 1 44 5
 launch_flower_route 2 42 6
 launch_flower_route 2 43 7
-wait
+```
 
+查看第一波状态；全部结束且无失败后启动第二波：
+
+```bash
+for p in "$RESULT_ROOT"/pids/flower_probe1_*.pid; do
+  pid=$(cat "$p")
+  tag=$(basename "$p" .pid)
+  log="$RESULT_ROOT/launcher_logs/test20260725_${tag}.launch.log"
+  if kill -0 "$pid" 2>/dev/null; then
+    echo "[flower-route][running] $tag pid=$pid"
+  elif grep -Eiq 'Traceback|CUDA out of memory|\\[error\\]|Exit status: [1-9]' "$log"; then
+    echo "[flower-route][failed] $tag log=$log"
+  else
+    echo "[flower-route][exited] $tag"
+  fi
+done
+```
+
+第二波：
+
+```bash
 launch_flower_route 2 44 0
 launch_flower_route 3 42 1
 launch_flower_route 3 43 2
@@ -556,8 +601,28 @@ launch_d1_heldout 1 43 4
 launch_d1_heldout 1 44 5
 launch_d1_heldout 2 42 6
 launch_d1_heldout 2 43 7
-wait
+```
 
+查看第一波状态；全部结束且无失败后启动第二波：
+
+```bash
+for p in "$RESULT_ROOT"/pids/d1_heldout_*.pid; do
+  pid=$(cat "$p")
+  tag=$(basename "$p" .pid)
+  log="$RESULT_ROOT/launcher_logs/test20260725_${tag}.launch.log"
+  if kill -0 "$pid" 2>/dev/null; then
+    echo "[d1-heldout][running] $tag pid=$pid"
+  elif grep -Eiq 'Traceback|CUDA out of memory|\\[error\\]|Exit status: [1-9]' "$log"; then
+    echo "[d1-heldout][failed] $tag log=$log"
+  else
+    echo "[d1-heldout][exited] $tag"
+  fi
+done
+```
+
+第二波：
+
+```bash
 launch_d1_heldout 2 44 0
 launch_d1_heldout 3 42 1
 launch_d1_heldout 3 43 2

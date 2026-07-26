@@ -79,6 +79,8 @@ python -m py_compile tasks/fed_train_sft.py \
   scripts/Analysis/run_external_lm_eval.py \
   scripts/Analysis/summarize_matched_domain_eval.py
 bash -n scripts/RunScripts/run_eval_only_matched_domain.sh
+bash -n scripts/RunScripts/launch_eval_only_matched_domain_one.sh
+bash -n scripts/RunScripts/check_eval_only_matched_domain_jobs.sh
 grep -q -- '--max_seq_length "${EVAL_MAX_SEQ_LENGTH}"' scripts/RunScripts/run_eval_only_matched_domain.sh
 
 for SEED in 42 43 44; do
@@ -123,6 +125,33 @@ baseline_extra () {
     *) printf '\n' ;;
   esac
 }
+
+check_baseline_jobs () {
+  local running=0 ok=0 failed=0 unknown=0
+  shopt -s nullglob
+  for pid_file in "$RESULT_ROOT"/pids/*.pid; do
+    local tag pid log
+    tag="$(basename "$pid_file" .pid)"
+    pid="$(cat "$pid_file" 2>/dev/null || true)"
+    log="$(find "$RESULT_ROOT" -path "*/run_logs/test20260725_baseline_${tag}.log" -print -quit 2>/dev/null || true)"
+    [[ -n "$log" ]] || log="$(find "$RESULT_ROOT/launcher_logs" -name "*${tag}*.log" -print -quit 2>/dev/null || true)"
+    if [[ -n "$pid" ]] && kill -0 "$pid" 2>/dev/null; then
+      running=$((running + 1))
+      echo "[baseline-status][running] tag=$tag pid=$pid log=${log:-NA}"
+    elif [[ -n "$log" ]] && grep -Eiq 'Traceback|CUDA out of memory|\\[error\\]|Exit status: [1-9]' "$log"; then
+      failed=$((failed + 1))
+      echo "[baseline-status][failed] tag=$tag log=$log"
+      tail -20 "$log" | sed 's/^/  | /'
+    elif [[ -n "$log" ]] && grep -Eq 'Exit status: 0|\\[log\\] writing console output|Run fully complete|saved|metrics' "$log"; then
+      ok=$((ok + 1))
+      echo "[baseline-status][exited] tag=$tag log=$log"
+    else
+      unknown=$((unknown + 1))
+      echo "[baseline-status][unknown] tag=$tag pid=${pid:-NA} log=${log:-NA}"
+    fi
+  done
+  echo "[baseline-status][summary] running=$running ok_or_exited=$ok failed=$failed unknown=$unknown"
+}
 ```
 
 ## 0.3 smoke
@@ -156,6 +185,8 @@ GPU_ID=2 launch_baseline_sft flower_yoco_seed44 "$FLOWER_ROOT/seed_44" 20 yoco 4
 
 ### 1.1.2 其余五个缺失 baseline，3 seeds（P1）
 
+第一波最多占 8 张卡；只启动，不等待：
+
 ```bash
 GPU_ID=0 launch_baseline_sft flower_ffa_seed42 "$FLOWER_ROOT/seed_42" 20 ffa 42 8 16 0
 GPU_ID=1 launch_baseline_sft flower_ffa_seed43 "$FLOWER_ROOT/seed_43" 20 ffa 43 8 16 0
@@ -167,8 +198,17 @@ GPU_ID=5 launch_baseline_sft flower_flora_seed44 "$FLOWER_ROOT/seed_44" 20 flora
 
 GPU_ID=6 launch_baseline_sft flower_flexlora_seed42 "$FLOWER_ROOT/seed_42" 20 flexlora 42 8 16 0
 GPU_ID=7 launch_baseline_sft flower_flexlora_seed43 "$FLOWER_ROOT/seed_43" 20 flexlora 43 8 16 0
-wait
+```
 
+查看第一波状态；看到 `running=0 failed=0` 后再启动第二波：
+
+```bash
+check_baseline_jobs
+```
+
+第二波：
+
+```bash
 GPU_ID=0 launch_baseline_sft flower_flexlora_seed44 "$FLOWER_ROOT/seed_44" 20 flexlora 44 8 16 0
 
 read -r -a FEDDAT_EXTRA <<< "$(baseline_extra feddat)"
@@ -182,7 +222,7 @@ GPU_ID=5 launch_baseline_sft flower_hilora_seed43 "$FLOWER_ROOT/seed_43" 20 hilo
 GPU_ID=6 launch_baseline_sft flower_hilora_seed44 "$FLOWER_ROOT/seed_44" 20 hilora 44 8 16 0 "${HILORA_EXTRA[@]}"
 ```
 
-> 注意：同一 GPU 上必须串行。上面只是给出卡位示例；若前一作业未结束，不得直接启动下一行。
+> 注意：同一 GPU 上必须串行。上面只是给出卡位示例；若前一作业未结束，不得直接启动下一波。不要把两波复制到同一个命令块里连续执行。
 
 ## 1.2 【原编号 1、10】baseline Worst In-Domain
 
@@ -240,6 +280,13 @@ echo $! > "$MD_ROOT/pids/flower_existing_baselines.pid"
 
 这里对 eval-only 使用特殊的“每个数据集一个顺序 runner”：D1 的 36 个 checkpoint 在 GPU 0 依次评估，Flower 的 18 个 checkpoint 在 GPU 1 依次评估。这样仍保持每次只载入一个模型，同时避免 54 个进程争抢 GPU；它不包含训练或聚合。
 
+查看这两个顺序 runner 状态（不阻塞）：
+
+```bash
+MD_LOG_DIR="$MD_ROOT/logs" MD_PID_DIR="$MD_ROOT/pids" \
+  bash FedPLoRA-main/scripts/RunScripts/check_eval_only_matched_domain_jobs.sh "$MD_ROOT"
+```
+
 ### 1.2.2 A100 节点：新补 Flower baseline 的 matched-domain
 
 必须先完成 1.1 的训练。每个新结果 JSON 单独启动：
@@ -253,11 +300,8 @@ launch_new_flower_md () {
   local method="N9_${tag}_${agg}"
   mapfile -t hits < <(find "$RESULT_ROOT/$tag/result_logs/$method" -maxdepth 1 -name '*.json' | sort)
   [[ "${#hits[@]}" -eq 1 ]] || { echo "[new-md][error] $tag" >&2; return 2; }
-  nohup env CUDA_VISIBLE_DEVICES="$gpu" EVAL_MAX_BATCHES=0 EVAL_MAX_SEQ_LENGTH=256 \
-    EVAL_BATCH_SIZE=2 EVAL_TORCH_DTYPE=bfloat16 MATCHED_DOMAIN_OUTPUT_ROOT="$NEW_MD_ROOT" \
-    bash scripts/RunScripts/run_eval_only_matched_domain.sh "${hits[0]}" \
-    > "$RESULT_ROOT/launcher_logs/test20260725_md_${tag}.log" 2>&1 &
-  echo $! > "$RESULT_ROOT/pids/md_${tag}.pid"
+  MD_ROOT="$NEW_MD_ROOT" MD_LOG_DIR="$RESULT_ROOT/launcher_logs" MD_PID_DIR="$RESULT_ROOT/pids" \
+    bash scripts/RunScripts/launch_eval_only_matched_domain_one.sh "md_${tag}" "${hits[0]}" "$NEW_MD_ROOT" "$gpu"
 }
 
 launch_new_flower_md flower_yoco_seed42 yoco 42 0
@@ -268,8 +312,18 @@ launch_new_flower_md flower_ffa_seed43 ffa 43 4
 launch_new_flower_md flower_ffa_seed44 ffa 44 5
 launch_new_flower_md flower_flora_seed42 flora 42 6
 launch_new_flower_md flower_flora_seed43 flora 43 7
-wait
+```
 
+查看第一波状态；`running=0 failed=0 unknown=0` 后启动第二波：
+
+```bash
+MD_LOG_DIR="$RESULT_ROOT/launcher_logs" MD_PID_DIR="$RESULT_ROOT/pids" \
+  bash scripts/RunScripts/check_eval_only_matched_domain_jobs.sh "$NEW_MD_ROOT"
+```
+
+第二波：
+
+```bash
 launch_new_flower_md flower_flora_seed44 flora 44 0
 launch_new_flower_md flower_flexlora_seed42 flexlora 42 1
 launch_new_flower_md flower_flexlora_seed43 flexlora 43 2
@@ -278,8 +332,18 @@ launch_new_flower_md flower_feddat_seed42 feddat 42 4
 launch_new_flower_md flower_feddat_seed43 feddat 43 5
 launch_new_flower_md flower_feddat_seed44 feddat 44 6
 launch_new_flower_md flower_hilora_seed42 hilora 42 7
-wait
+```
 
+查看第二波状态；完成后启动第三波：
+
+```bash
+MD_LOG_DIR="$RESULT_ROOT/launcher_logs" MD_PID_DIR="$RESULT_ROOT/pids" \
+  bash scripts/RunScripts/check_eval_only_matched_domain_jobs.sh "$NEW_MD_ROOT"
+```
+
+第三波：
+
+```bash
 launch_new_flower_md flower_hilora_seed43 hilora 43 0
 launch_new_flower_md flower_hilora_seed44 hilora 44 1
 ```
@@ -298,32 +362,66 @@ export HF_CACHE_ROOT="$CODE_DIR/data/external_lm_eval_hf_cache"
 python scripts/Analysis/prepare_external_lm_eval_hf_cache.py --cache_root "$HF_CACHE_ROOT" \
   --tasks mmlu,pubmedqa,mbpp --verify_only
 
-export_baseline_adapter () {
-  local agg="$1" seed="$2"
+export_baseline_adapter_async () {
+  local agg="$1" seed="$2" gpu="$3"
   local ckpt
   ckpt=$(python scripts/Analysis/checkpoint_manifest.py --roots $CKPT_SEARCH_ROOTS --resolve \
     --agg_type "$agg" --seed "$seed" --model_contains SmolLM2-135M \
     --benchmark_contains "A100_domain_benchmark_35c_dir05/seed_${seed}")
-  CUDA_VISIBLE_DEVICES="${GPU_ID:-0}" python -u tasks/fed_train_sft.py \
+  nohup env CUDA_VISIBLE_DEVICES="$gpu" /usr/bin/time -v python -u tasks/fed_train_sft.py \
     --model "$MODEL_135M" --benchmark_dir "$D1_ROOT/seed_${seed}" --agg_type "$agg" --seed "$seed" \
     --eval_only_from_checkpoint "$ckpt" \
     --metrics_output_dir "$RESULT_ROOT/external_export/${agg}_seed${seed}/metrics" \
     --client_state_dir "$RESULT_ROOT/external_export/${agg}_seed${seed}/scratch" \
     --export_eval_adapter_dir "$RESULT_ROOT/external_adapters/${agg}_seed${seed}" \
     --export_eval_adapter_only --eval_max_batches 0 --batch_size 2 --max_seq_length 256 \
-    --torch_dtype bfloat16 --eval_personalization_metrics
+    --torch_dtype bfloat16 --eval_personalization_metrics \
+    > "$RESULT_ROOT/launcher_logs/test20260725_export_${agg}_seed${seed}.log" 2>&1 &
+  echo $! > "$RESULT_ROOT/pids/export_${agg}_seed${seed}.pid"
+  echo "[export][launch] agg=${agg} seed=${seed} gpu=${gpu} pid=$(cat "$RESULT_ROOT/pids/export_${agg}_seed${seed}.pid")"
 }
 
-GPU_ID=0 export_baseline_adapter normal 42
-GPU_ID=0 export_baseline_adapter normal 43
-GPU_ID=0 export_baseline_adapter normal 44
-GPU_ID=0 export_baseline_adapter fedalt 42
-GPU_ID=0 export_baseline_adapter fedalt 43
-GPU_ID=0 export_baseline_adapter fedalt 44
-GPU_ID=0 export_baseline_adapter hydralora 42
-GPU_ID=0 export_baseline_adapter hydralora 43
-GPU_ID=0 export_baseline_adapter hydralora 44
+export_baseline_adapter_async normal 42 0
+export_baseline_adapter_async normal 43 1
+export_baseline_adapter_async normal 44 2
+export_baseline_adapter_async fedalt 42 3
+export_baseline_adapter_async fedalt 43 4
+export_baseline_adapter_async fedalt 44 5
+export_baseline_adapter_async hydralora 42 6
+export_baseline_adapter_async hydralora 43 7
 ```
+
+查看 adapter export 状态；前 8 个完成后再启动 hydralora seed44：
+
+```bash
+for p in "$RESULT_ROOT"/pids/export_*_seed*.pid; do
+  pid=$(cat "$p")
+  tag=$(basename "$p" .pid)
+  log="$RESULT_ROOT/launcher_logs/test20260725_${tag}.log"
+  if kill -0 "$pid" 2>/dev/null; then
+    echo "[export][running] $tag pid=$pid"
+  elif grep -Eiq 'Traceback|CUDA out of memory|\\[error\\]|Exit status: [1-9]' "$log"; then
+    echo "[export][failed] $tag log=$log"
+  else
+    echo "[export][exited] $tag"
+  fi
+done
+for agg in normal fedalt hydralora; do
+  for seed in 42 43 44; do
+    test -f "$RESULT_ROOT/external_adapters/${agg}_seed${seed}/adapter_export_manifest.json" \
+      && echo "[export][ok] ${agg} seed=${seed}" \
+      || echo "[export][pending] ${agg} seed=${seed}"
+  done
+done
+```
+
+第二波只剩 1 个：
+
+```bash
+export_baseline_adapter_async hydralora 44 0
+```
+
+只有 9 份 `adapter_export_manifest.json` 都显示 `[export][ok]` 后，才执行 1.3.2 的 external smoke 与正式评估。
 
 ### 1.3.2 external smoke 与六个正式 launcher
 
@@ -347,8 +445,28 @@ CUDA_VISIBLE_DEVICES=4 nohup /usr/bin/time -v python scripts/Analysis/run_extern
 echo $! > "$RESULT_ROOT/pids/external_fedalt_seed43.pid"
 CUDA_VISIBLE_DEVICES=5 nohup /usr/bin/time -v python scripts/Analysis/run_external_lm_eval.py --adapter_manifest "$RESULT_ROOT/external_adapters/fedalt_seed44/adapter_export_manifest.json" --tasks mmlu:general,pubmedqa:medical,mbpp:code --mode both --device cuda:0 --batch_size auto --hf_cache_dir "$HF_CACHE_ROOT" --confirm_run_unsafe_code --output_dir "$RESULT_ROOT/external_eval/fedalt_seed44" > "$RESULT_ROOT/launcher_logs/test20260725_external_fedalt_seed44.log" 2>&1 &
 echo $! > "$RESULT_ROOT/pids/external_fedalt_seed44.pid"
-wait
+```
 
+查看第一波 external 状态；完成后启动 HydraLoRA：
+
+```bash
+for p in "$RESULT_ROOT"/pids/external_*.pid; do
+  pid=$(cat "$p")
+  tag=$(basename "$p" .pid)
+  log="$RESULT_ROOT/launcher_logs/test20260725_${tag}.log"
+  if kill -0 "$pid" 2>/dev/null; then
+    echo "[external][running] $tag pid=$pid"
+  elif grep -Eiq 'Traceback|CUDA out of memory|\\[error\\]|Exit status: [1-9]' "$log"; then
+    echo "[external][failed] $tag log=$log"
+  else
+    echo "[external][exited] $tag"
+  fi
+done
+```
+
+第二波 HydraLoRA：
+
+```bash
 CUDA_VISIBLE_DEVICES=0 nohup /usr/bin/time -v python scripts/Analysis/run_external_lm_eval.py --adapter_manifest "$RESULT_ROOT/external_adapters/hydralora_seed42/adapter_export_manifest.json" --tasks mmlu:general,pubmedqa:medical,mbpp:code --mode both --device cuda:0 --batch_size auto --hf_cache_dir "$HF_CACHE_ROOT" --confirm_run_unsafe_code --output_dir "$RESULT_ROOT/external_eval/hydralora_seed42" > "$RESULT_ROOT/launcher_logs/test20260725_external_hydralora_seed42.log" 2>&1 &
 echo $! > "$RESULT_ROOT/pids/external_hydralora_seed42.pid"
 CUDA_VISIBLE_DEVICES=1 nohup /usr/bin/time -v python scripts/Analysis/run_external_lm_eval.py --adapter_manifest "$RESULT_ROOT/external_adapters/hydralora_seed43/adapter_export_manifest.json" --tasks mmlu:general,pubmedqa:medical,mbpp:code --mode both --device cuda:0 --batch_size auto --hf_cache_dir "$HF_CACHE_ROOT" --confirm_run_unsafe_code --output_dir "$RESULT_ROOT/external_eval/hydralora_seed43" > "$RESULT_ROOT/launcher_logs/test20260725_external_hydralora_seed43.log" 2>&1 &
@@ -439,8 +557,17 @@ GPU_ID=4 launch_baseline_sft common_a05_fedsa_seed43 "$DIR05_COMMON_ROOT/seed_43
 GPU_ID=5 launch_baseline_sft common_a05_fedsa_seed44 "$DIR05_COMMON_ROOT/seed_44" 35 fedsa_lora 44 8 16 0
 GPU_ID=6 launch_baseline_sft common_a05_fedalt_seed42 "$DIR05_COMMON_ROOT/seed_42" 35 fedalt 42 8 16 0
 GPU_ID=7 launch_baseline_sft common_a05_fedalt_seed43 "$DIR05_COMMON_ROOT/seed_43" 35 fedalt 43 8 16 0
-wait
+```
 
+查看第一波状态；`running=0 failed=0` 后启动最后一个 seed44：
+
+```bash
+check_baseline_jobs
+```
+
+第二波：
+
+```bash
 GPU_ID=0 launch_baseline_sft common_a05_fedalt_seed44 "$DIR05_COMMON_ROOT/seed_44" 35 fedalt 44 8 16 0
 ```
 
