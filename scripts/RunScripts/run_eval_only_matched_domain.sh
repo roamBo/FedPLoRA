@@ -27,6 +27,9 @@ fi
 MATCHED_DOMAIN_OUTPUT_ROOT="${MATCHED_DOMAIN_OUTPUT_ROOT:-${REPO_ROOT}/artifacts_matched_domain_eval}"
 MATCHED_DOMAIN_SKIP_MISSING="${MATCHED_DOMAIN_SKIP_MISSING:-0}"
 EVAL_MAX_BATCHES="${EVAL_MAX_BATCHES:-0}"
+EVAL_MAX_SEQ_LENGTH="${EVAL_MAX_SEQ_LENGTH:-256}"
+EVAL_BATCH_SIZE="${EVAL_BATCH_SIZE:-2}"
+EVAL_TORCH_DTYPE="${EVAL_TORCH_DTYPE:-bfloat16}"
 mkdir -p "${MATCHED_DOMAIN_OUTPUT_ROOT}"
 
 FAILED=0
@@ -111,12 +114,15 @@ PY
     --eval_only_from_checkpoint "${checkpoint}"
     --eval_only_matched_domain
     --eval_max_batches "${EVAL_MAX_BATCHES}"
+    --max_seq_length "${EVAL_MAX_SEQ_LENGTH}"
+    --batch_size "${EVAL_BATCH_SIZE}"
+    --torch_dtype "${EVAL_TORCH_DTYPE}"
   )
   [[ "${trust_remote_code}" == "1" ]] && cmd+=(--trust_remote_code)
   [[ "${use_local_clients}" == "1" ]] && cmd+=(--memory_agg_eval_use_local_clients)
   [[ "${yoco_use_local_clients}" == "1" ]] && cmd+=(--yoco_eval_use_local_clients)
 
-  echo "[run] agg=${agg} seed=${seed} dataset=${dataset_tag}"
+  echo "[run] agg=${agg} seed=${seed} dataset=${dataset_tag} max_seq_length=${EVAL_MAX_SEQ_LENGTH}"
   echo "      checkpoint=${checkpoint}"
   echo "      output=${output_dir} run=${run_tag}"
   if "${cmd[@]}"; then
