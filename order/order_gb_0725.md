@@ -69,7 +69,8 @@ Stage 7  第三部分：总体验收与 summarize 出表
 
 ```text
 1. 每条 GPU 命令前：cd /data/yaominghao/gb/FedPLoRA && export PATH=.../fedplora/bin
-2. nohup 子 shell 勿 set -u + source conda.sh；用 PATH 指向 fedplora/bin/python
+2. nohup 子 shell 勿 set -u + source conda.sh；用 PATH=.../fedplora/bin
+3. 凡调用 run_20260713_one_experiment.sh：必须 export CONDA_ENV_NAME=fedplora、FEDPLORA_ALLOW_PATH_PYTHON=1、PS1="${PS1-}"；并设 MODEL_PATH/RESULT_ROOT/MODEL_ROOT/BENCHMARK_DIR_MAIN/EXPECTED_NUM_CLIENTS（见 0.2）
 3. gb 无 A100_* 前缀；D1 一律 domain_benchmark_35c_dir05
 4. 单卡串行：同 GPU 一次只开一条 nohup；上一条结束再开下一条
 5. personalized_eval 不加 --force_retrain；SFT 正式训练必须 --force_retrain
@@ -140,6 +141,14 @@ export DIR01_ROOT="$CODE_DIR/data/domain_benchmark_35c_dir01"
 export DIR05_COMMON_ROOT="$CODE_DIR/data/domain_benchmark_35c_dir05_common_test_v2"
 export HF_CACHE_ROOT="$CODE_DIR/data/external_lm_eval_hf_cache"
 export GPU_ID=${GPU_ID:-0}
+
+# gb：run_20260713_one_experiment.sh / preflight 默认 CONDA=FedRepo2（minghao）；gb 必须显式 fedplora
+export CONDA_ENV_NAME=fedplora
+export FEDPLORA_ALLOW_PATH_PYTHON=1
+export PS1="${PS1-}"
+export MODEL_PATH="$MODEL_135M"
+export RESULT_ROOT="$MAIN_RESULT_ROOT"
+export MODEL_ROOT="$MAIN_MODEL_ROOT"
 
 mkdir -p "$ORDER_ROOT/launcher_logs" "$ORDER_ROOT/pids" "$ORDER_ROOT/analysis" \
   "$MAIN_RESULT_ROOT/launcher_logs" "$MAIN_RESULT_ROOT/pids" \
@@ -374,13 +383,21 @@ done
 
 # Main-第二部分：正文实验——路由解释与参与者扩展
 
+> **gb 跑 personalized_eval 前确认 0.2 已执行**（含 `CONDA_ENV_NAME=fedplora`）。FlowerTune 必须 `EXPECTED_NUM_CLIENTS=20`、`BENCHMARK_DIR_MAIN="$FLOWER_ROOT/seed_42"`、`BENCHMARK_REQUIRED_SPLIT_SEEDS="42 43 44"`（与 order_gb_0718/0723 一致）。
+
 ## Main-2.1 【原 3、4】FlowerTune 五折×三 seed 1-example + 六类路由（15 条 GPU，串行）
 
 每条命令等前一条结束再跑。`offset0` 若 `order_0723` 已有完整 JSON 可跳过对应三行。
 
 ```bash
-# offset0 seed42
-cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && RESULT_ROOT="$MAIN_RESULT_ROOT" MODEL_ROOT="$MAIN_MODEL_ROOT" MODEL_PATH="$MODEL_135M" BENCHMARK_DIR_MAIN="$FLOWER_ROOT/seed_42" EXPECTED_NUM_CLIENTS=20 RUN_TAG_DATASET=flowertune_mixed_20c_dir05 MAX_SEQ_LENGTH=256 PIPELINE_EVAL_MAX_BATCHES=0 nohup /usr/bin/time -v bash scripts/RunScripts/run_20260713_one_experiment.sh --kind personalized_eval --method X2_flower_probe1_offset0_seed42 --seed 42 --split-seed 42 --run-id-prefix main_20260725_flower_probe1 --gpu "${GPU_ID:-0}" -- --held_out_clients auto_one_per_domain --held_out_policy offset --held_out_offset 0 --few_shot_caps 1 --held_out_route_probe_samples 1 --held_out_route_metrics flat_b_cosine,subspace,relative_l2,delta_w_cosine,nearest_client_subspace,random,oracle --onboarding_accounting --schemes base,global,coldstart,coldstart_geom --select_candidates global,coldstart,coldstart_geom > "$MAIN_RESULT_ROOT/launcher_logs/test20260725_flower_probe1_offset0_seed42.launch.log" 2>&1 &
+# offset0 seed42（每条 Main-2.1 命令前环境已与 0.2 一致；Flower 额外变量如下）
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && \
+export CONDA_ENV_NAME=fedplora FEDPLORA_ALLOW_PATH_PYTHON=1 PS1="${PS1-}" && \
+RESULT_ROOT="$MAIN_RESULT_ROOT" MODEL_ROOT="$MAIN_MODEL_ROOT" MODEL_PATH="$MODEL_135M" \
+BENCHMARK_DIR_MAIN="$FLOWER_ROOT/seed_42" EXPECTED_NUM_CLIENTS=20 \
+BENCHMARK_REQUIRED_SPLIT_SEEDS="42 43 44" \
+RUN_TAG_DATASET=flowertune_mixed_20c_dir05 MAX_SEQ_LENGTH=256 PIPELINE_EVAL_MAX_BATCHES=0 \
+nohup /usr/bin/time -v bash scripts/RunScripts/run_20260713_one_experiment.sh --kind personalized_eval --method X2_flower_probe1_offset0_seed42 --seed 42 --split-seed 42 --run-id-prefix main_20260725_flower_probe1 --gpu "${GPU_ID:-0}" -- --held_out_clients auto_one_per_domain --held_out_policy offset --held_out_offset 0 --few_shot_caps 1 --held_out_route_probe_samples 1 --held_out_route_metrics flat_b_cosine,subspace,relative_l2,delta_w_cosine,nearest_client_subspace,random,oracle --onboarding_accounting --schemes base,global,coldstart,coldstart_geom --select_candidates global,coldstart,coldstart_geom > "$MAIN_RESULT_ROOT/launcher_logs/test20260725_flower_probe1_offset0_seed42.launch.log" 2>&1 &
 ```
 
 ```bash
