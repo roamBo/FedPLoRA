@@ -1170,6 +1170,8 @@ ls -la "$RESULT_ROOT/external_adapters/normal_seed42/adapter_export_manifest.jso
 # 任一 missing → 回 §E-prep 跑 export，不要直接 E1
 ```
 
+
+
 ### E0.5 离线 HF cache（0 GPU，E1 前必跑）
 
 lm_eval 0.4.x 实际加载的数据集：
@@ -1201,8 +1203,6 @@ python scripts/Analysis/prepare_external_lm_eval_hf_cache.py --verify_only
 
 或一条命令：`bash scripts/RunScripts/run_external_eval_gb.sh prepare-cache pubmedqa`
 
-
-
 ### E-smoke. 10 examples（GPU eval，不训练）
 
 ```bash
@@ -1233,7 +1233,7 @@ bash scripts/RunScripts/run_external_eval_gb.sh e1-normal
 tail -f /data/yaominghao/gb/result/FedPLoRA/order_0723/launcher_logs/test20260723_external_normal_seed42.log
 ```
 
-手动等价命令（**必须** `cd` 到 FedPLoRA，**勿用未定义的 `$PY`**）：
+手动等价命令（**必须** `cd` 到 FedPLoRA，**勿用未定义的** `$PY`）：
 
 ```bash
 cd /data/yaominghao/gb/FedPLoRA
@@ -1255,13 +1255,33 @@ CUDA_VISIBLE_DEVICES="$GPU_ID" nohup /usr/bin/time -v \
 
 ### E2. v13a global + declared-domain routed-client macro
 
-等 E1 结束后再跑：
+等 E1 结束后再跑。
+
+**推荐**：用 wrapper（自动 cd、cache 校验、绝对路径、batch=4、resume）：
 
 ```bash
 cd /data/yaominghao/gb/FedPLoRA
 export GPU_ID=1
 bash scripts/RunScripts/run_external_eval_gb.sh e2-v13a
 tail -f /data/yaominghao/gb/result/FedPLoRA/order_0723/launcher_logs/test20260723_external_v13a_seed42.log
+```
+
+手动等价命令（**必须** `cd` 到 FedPLoRA；`CUDA_VISIBLE_DEVICES=$GPU_ID` 与 `--device cuda:0` 配对）：
+
+```bash
+cd /data/yaominghao/gb/FedPLoRA
+export RESULT_ROOT=/data/yaominghao/gb/result/FedPLoRA/order_0723
+export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}"
+export GPU_ID=1
+
+CUDA_VISIBLE_DEVICES="$GPU_ID" nohup /usr/bin/time -v \
+  python /data/yaominghao/gb/FedPLoRA/scripts/Analysis/run_external_lm_eval.py \
+  --adapter_manifest "$RESULT_ROOT/external_adapters/v13a_seed42/adapter_export_manifest.json" \
+  --tasks mmlu:general,pubmedqa:medical,mbpp:code \
+  --mode both --device cuda:0 --batch_size 4 \
+  --confirm_run_unsafe_code \
+  --output_dir "$RESULT_ROOT/external_eval/v13a_seed42" \
+  > "$RESULT_ROOT/launcher_logs/test20260723_external_v13a_seed42.log" 2>&1 &
 ```
 
 E2 会对每个 task 顺序跑 global + 该域全部 client adapters，并在 `external_eval_summary.json` 做无权宏平均。MBPP 会执行生成代码，只能在隔离环境运行；若服务器不是隔离执行环境，去掉 MBPP 和 `--confirm_run_unsafe_code`，不要绕过安全门。
@@ -1721,8 +1741,6 @@ find "$RESULT_ROOT" -path '*smoke*/result_logs/*.json' -type f -print
 # 第十一部分：P0-a/G1 YOCO on FlowerTune-Mixed（3 条 GPU）
 
 export GPU_ID=0
-
-
 
 ## F1. FlowerTune YOCO seed42
 

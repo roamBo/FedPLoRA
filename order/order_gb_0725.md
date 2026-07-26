@@ -11,7 +11,7 @@
 与 `order_Main_20260725.md` / `order_baseline_20260725.md` 一致：**Main 全部在前，Baseline 在后**；每份内部按 **主实验 → 正文 → 附录**。**附录整块必须最后跑**，不得提前启动附录 GPU 作业。
 
 ```text
-Stage 0  第零部分：共同前置（0.1–0.5）+ Main smoke
+Stage 0  第零部分：共同前置（0.1–0.6 数据+fingerprint）+ Main smoke
 
 Stage 1  第一部分 Main · 主实验
          1.1 Worst In-Domain ours（6 eval-only）
@@ -118,7 +118,7 @@ Stage 7  第三部分：总体验收与 summarize 出表
 cd /data/yaominghao/gb/FedPLoRA && git pull
 ```
 
-需含：`run_eval_only_matched_domain.sh`、`launch_eval_only_matched_domain_one.sh`、`check_eval_only_matched_domain_jobs.sh`、`fed_train_sft.py`、`eval_personalized.py`、`checkpoint_manifest.py`、`run_external_lm_eval.py`、`prepare_external_lm_eval_hf_cache.py`、`external_lm_eval_datasets.py`、`repartition_with_frozen_test.py`、`summarize_matched_domain_eval.py`、`summarize_fedplora_results.py`。
+需含：`run_eval_only_matched_domain.sh`、`launch_eval_only_matched_domain_one.sh`、`check_eval_only_matched_domain_jobs.sh`、`fed_train_sft.py`、`eval_personalized.py`、`checkpoint_manifest.py`、`run_external_lm_eval.py`、`prepare_external_lm_eval_hf_cache.py`、`external_lm_eval_datasets.py`、`repartition_with_frozen_test.py`、`summarize_matched_domain_eval.py`、`summarize_fedplora_results.py`、`utilities/benchmark_fingerprint.py`。
 
 ## 0.2 环境变量（每个新 shell 粘贴一次）
 
@@ -216,6 +216,31 @@ for root, n_clients, n_domains, per_domain in checks:
         print("[data][ok]", split, dict(sorted(counts.items())))
 PY
 ```
+
+## 0.6 正式 fingerprint 审计（与 A100 版 0.3 后半一致）
+
+确认 gb 上 D1/Flower split 与论文正式协议一致。**Stage 0 建议必跑**；仅跑 Main-1.1/1.2 时也推荐执行（非硬阻塞，但前缀不对必须停训查因）。
+
+```bash
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && \
+mkdir -p "$MAIN_RESULT_ROOT/analysis"
+
+for SEED in 42 43 44; do
+  python utilities/benchmark_fingerprint.py "$D1_ROOT/seed_${SEED}" \
+    --output "$MAIN_RESULT_ROOT/analysis/d1_fingerprint_seed${SEED}.json"
+  python utilities/benchmark_fingerprint.py "$FLOWER_ROOT/seed_${SEED}" \
+    --output "$MAIN_RESULT_ROOT/analysis/flower_fingerprint_seed${SEED}.json"
+done
+```
+
+论文回填只接受 D1/FlowerTune 正式 fingerprint 族；历史记录中的前缀分别为 **`43f0ac1c`**（D1）与 **`86603887`**（FlowerTune）。若本机计算得到不同前缀，必须先核对 fingerprint 工具版本与 split 文件，**不能**通过修改表注掩盖差异。
+
+---
+
+## 0.7 主方法 SFT 说明（对应 A100 版 0.4 `launch_main_sft`）
+
+gb 单卡不定义 `launch_main_sft` 函数；**0.4 的 `COMMON_SFT_ARGS` / `LORA_R8_ARGS` / `LORA_R16_ARGS` 即等价 launcher**。  
+凡 Main-2.2、Main-3.1、Main-3.2 等新训 v13a SFT，使用各节完整 `python tasks/fed_train_sft.py ... "${COMMON_SFT_ARGS[@]}" ...` 命令（见正文/附录章节），无需额外复制 A100 的 shell 函数。
 
 ---
 
@@ -1294,7 +1319,7 @@ python scripts/Analysis/summarize_fedplora_results.py "$FED_RESULT_ROOT/order_07
 与新版 `order_Main_20260725.md` / `order_baseline_20260725.md` 对齐（gb 单卡均改为串行）：
 
 ```text
-Stage 0:  第零部分 0.1–0.5 + Main-0 smoke（含 launch/check matched-domain 脚本 bash -n）
+Stage 0:  第零部分 0.1–0.6（含 fingerprint）+ Main-0 smoke
 Stage 1:  Main-第一部分 主实验
           1.1 Worst In-Domain 6 eval-only（读 order_0711/0712/0715 历史 JSON）
           1.2 external export → smoke → 3-seed formal eval
