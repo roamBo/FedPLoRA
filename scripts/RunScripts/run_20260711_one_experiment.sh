@@ -88,6 +88,8 @@ if ! command -v conda >/dev/null 2>&1; then
 fi
 CONDA_BASE="$(conda info --base)"
 if [ -f "$CONDA_BASE/etc/profile.d/conda.sh" ]; then
+  # nohup / non-interactive shells: conda.sh touches PS1; avoid set -u abort.
+  export PS1="${PS1-}"
   # shellcheck disable=SC1090
   source "$CONDA_BASE/etc/profile.d/conda.sh"
 fi
