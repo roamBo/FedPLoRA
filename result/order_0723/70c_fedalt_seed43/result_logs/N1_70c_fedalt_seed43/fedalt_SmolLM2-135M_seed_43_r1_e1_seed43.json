@@ -1,0 +1,2017 @@
+{
+  "args": {
+    "model": "/data/yaominghao/gb/models/SmolLM2-135M",
+    "benchmark_dir": "/data/yaominghao/gb/FedPLoRA/data/domain_benchmark_70c_dir05_frozen_test/seed_43",
+    "benchmark_jsonl": "",
+    "build_benchmark": false,
+    "benchmark_output_dir": "data/domain_benchmark",
+    "num_clients_per_domain": 5,
+    "min_samples_per_client": 50,
+    "agg_type": "fedalt",
+    "rounds": 1,
+    "num_clients": 70,
+    "local_epochs": 1,
+    "lr": 0.0002,
+    "lora_r": 8,
+    "lora_alpha": 16,
+    "lora_dropout": 0.05,
+    "rslora": false,
+    "batch_size": 2,
+    "warmup_ratio": 0.03,
+    "max_seq_length": 256,
+    "seed": 43,
+    "gradient_checkpointing": true,
+    "trust_remote_code": false,
+    "torch_dtype": "bfloat16",
+    "target_modules": "q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj",
+    "client_state_dir": "/data/yaominghao/gb/result/FedPLoRA/order_0723_sup/70c_fedalt_seed43/result_files/client_states/N1_70c_fedalt_seed43",
+    "save_client_state_to_disk": true,
+    "metrics_output_dir": "/data/yaominghao/gb/result/FedPLoRA/order_0723_sup/70c_fedalt_seed43/result_logs/N1_70c_fedalt_seed43",
+    "save_run_checkpoint_dir": "/data/yaominghao/gb/models/trained_models_LW/order_0723_sup/70c_fedalt_seed43/N1_70c_fedalt_seed43",
+    "skip_post_agg_snapshots": true,
+    "trained_models_root": "/data/yaominghao/gb/models/trained_models_LW/order_0723_sup/70c_fedalt_seed43",
+    "no_auto_save_run_checkpoint": false,
+    "force_retrain": true,
+    "eval_only_from_checkpoint": "",
+    "eval_only_matched_domain": false,
+    "export_eval_adapter_dir": "",
+    "export_eval_adapter_only": false,
+    "gp_align_lambda": 0.01,
+    "gp_prox_lambda": 0.001,
+    "gp_orth_lambda": 0.0001,
+    "gp_consensus_power": 2.0,
+    "gp_agg_momentum": 0.5,
+    "yoco_sparse_lambda": 0.0001,
+    "yoco_pcwa_components": 3,
+    "yoco_aggregate_mode": "conflict",
+    "yoco_conflict_method": "avgm",
+    "yoco_sign_lambda": 0.01,
+    "yoco_eval_use_local_clients": false,
+    "memory_agg_eval_use_local_clients": false,
+    "flora_svd_device": "auto",
+    "oneshot_consensus_power": 2.0,
+    "oneshot_importance_power": 1.0,
+    "oneshot_importance_clip": 5.0,
+    "oneshot_conflict_threshold": 0.35,
+    "oneshot_conflict_blend": 1.0,
+    "oneshot_scale_clip_ratio": 0.0,
+    "oneshot_anchor_lambda": 0.0001,
+    "oneshot_prox_lambda": 0.0,
+    "oneshot_no_keep_init_on_conflict": false,
+    "oneshot_orthogonalize": false,
+    "oneshot_ablation_plain_fedavg": false,
+    "v3_conflict_quantile": 0.8,
+    "v3_gate_temperature": 0.05,
+    "v3_conflict_blend": 1.0,
+    "v3_residual_norm_power": 1.0,
+    "v3_residual_eps": 1e-07,
+    "v3_cluster_mode": "domain_prior",
+    "v3_cluster_lambda_min": 0.2,
+    "v3_cluster_lambda_max": 1.0,
+    "v3_rpca_rank": 1,
+    "v3_sparse_quantile": 0.8,
+    "v3_domain_cluster_map": "",
+    "v6_dcr_mode": "",
+    "v6_dcr_rc_policy": "auto",
+    "v6_dcr_shared_rank": 0,
+    "v6_dcr_min_shared_rank": 1,
+    "v6_dcr_max_shared_rank": 0,
+    "v6_dcr_energy_tau": 0.8,
+    "v6_dcr_conflict_strength": 1.0,
+    "v6_dcr_importance_power": 0.0,
+    "v6_dcr_importance_clip": 5.0,
+    "v7_b_mode": "mean",
+    "expert_cluster_mode": "auto",
+    "expert_cluster_k": 0,
+    "expert_max_clusters": 0,
+    "expert_b_mode": "",
+    "expert_top_m": 0,
+    "expert_router_temperature": 0.2,
+    "expert_freeze_a": false,
+    "v8_a_warmup_rounds": 1,
+    "v8_a_refresh_interval": 5,
+    "v8_cache_shared_a_downlink": true,
+    "v9_mix_lambda": 0.5,
+    "v10_a_correction_alpha": 0.35,
+    "v10_a_anchor_lambda": 0.001,
+    "v10_a_prox_lambda": 0.0005,
+    "v10_b_prox_lambda": 0.0001,
+    "v10_a_sketch_rank": 2,
+    "v10_a_norm_clip_ratio": 1.5,
+    "v11_global_b_mix_mu": 0.4,
+    "v12_mu_start": 0.4,
+    "v12_mu_end": 0.6,
+    "v12_mu_schedule": "linear",
+    "v12_mu_warmup_rounds": 0,
+    "v12_nmi_guard_threshold": 0.75,
+    "v12_nmi_guard_low_mu": 0.4,
+    "v12_nmi_guard_high_mu": 0.55,
+    "hilora_leaf_blend": 0.25,
+    "ecolora_keep_ratio": 0.25,
+    "ecolora_mask_mode": "round_robin",
+    "feddat_teacher_lambda": 0.01,
+    "v5m_keep_ratio": 0.2,
+    "v5m_dare_p": 0.3,
+    "v5m_rank_policy": "fixed",
+    "v5m_rank_cap": 64,
+    "v5m_energy_tau": 0.95,
+    "v5m_knots_normalize": 1,
+    "v5m_basis_energy_tau": 0.9999,
+    "v5m_chunk_rows": 2048,
+    "v5m_device": "auto",
+    "eval_max_batches": 0,
+    "eval_batch_size": 0,
+    "eval_interval": 1,
+    "eval_final_only": true,
+    "train_max_steps_per_client": 0,
+    "max_train_samples_per_client": 0,
+    "dataloader_num_workers": 0,
+    "eval_dataloader_num_workers": 0,
+    "dataloader_pin_memory": true,
+    "dataloader_persistent_workers": false,
+    "attn_implementation": "",
+    "tokenizer_use_fast": true,
+    "eval_personalization_metrics": true,
+    "fedplora_ablation_no_consensus": false,
+    "fedplora_ablation_no_momentum": false,
+    "_benchmark_fingerprint": {
+      "fingerprint_version": 1,
+      "split_dir": "/data/yaominghao/gb/FedPLoRA/data/domain_benchmark_70c_dir05_frozen_test/seed_43",
+      "combined_sha256": "a16b388db9331c6b289f598f1da14ee3971f2eff18dea56a77595d9e0c67991e",
+      "files_sha256": {
+        "clients.json": "5de7e76e6a6fa1ad70447e585f5f73d89608d4bfdcbbf6081fea733a554929ed",
+        "domain_stats.json": "936eaf9103b1e48766b0638e4781ea8b1da3d2db81289541d8c6650dde347445",
+        "train.jsonl": "ef3f861758a996814ab1552865ea7c56538e015ca9d99f74c378cbe3fc7935a3",
+        "val.jsonl": "9bd73427628ad41783e8baf6712b41d79478610d840e938cf1ab49fc01341c68",
+        "test_local.jsonl": "f8990d7aa999890971b5750d961b81fcd765c7fc5125271f7a56e1049e8a9de5",
+        "test_domain.jsonl": "4fc29d3a4676f6d4f8cf51bbfb3a4dbd93ba0ddc74e92006d1d4d5cfc4de4ad0",
+        "test_global.jsonl": "4fc29d3a4676f6d4f8cf51bbfb3a4dbd93ba0ddc74e92006d1d4d5cfc4de4ad0"
+      },
+      "file_sizes": {
+        "clients.json": 7901,
+        "domain_stats.json": 1716,
+        "train.jsonl": 15690358,
+        "val.jsonl": 1841694,
+        "test_local.jsonl": 1914602,
+        "test_domain.jsonl": 2126091,
+        "test_global.jsonl": 2126091
+      },
+      "split_counts": {
+        "train": 9040,
+        "val": 1093,
+        "test_local": 1093,
+        "test_domain": 1247,
+        "test_global": 1247
+      },
+      "clients": {
+        "num_clients": 70,
+        "domain_counts": {
+          "code": 10,
+          "education": 10,
+          "finance": 10,
+          "general": 10,
+          "legal": 10,
+          "math": 10,
+          "medical": 10
+        },
+        "total_n_train_manifest": 9040,
+        "total_n_val_manifest": 1093,
+        "total_n_local_test_manifest": 1093,
+        "min_n_train": 21,
+        "median_n_train": 110.0,
+        "max_n_train": 472,
+        "per_client_manifest": {
+          "0": {
+            "domain": "code",
+            "n_train": 88,
+            "n_val": 11,
+            "n_local_test": 11
+          },
+          "1": {
+            "domain": "code",
+            "n_train": 163,
+            "n_val": 20,
+            "n_local_test": 20
+          },
+          "2": {
+            "domain": "code",
+            "n_train": 89,
+            "n_val": 11,
+            "n_local_test": 11
+          },
+          "3": {
+            "domain": "code",
+            "n_train": 155,
+            "n_val": 19,
+            "n_local_test": 19
+          },
+          "4": {
+            "domain": "code",
+            "n_train": 110,
+            "n_val": 13,
+            "n_local_test": 13
+          },
+          "5": {
+            "domain": "code",
+            "n_train": 21,
+            "n_val": 2,
+            "n_local_test": 2
+          },
+          "6": {
+            "domain": "code",
+            "n_train": 61,
+            "n_val": 7,
+            "n_local_test": 7
+          },
+          "7": {
+            "domain": "code",
+            "n_train": 67,
+            "n_val": 8,
+            "n_local_test": 8
+          },
+          "8": {
+            "domain": "code",
+            "n_train": 222,
+            "n_val": 27,
+            "n_local_test": 27
+          },
+          "9": {
+            "domain": "code",
+            "n_train": 472,
+            "n_val": 58,
+            "n_local_test": 58
+          },
+          "10": {
+            "domain": "education",
+            "n_train": 35,
+            "n_val": 4,
+            "n_local_test": 4
+          },
+          "11": {
+            "domain": "education",
+            "n_train": 21,
+            "n_val": 2,
+            "n_local_test": 2
+          },
+          "12": {
+            "domain": "education",
+            "n_train": 37,
+            "n_val": 4,
+            "n_local_test": 4
+          },
+          "13": {
+            "domain": "education",
+            "n_train": 40,
+            "n_val": 5,
+            "n_local_test": 5
+          },
+          "14": {
+            "domain": "education",
+            "n_train": 26,
+            "n_val": 3,
+            "n_local_test": 3
+          },
+          "15": {
+            "domain": "education",
+            "n_train": 41,
+            "n_val": 5,
+            "n_local_test": 5
+          },
+          "16": {
+            "domain": "education",
+            "n_train": 35,
+            "n_val": 4,
+            "n_local_test": 4
+          },
+          "17": {
+            "domain": "education",
+            "n_train": 40,
+            "n_val": 5,
+            "n_local_test": 5
+          },
+          "18": {
+            "domain": "education",
+            "n_train": 31,
+            "n_val": 3,
+            "n_local_test": 3
+          },
+          "19": {
+            "domain": "education",
+            "n_train": 40,
+            "n_val": 5,
+            "n_local_test": 5
+          },
+          "20": {
+            "domain": "finance",
+            "n_train": 69,
+            "n_val": 8,
+            "n_local_test": 8
+          },
+          "21": {
+            "domain": "finance",
+            "n_train": 167,
+            "n_val": 20,
+            "n_local_test": 20
+          },
+          "22": {
+            "domain": "finance",
+            "n_train": 150,
+            "n_val": 18,
+            "n_local_test": 18
+          },
+          "23": {
+            "domain": "finance",
+            "n_train": 240,
+            "n_val": 29,
+            "n_local_test": 29
+          },
+          "24": {
+            "domain": "finance",
+            "n_train": 153,
+            "n_val": 18,
+            "n_local_test": 18
+          },
+          "25": {
+            "domain": "finance",
+            "n_train": 72,
+            "n_val": 9,
+            "n_local_test": 9
+          },
+          "26": {
+            "domain": "finance",
+            "n_train": 247,
+            "n_val": 30,
+            "n_local_test": 30
+          },
+          "27": {
+            "domain": "finance",
+            "n_train": 70,
+            "n_val": 8,
+            "n_local_test": 8
+          },
+          "28": {
+            "domain": "finance",
+            "n_train": 239,
+            "n_val": 29,
+            "n_local_test": 29
+          },
+          "29": {
+            "domain": "finance",
+            "n_train": 45,
+            "n_val": 5,
+            "n_local_test": 5
+          },
+          "30": {
+            "domain": "general",
+            "n_train": 119,
+            "n_val": 14,
+            "n_local_test": 14
+          },
+          "31": {
+            "domain": "general",
+            "n_train": 109,
+            "n_val": 13,
+            "n_local_test": 13
+          },
+          "32": {
+            "domain": "general",
+            "n_train": 269,
+            "n_val": 33,
+            "n_local_test": 33
+          },
+          "33": {
+            "domain": "general",
+            "n_train": 114,
+            "n_val": 14,
+            "n_local_test": 14
+          },
+          "34": {
+            "domain": "general",
+            "n_train": 175,
+            "n_val": 21,
+            "n_local_test": 21
+          },
+          "35": {
+            "domain": "general",
+            "n_train": 163,
+            "n_val": 20,
+            "n_local_test": 20
+          },
+          "36": {
+            "domain": "general",
+            "n_train": 204,
+            "n_val": 25,
+            "n_local_test": 25
+          },
+          "37": {
+            "domain": "general",
+            "n_train": 106,
+            "n_val": 13,
+            "n_local_test": 13
+          },
+          "38": {
+            "domain": "general",
+            "n_train": 56,
+            "n_val": 7,
+            "n_local_test": 7
+          },
+          "39": {
+            "domain": "general",
+            "n_train": 133,
+            "n_val": 16,
+            "n_local_test": 16
+          },
+          "40": {
+            "domain": "legal",
+            "n_train": 151,
+            "n_val": 18,
+            "n_local_test": 18
+          },
+          "41": {
+            "domain": "legal",
+            "n_train": 84,
+            "n_val": 10,
+            "n_local_test": 10
+          },
+          "42": {
+            "domain": "legal",
+            "n_train": 107,
+            "n_val": 13,
+            "n_local_test": 13
+          },
+          "43": {
+            "domain": "legal",
+            "n_train": 69,
+            "n_val": 8,
+            "n_local_test": 8
+          },
+          "44": {
+            "domain": "legal",
+            "n_train": 50,
+            "n_val": 6,
+            "n_local_test": 6
+          },
+          "45": {
+            "domain": "legal",
+            "n_train": 336,
+            "n_val": 42,
+            "n_local_test": 42
+          },
+          "46": {
+            "domain": "legal",
+            "n_train": 248,
+            "n_val": 30,
+            "n_local_test": 30
+          },
+          "47": {
+            "domain": "legal",
+            "n_train": 290,
+            "n_val": 36,
+            "n_local_test": 36
+          },
+          "48": {
+            "domain": "legal",
+            "n_train": 21,
+            "n_val": 2,
+            "n_local_test": 2
+          },
+          "49": {
+            "domain": "legal",
+            "n_train": 92,
+            "n_val": 11,
+            "n_local_test": 11
+          },
+          "50": {
+            "domain": "math",
+            "n_train": 30,
+            "n_val": 3,
+            "n_local_test": 3
+          },
+          "51": {
+            "domain": "math",
+            "n_train": 138,
+            "n_val": 17,
+            "n_local_test": 17
+          },
+          "52": {
+            "domain": "math",
+            "n_train": 161,
+            "n_val": 19,
+            "n_local_test": 19
+          },
+          "53": {
+            "domain": "math",
+            "n_train": 137,
+            "n_val": 17,
+            "n_local_test": 17
+          },
+          "54": {
+            "domain": "math",
+            "n_train": 154,
+            "n_val": 19,
+            "n_local_test": 19
+          },
+          "55": {
+            "domain": "math",
+            "n_train": 105,
+            "n_val": 13,
+            "n_local_test": 13
+          },
+          "56": {
+            "domain": "math",
+            "n_train": 243,
+            "n_val": 30,
+            "n_local_test": 30
+          },
+          "57": {
+            "domain": "math",
+            "n_train": 89,
+            "n_val": 11,
+            "n_local_test": 11
+          },
+          "58": {
+            "domain": "math",
+            "n_train": 328,
+            "n_val": 41,
+            "n_local_test": 41
+          },
+          "59": {
+            "domain": "math",
+            "n_train": 61,
+            "n_val": 7,
+            "n_local_test": 7
+          },
+          "60": {
+            "domain": "medical",
+            "n_train": 89,
+            "n_val": 10,
+            "n_local_test": 10
+          },
+          "61": {
+            "domain": "medical",
+            "n_train": 167,
+            "n_val": 20,
+            "n_local_test": 20
+          },
+          "62": {
+            "domain": "medical",
+            "n_train": 190,
+            "n_val": 23,
+            "n_local_test": 23
+          },
+          "63": {
+            "domain": "medical",
+            "n_train": 191,
+            "n_val": 23,
+            "n_local_test": 23
+          },
+          "64": {
+            "domain": "medical",
+            "n_train": 176,
+            "n_val": 22,
+            "n_local_test": 22
+          },
+          "65": {
+            "domain": "medical",
+            "n_train": 153,
+            "n_val": 18,
+            "n_local_test": 18
+          },
+          "66": {
+            "domain": "medical",
+            "n_train": 241,
+            "n_val": 30,
+            "n_local_test": 30
+          },
+          "67": {
+            "domain": "medical",
+            "n_train": 40,
+            "n_val": 4,
+            "n_local_test": 4
+          },
+          "68": {
+            "domain": "medical",
+            "n_train": 48,
+            "n_val": 5,
+            "n_local_test": 5
+          },
+          "69": {
+            "domain": "medical",
+            "n_train": 157,
+            "n_val": 19,
+            "n_local_test": 19
+          }
+        }
+      },
+      "row_counts_by_client": {
+        "train": {
+          "0": 88,
+          "1": 163,
+          "2": 89,
+          "3": 155,
+          "4": 110,
+          "5": 21,
+          "6": 61,
+          "7": 67,
+          "8": 222,
+          "9": 472,
+          "10": 35,
+          "11": 21,
+          "12": 37,
+          "13": 40,
+          "14": 26,
+          "15": 41,
+          "16": 35,
+          "17": 40,
+          "18": 31,
+          "19": 40,
+          "20": 69,
+          "21": 167,
+          "22": 150,
+          "23": 240,
+          "24": 153,
+          "25": 72,
+          "26": 247,
+          "27": 70,
+          "28": 239,
+          "29": 45,
+          "30": 119,
+          "31": 109,
+          "32": 269,
+          "33": 114,
+          "34": 175,
+          "35": 163,
+          "36": 204,
+          "37": 106,
+          "38": 56,
+          "39": 133,
+          "40": 151,
+          "41": 84,
+          "42": 107,
+          "43": 69,
+          "44": 50,
+          "45": 336,
+          "46": 248,
+          "47": 290,
+          "48": 21,
+          "49": 92,
+          "50": 30,
+          "51": 138,
+          "52": 161,
+          "53": 137,
+          "54": 154,
+          "55": 105,
+          "56": 243,
+          "57": 89,
+          "58": 328,
+          "59": 61,
+          "60": 89,
+          "61": 167,
+          "62": 190,
+          "63": 191,
+          "64": 176,
+          "65": 153,
+          "66": 241,
+          "67": 40,
+          "68": 48,
+          "69": 157
+        },
+        "val": {
+          "0": 11,
+          "1": 20,
+          "2": 11,
+          "3": 19,
+          "4": 13,
+          "5": 2,
+          "6": 7,
+          "7": 8,
+          "8": 27,
+          "9": 58,
+          "10": 4,
+          "11": 2,
+          "12": 4,
+          "13": 5,
+          "14": 3,
+          "15": 5,
+          "16": 4,
+          "17": 5,
+          "18": 3,
+          "19": 5,
+          "20": 8,
+          "21": 20,
+          "22": 18,
+          "23": 29,
+          "24": 18,
+          "25": 9,
+          "26": 30,
+          "27": 8,
+          "28": 29,
+          "29": 5,
+          "30": 14,
+          "31": 13,
+          "32": 33,
+          "33": 14,
+          "34": 21,
+          "35": 20,
+          "36": 25,
+          "37": 13,
+          "38": 7,
+          "39": 16,
+          "40": 18,
+          "41": 10,
+          "42": 13,
+          "43": 8,
+          "44": 6,
+          "45": 42,
+          "46": 30,
+          "47": 36,
+          "48": 2,
+          "49": 11,
+          "50": 3,
+          "51": 17,
+          "52": 19,
+          "53": 17,
+          "54": 19,
+          "55": 13,
+          "56": 30,
+          "57": 11,
+          "58": 41,
+          "59": 7,
+          "60": 10,
+          "61": 20,
+          "62": 23,
+          "63": 23,
+          "64": 22,
+          "65": 18,
+          "66": 30,
+          "67": 4,
+          "68": 5,
+          "69": 19
+        },
+        "test_local": {
+          "0": 11,
+          "1": 20,
+          "2": 11,
+          "3": 19,
+          "4": 13,
+          "5": 2,
+          "6": 7,
+          "7": 8,
+          "8": 27,
+          "9": 58,
+          "10": 4,
+          "11": 2,
+          "12": 4,
+          "13": 5,
+          "14": 3,
+          "15": 5,
+          "16": 4,
+          "17": 5,
+          "18": 3,
+          "19": 5,
+          "20": 8,
+          "21": 20,
+          "22": 18,
+          "23": 29,
+          "24": 18,
+          "25": 9,
+          "26": 30,
+          "27": 8,
+          "28": 29,
+          "29": 5,
+          "30": 14,
+          "31": 13,
+          "32": 33,
+          "33": 14,
+          "34": 21,
+          "35": 20,
+          "36": 25,
+          "37": 13,
+          "38": 7,
+          "39": 16,
+          "40": 18,
+          "41": 10,
+          "42": 13,
+          "43": 8,
+          "44": 6,
+          "45": 42,
+          "46": 30,
+          "47": 36,
+          "48": 2,
+          "49": 11,
+          "50": 3,
+          "51": 17,
+          "52": 19,
+          "53": 17,
+          "54": 19,
+          "55": 13,
+          "56": 30,
+          "57": 11,
+          "58": 41,
+          "59": 7,
+          "60": 10,
+          "61": 20,
+          "62": 23,
+          "63": 23,
+          "64": 22,
+          "65": 18,
+          "66": 30,
+          "67": 4,
+          "68": 5,
+          "69": 19
+        },
+        "test_domain": {},
+        "test_global": {}
+      },
+      "row_counts_by_domain": {
+        "train": {
+          "code": 1448,
+          "education": 346,
+          "finance": 1452,
+          "general": 1448,
+          "legal": 1448,
+          "math": 1446,
+          "medical": 1452
+        },
+        "val": {
+          "code": 176,
+          "education": 40,
+          "finance": 174,
+          "general": 176,
+          "legal": 176,
+          "math": 177,
+          "medical": 174
+        },
+        "test_local": {
+          "code": 176,
+          "education": 40,
+          "finance": 174,
+          "general": 176,
+          "legal": 176,
+          "math": 177,
+          "medical": 174
+        },
+        "test_domain": {
+          "code": 200,
+          "education": 47,
+          "finance": 200,
+          "general": 200,
+          "legal": 200,
+          "math": 200,
+          "medical": 200
+        },
+        "test_global": {
+          "code": 200,
+          "education": 47,
+          "finance": 200,
+          "general": 200,
+          "legal": 200,
+          "math": 200,
+          "medical": 200
+        }
+      }
+    },
+    "_runtime_client_sizes": [
+      88,
+      163,
+      89,
+      155,
+      110,
+      21,
+      61,
+      67,
+      222,
+      472,
+      35,
+      21,
+      37,
+      40,
+      26,
+      41,
+      35,
+      40,
+      31,
+      40,
+      69,
+      167,
+      150,
+      240,
+      153,
+      72,
+      247,
+      70,
+      239,
+      45,
+      119,
+      109,
+      269,
+      114,
+      175,
+      163,
+      204,
+      106,
+      56,
+      133,
+      151,
+      84,
+      107,
+      69,
+      50,
+      336,
+      248,
+      290,
+      21,
+      92,
+      30,
+      138,
+      161,
+      137,
+      154,
+      105,
+      243,
+      89,
+      328,
+      61,
+      89,
+      167,
+      190,
+      191,
+      176,
+      153,
+      241,
+      40,
+      48,
+      157
+    ],
+    "_fedplora_client_domains": {
+      "0": "code",
+      "1": "code",
+      "2": "code",
+      "3": "code",
+      "4": "code",
+      "5": "code",
+      "6": "code",
+      "7": "code",
+      "8": "code",
+      "9": "code",
+      "10": "education",
+      "11": "education",
+      "12": "education",
+      "13": "education",
+      "14": "education",
+      "15": "education",
+      "16": "education",
+      "17": "education",
+      "18": "education",
+      "19": "education",
+      "20": "finance",
+      "21": "finance",
+      "22": "finance",
+      "23": "finance",
+      "24": "finance",
+      "25": "finance",
+      "26": "finance",
+      "27": "finance",
+      "28": "finance",
+      "29": "finance",
+      "30": "general",
+      "31": "general",
+      "32": "general",
+      "33": "general",
+      "34": "general",
+      "35": "general",
+      "36": "general",
+      "37": "general",
+      "38": "general",
+      "39": "general",
+      "40": "legal",
+      "41": "legal",
+      "42": "legal",
+      "43": "legal",
+      "44": "legal",
+      "45": "legal",
+      "46": "legal",
+      "47": "legal",
+      "48": "legal",
+      "49": "legal",
+      "50": "math",
+      "51": "math",
+      "52": "math",
+      "53": "math",
+      "54": "math",
+      "55": "math",
+      "56": "math",
+      "57": "math",
+      "58": "math",
+      "59": "math",
+      "60": "medical",
+      "61": "medical",
+      "62": "medical",
+      "63": "medical",
+      "64": "medical",
+      "65": "medical",
+      "66": "medical",
+      "67": "medical",
+      "68": "medical",
+      "69": "medical"
+    },
+    "_fedplora_round_client_ids": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      30,
+      31,
+      32,
+      33,
+      34,
+      35,
+      36,
+      37,
+      38,
+      39,
+      40,
+      41,
+      42,
+      43,
+      44,
+      45,
+      46,
+      47,
+      48,
+      49,
+      50,
+      51,
+      52,
+      53,
+      54,
+      55,
+      56,
+      57,
+      58,
+      59,
+      60,
+      61,
+      62,
+      63,
+      64,
+      65,
+      66,
+      67,
+      68,
+      69
+    ]
+  },
+  "benchmark_dir": "/data/yaominghao/gb/FedPLoRA/data/domain_benchmark_70c_dir05_frozen_test/seed_43",
+  "benchmark_fingerprint": {
+    "fingerprint_version": 1,
+    "split_dir": "/data/yaominghao/gb/FedPLoRA/data/domain_benchmark_70c_dir05_frozen_test/seed_43",
+    "combined_sha256": "a16b388db9331c6b289f598f1da14ee3971f2eff18dea56a77595d9e0c67991e",
+    "files_sha256": {
+      "clients.json": "5de7e76e6a6fa1ad70447e585f5f73d89608d4bfdcbbf6081fea733a554929ed",
+      "domain_stats.json": "936eaf9103b1e48766b0638e4781ea8b1da3d2db81289541d8c6650dde347445",
+      "train.jsonl": "ef3f861758a996814ab1552865ea7c56538e015ca9d99f74c378cbe3fc7935a3",
+      "val.jsonl": "9bd73427628ad41783e8baf6712b41d79478610d840e938cf1ab49fc01341c68",
+      "test_local.jsonl": "f8990d7aa999890971b5750d961b81fcd765c7fc5125271f7a56e1049e8a9de5",
+      "test_domain.jsonl": "4fc29d3a4676f6d4f8cf51bbfb3a4dbd93ba0ddc74e92006d1d4d5cfc4de4ad0",
+      "test_global.jsonl": "4fc29d3a4676f6d4f8cf51bbfb3a4dbd93ba0ddc74e92006d1d4d5cfc4de4ad0"
+    },
+    "file_sizes": {
+      "clients.json": 7901,
+      "domain_stats.json": 1716,
+      "train.jsonl": 15690358,
+      "val.jsonl": 1841694,
+      "test_local.jsonl": 1914602,
+      "test_domain.jsonl": 2126091,
+      "test_global.jsonl": 2126091
+    },
+    "split_counts": {
+      "train": 9040,
+      "val": 1093,
+      "test_local": 1093,
+      "test_domain": 1247,
+      "test_global": 1247
+    },
+    "clients": {
+      "num_clients": 70,
+      "domain_counts": {
+        "code": 10,
+        "education": 10,
+        "finance": 10,
+        "general": 10,
+        "legal": 10,
+        "math": 10,
+        "medical": 10
+      },
+      "total_n_train_manifest": 9040,
+      "total_n_val_manifest": 1093,
+      "total_n_local_test_manifest": 1093,
+      "min_n_train": 21,
+      "median_n_train": 110.0,
+      "max_n_train": 472,
+      "per_client_manifest": {
+        "0": {
+          "domain": "code",
+          "n_train": 88,
+          "n_val": 11,
+          "n_local_test": 11
+        },
+        "1": {
+          "domain": "code",
+          "n_train": 163,
+          "n_val": 20,
+          "n_local_test": 20
+        },
+        "2": {
+          "domain": "code",
+          "n_train": 89,
+          "n_val": 11,
+          "n_local_test": 11
+        },
+        "3": {
+          "domain": "code",
+          "n_train": 155,
+          "n_val": 19,
+          "n_local_test": 19
+        },
+        "4": {
+          "domain": "code",
+          "n_train": 110,
+          "n_val": 13,
+          "n_local_test": 13
+        },
+        "5": {
+          "domain": "code",
+          "n_train": 21,
+          "n_val": 2,
+          "n_local_test": 2
+        },
+        "6": {
+          "domain": "code",
+          "n_train": 61,
+          "n_val": 7,
+          "n_local_test": 7
+        },
+        "7": {
+          "domain": "code",
+          "n_train": 67,
+          "n_val": 8,
+          "n_local_test": 8
+        },
+        "8": {
+          "domain": "code",
+          "n_train": 222,
+          "n_val": 27,
+          "n_local_test": 27
+        },
+        "9": {
+          "domain": "code",
+          "n_train": 472,
+          "n_val": 58,
+          "n_local_test": 58
+        },
+        "10": {
+          "domain": "education",
+          "n_train": 35,
+          "n_val": 4,
+          "n_local_test": 4
+        },
+        "11": {
+          "domain": "education",
+          "n_train": 21,
+          "n_val": 2,
+          "n_local_test": 2
+        },
+        "12": {
+          "domain": "education",
+          "n_train": 37,
+          "n_val": 4,
+          "n_local_test": 4
+        },
+        "13": {
+          "domain": "education",
+          "n_train": 40,
+          "n_val": 5,
+          "n_local_test": 5
+        },
+        "14": {
+          "domain": "education",
+          "n_train": 26,
+          "n_val": 3,
+          "n_local_test": 3
+        },
+        "15": {
+          "domain": "education",
+          "n_train": 41,
+          "n_val": 5,
+          "n_local_test": 5
+        },
+        "16": {
+          "domain": "education",
+          "n_train": 35,
+          "n_val": 4,
+          "n_local_test": 4
+        },
+        "17": {
+          "domain": "education",
+          "n_train": 40,
+          "n_val": 5,
+          "n_local_test": 5
+        },
+        "18": {
+          "domain": "education",
+          "n_train": 31,
+          "n_val": 3,
+          "n_local_test": 3
+        },
+        "19": {
+          "domain": "education",
+          "n_train": 40,
+          "n_val": 5,
+          "n_local_test": 5
+        },
+        "20": {
+          "domain": "finance",
+          "n_train": 69,
+          "n_val": 8,
+          "n_local_test": 8
+        },
+        "21": {
+          "domain": "finance",
+          "n_train": 167,
+          "n_val": 20,
+          "n_local_test": 20
+        },
+        "22": {
+          "domain": "finance",
+          "n_train": 150,
+          "n_val": 18,
+          "n_local_test": 18
+        },
+        "23": {
+          "domain": "finance",
+          "n_train": 240,
+          "n_val": 29,
+          "n_local_test": 29
+        },
+        "24": {
+          "domain": "finance",
+          "n_train": 153,
+          "n_val": 18,
+          "n_local_test": 18
+        },
+        "25": {
+          "domain": "finance",
+          "n_train": 72,
+          "n_val": 9,
+          "n_local_test": 9
+        },
+        "26": {
+          "domain": "finance",
+          "n_train": 247,
+          "n_val": 30,
+          "n_local_test": 30
+        },
+        "27": {
+          "domain": "finance",
+          "n_train": 70,
+          "n_val": 8,
+          "n_local_test": 8
+        },
+        "28": {
+          "domain": "finance",
+          "n_train": 239,
+          "n_val": 29,
+          "n_local_test": 29
+        },
+        "29": {
+          "domain": "finance",
+          "n_train": 45,
+          "n_val": 5,
+          "n_local_test": 5
+        },
+        "30": {
+          "domain": "general",
+          "n_train": 119,
+          "n_val": 14,
+          "n_local_test": 14
+        },
+        "31": {
+          "domain": "general",
+          "n_train": 109,
+          "n_val": 13,
+          "n_local_test": 13
+        },
+        "32": {
+          "domain": "general",
+          "n_train": 269,
+          "n_val": 33,
+          "n_local_test": 33
+        },
+        "33": {
+          "domain": "general",
+          "n_train": 114,
+          "n_val": 14,
+          "n_local_test": 14
+        },
+        "34": {
+          "domain": "general",
+          "n_train": 175,
+          "n_val": 21,
+          "n_local_test": 21
+        },
+        "35": {
+          "domain": "general",
+          "n_train": 163,
+          "n_val": 20,
+          "n_local_test": 20
+        },
+        "36": {
+          "domain": "general",
+          "n_train": 204,
+          "n_val": 25,
+          "n_local_test": 25
+        },
+        "37": {
+          "domain": "general",
+          "n_train": 106,
+          "n_val": 13,
+          "n_local_test": 13
+        },
+        "38": {
+          "domain": "general",
+          "n_train": 56,
+          "n_val": 7,
+          "n_local_test": 7
+        },
+        "39": {
+          "domain": "general",
+          "n_train": 133,
+          "n_val": 16,
+          "n_local_test": 16
+        },
+        "40": {
+          "domain": "legal",
+          "n_train": 151,
+          "n_val": 18,
+          "n_local_test": 18
+        },
+        "41": {
+          "domain": "legal",
+          "n_train": 84,
+          "n_val": 10,
+          "n_local_test": 10
+        },
+        "42": {
+          "domain": "legal",
+          "n_train": 107,
+          "n_val": 13,
+          "n_local_test": 13
+        },
+        "43": {
+          "domain": "legal",
+          "n_train": 69,
+          "n_val": 8,
+          "n_local_test": 8
+        },
+        "44": {
+          "domain": "legal",
+          "n_train": 50,
+          "n_val": 6,
+          "n_local_test": 6
+        },
+        "45": {
+          "domain": "legal",
+          "n_train": 336,
+          "n_val": 42,
+          "n_local_test": 42
+        },
+        "46": {
+          "domain": "legal",
+          "n_train": 248,
+          "n_val": 30,
+          "n_local_test": 30
+        },
+        "47": {
+          "domain": "legal",
+          "n_train": 290,
+          "n_val": 36,
+          "n_local_test": 36
+        },
+        "48": {
+          "domain": "legal",
+          "n_train": 21,
+          "n_val": 2,
+          "n_local_test": 2
+        },
+        "49": {
+          "domain": "legal",
+          "n_train": 92,
+          "n_val": 11,
+          "n_local_test": 11
+        },
+        "50": {
+          "domain": "math",
+          "n_train": 30,
+          "n_val": 3,
+          "n_local_test": 3
+        },
+        "51": {
+          "domain": "math",
+          "n_train": 138,
+          "n_val": 17,
+          "n_local_test": 17
+        },
+        "52": {
+          "domain": "math",
+          "n_train": 161,
+          "n_val": 19,
+          "n_local_test": 19
+        },
+        "53": {
+          "domain": "math",
+          "n_train": 137,
+          "n_val": 17,
+          "n_local_test": 17
+        },
+        "54": {
+          "domain": "math",
+          "n_train": 154,
+          "n_val": 19,
+          "n_local_test": 19
+        },
+        "55": {
+          "domain": "math",
+          "n_train": 105,
+          "n_val": 13,
+          "n_local_test": 13
+        },
+        "56": {
+          "domain": "math",
+          "n_train": 243,
+          "n_val": 30,
+          "n_local_test": 30
+        },
+        "57": {
+          "domain": "math",
+          "n_train": 89,
+          "n_val": 11,
+          "n_local_test": 11
+        },
+        "58": {
+          "domain": "math",
+          "n_train": 328,
+          "n_val": 41,
+          "n_local_test": 41
+        },
+        "59": {
+          "domain": "math",
+          "n_train": 61,
+          "n_val": 7,
+          "n_local_test": 7
+        },
+        "60": {
+          "domain": "medical",
+          "n_train": 89,
+          "n_val": 10,
+          "n_local_test": 10
+        },
+        "61": {
+          "domain": "medical",
+          "n_train": 167,
+          "n_val": 20,
+          "n_local_test": 20
+        },
+        "62": {
+          "domain": "medical",
+          "n_train": 190,
+          "n_val": 23,
+          "n_local_test": 23
+        },
+        "63": {
+          "domain": "medical",
+          "n_train": 191,
+          "n_val": 23,
+          "n_local_test": 23
+        },
+        "64": {
+          "domain": "medical",
+          "n_train": 176,
+          "n_val": 22,
+          "n_local_test": 22
+        },
+        "65": {
+          "domain": "medical",
+          "n_train": 153,
+          "n_val": 18,
+          "n_local_test": 18
+        },
+        "66": {
+          "domain": "medical",
+          "n_train": 241,
+          "n_val": 30,
+          "n_local_test": 30
+        },
+        "67": {
+          "domain": "medical",
+          "n_train": 40,
+          "n_val": 4,
+          "n_local_test": 4
+        },
+        "68": {
+          "domain": "medical",
+          "n_train": 48,
+          "n_val": 5,
+          "n_local_test": 5
+        },
+        "69": {
+          "domain": "medical",
+          "n_train": 157,
+          "n_val": 19,
+          "n_local_test": 19
+        }
+      }
+    },
+    "row_counts_by_client": {
+      "train": {
+        "0": 88,
+        "1": 163,
+        "2": 89,
+        "3": 155,
+        "4": 110,
+        "5": 21,
+        "6": 61,
+        "7": 67,
+        "8": 222,
+        "9": 472,
+        "10": 35,
+        "11": 21,
+        "12": 37,
+        "13": 40,
+        "14": 26,
+        "15": 41,
+        "16": 35,
+        "17": 40,
+        "18": 31,
+        "19": 40,
+        "20": 69,
+        "21": 167,
+        "22": 150,
+        "23": 240,
+        "24": 153,
+        "25": 72,
+        "26": 247,
+        "27": 70,
+        "28": 239,
+        "29": 45,
+        "30": 119,
+        "31": 109,
+        "32": 269,
+        "33": 114,
+        "34": 175,
+        "35": 163,
+        "36": 204,
+        "37": 106,
+        "38": 56,
+        "39": 133,
+        "40": 151,
+        "41": 84,
+        "42": 107,
+        "43": 69,
+        "44": 50,
+        "45": 336,
+        "46": 248,
+        "47": 290,
+        "48": 21,
+        "49": 92,
+        "50": 30,
+        "51": 138,
+        "52": 161,
+        "53": 137,
+        "54": 154,
+        "55": 105,
+        "56": 243,
+        "57": 89,
+        "58": 328,
+        "59": 61,
+        "60": 89,
+        "61": 167,
+        "62": 190,
+        "63": 191,
+        "64": 176,
+        "65": 153,
+        "66": 241,
+        "67": 40,
+        "68": 48,
+        "69": 157
+      },
+      "val": {
+        "0": 11,
+        "1": 20,
+        "2": 11,
+        "3": 19,
+        "4": 13,
+        "5": 2,
+        "6": 7,
+        "7": 8,
+        "8": 27,
+        "9": 58,
+        "10": 4,
+        "11": 2,
+        "12": 4,
+        "13": 5,
+        "14": 3,
+        "15": 5,
+        "16": 4,
+        "17": 5,
+        "18": 3,
+        "19": 5,
+        "20": 8,
+        "21": 20,
+        "22": 18,
+        "23": 29,
+        "24": 18,
+        "25": 9,
+        "26": 30,
+        "27": 8,
+        "28": 29,
+        "29": 5,
+        "30": 14,
+        "31": 13,
+        "32": 33,
+        "33": 14,
+        "34": 21,
+        "35": 20,
+        "36": 25,
+        "37": 13,
+        "38": 7,
+        "39": 16,
+        "40": 18,
+        "41": 10,
+        "42": 13,
+        "43": 8,
+        "44": 6,
+        "45": 42,
+        "46": 30,
+        "47": 36,
+        "48": 2,
+        "49": 11,
+        "50": 3,
+        "51": 17,
+        "52": 19,
+        "53": 17,
+        "54": 19,
+        "55": 13,
+        "56": 30,
+        "57": 11,
+        "58": 41,
+        "59": 7,
+        "60": 10,
+        "61": 20,
+        "62": 23,
+        "63": 23,
+        "64": 22,
+        "65": 18,
+        "66": 30,
+        "67": 4,
+        "68": 5,
+        "69": 19
+      },
+      "test_local": {
+        "0": 11,
+        "1": 20,
+        "2": 11,
+        "3": 19,
+        "4": 13,
+        "5": 2,
+        "6": 7,
+        "7": 8,
+        "8": 27,
+        "9": 58,
+        "10": 4,
+        "11": 2,
+        "12": 4,
+        "13": 5,
+        "14": 3,
+        "15": 5,
+        "16": 4,
+        "17": 5,
+        "18": 3,
+        "19": 5,
+        "20": 8,
+        "21": 20,
+        "22": 18,
+        "23": 29,
+        "24": 18,
+        "25": 9,
+        "26": 30,
+        "27": 8,
+        "28": 29,
+        "29": 5,
+        "30": 14,
+        "31": 13,
+        "32": 33,
+        "33": 14,
+        "34": 21,
+        "35": 20,
+        "36": 25,
+        "37": 13,
+        "38": 7,
+        "39": 16,
+        "40": 18,
+        "41": 10,
+        "42": 13,
+        "43": 8,
+        "44": 6,
+        "45": 42,
+        "46": 30,
+        "47": 36,
+        "48": 2,
+        "49": 11,
+        "50": 3,
+        "51": 17,
+        "52": 19,
+        "53": 17,
+        "54": 19,
+        "55": 13,
+        "56": 30,
+        "57": 11,
+        "58": 41,
+        "59": 7,
+        "60": 10,
+        "61": 20,
+        "62": 23,
+        "63": 23,
+        "64": 22,
+        "65": 18,
+        "66": 30,
+        "67": 4,
+        "68": 5,
+        "69": 19
+      },
+      "test_domain": {},
+      "test_global": {}
+    },
+    "row_counts_by_domain": {
+      "train": {
+        "code": 1448,
+        "education": 346,
+        "finance": 1452,
+        "general": 1448,
+        "legal": 1448,
+        "math": 1446,
+        "medical": 1452
+      },
+      "val": {
+        "code": 176,
+        "education": 40,
+        "finance": 174,
+        "general": 176,
+        "legal": 176,
+        "math": 177,
+        "medical": 174
+      },
+      "test_local": {
+        "code": 176,
+        "education": 40,
+        "finance": 174,
+        "general": 176,
+        "legal": 176,
+        "math": 177,
+        "medical": 174
+      },
+      "test_domain": {
+        "code": 200,
+        "education": 47,
+        "finance": 200,
+        "general": 200,
+        "legal": 200,
+        "math": 200,
+        "medical": 200
+      },
+      "test_global": {
+        "code": 200,
+        "education": 47,
+        "finance": 200,
+        "general": 200,
+        "legal": 200,
+        "math": 200,
+        "medical": 200
+      }
+    }
+  },
+  "effective_hparams": {
+    "agg_type": "fedalt",
+    "rounds": 1,
+    "local_epochs": 1,
+    "lr": 0.0002,
+    "seed": 43,
+    "lora_r": 8,
+    "lora_alpha": 16,
+    "lora_dropout": 0.05,
+    "target_modules": "q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj",
+    "global_b_mix_mu": 0.0,
+    "global_b_mix_mu_note": "inactive_for_this_agg"
+  },
+  "recommended_primary_metrics": [
+    "domain_macro_token_accuracy",
+    "domain_macro_perplexity",
+    "worst_domain_token_accuracy",
+    "worst_domain_perplexity"
+  ],
+  "communication": {
+    "agg_type": "fedalt",
+    "down_bytes_per_client": 9768960,
+    "up_bytes_per_client": 9768960,
+    "effective_down_bytes_per_client": 9768960,
+    "effective_up_bytes_per_client": 9768960,
+    "downlink_policy": "raw",
+    "v8_a_refresh_rounds": 0,
+    "v8_a_refresh_fraction": 0.0
+  },
+  "rounds": [
+    {
+      "round": 1,
+      "domain_macro_token_accuracy": 0.5853974070953906,
+      "best_domain_macro_token_accuracy": 0.5853974070953906,
+      "worst_domain_token_accuracy": 0.4702248133545844,
+      "best_worst_domain_token_accuracy": 0.4702248133545844,
+      "domain_macro_perplexity": 6.788301439675359,
+      "best_domain_macro_perplexity": 6.788301439675359,
+      "worst_domain_perplexity": 10.671360332140349,
+      "best_worst_domain_perplexity": 10.671360332140349,
+      "domain_macro_loss": 1.853462252039618,
+      "best_domain_macro_loss": 1.853462252039618,
+      "worst_domain_loss": 2.366759595513344,
+      "best_worst_domain_loss": 2.366759595513344,
+      "domain_metrics": {
+        "code": {
+          "loss": 1.3358695682001043,
+          "token_accuracy": 0.686692509599961,
+          "perplexity": 3.8037806686278186
+        },
+        "education": {
+          "loss": 1.898828551191721,
+          "token_accuracy": 0.5855175855792378,
+          "perplexity": 6.679780449020806
+        },
+        "finance": {
+          "loss": 2.366759595513344,
+          "token_accuracy": 0.4702248133545844,
+          "perplexity": 10.671360332140349
+        },
+        "general": {
+          "loss": 1.8848235080307376,
+          "token_accuracy": 0.5995647570874016,
+          "perplexity": 6.5867639297960565
+        },
+        "legal": {
+          "loss": 2.0975393004959093,
+          "token_accuracy": 0.525999280518027,
+          "perplexity": 8.165401103128978
+        },
+        "math": {
+          "loss": 1.338945992993457,
+          "token_accuracy": 0.6829632949613134,
+          "perplexity": 3.816552754248271
+        },
+        "medical": {
+          "loss": 2.0514692478520526,
+          "token_accuracy": 0.5468196085672082,
+          "perplexity": 7.794470840765239
+        }
+      },
+      "client_local_macro_token_accuracy": 0.5927727810183262,
+      "client_local_macro_perplexity": 7.031815831878955,
+      "client_local_macro_loss": 1.817329809989183,
+      "off_domain_macro_token_accuracy": 0.5838118562494164,
+      "off_domain_macro_perplexity": 6.8621756983796285,
+      "off_domain_macro_loss": 1.8637530232627841,
+      "in_domain_domain_test_macro_token_accuracy": 0.5949107121712347,
+      "in_domain_domain_test_macro_perplexity": 6.345055887449742,
+      "in_domain_domain_test_macro_loss": 1.7917176247006217,
+      "in_domain_domain_test_metrics": {
+        "code": {
+          "loss": 1.3203018667157163,
+          "token_accuracy": 0.6899157876828854,
+          "perplexity": 3.745563595531253,
+          "num_clients": 10
+        },
+        "education": {
+          "loss": 1.8819515482239102,
+          "token_accuracy": 0.5903616933826552,
+          "perplexity": 6.566626450555924,
+          "num_clients": 10
+        },
+        "finance": {
+          "loss": 2.305342468261719,
+          "token_accuracy": 0.47486788021139165,
+          "perplexity": 10.042880035527721,
+          "num_clients": 10
+        },
+        "general": {
+          "loss": 1.862810350542373,
+          "token_accuracy": 0.6018997764968826,
+          "perplexity": 6.444616246449513,
+          "num_clients": 10
+        },
+        "legal": {
+          "loss": 1.953030514717102,
+          "token_accuracy": 0.5514689423614997,
+          "perplexity": 7.080474211724945,
+          "num_clients": 10
+        },
+        "math": {
+          "loss": 1.2884126517176626,
+          "token_accuracy": 0.6903005284015851,
+          "perplexity": 3.6294631886162754,
+          "num_clients": 10
+        },
+        "medical": {
+          "loss": 1.9301739727258684,
+          "token_accuracy": 0.565560376661743,
+          "perplexity": 6.905767483742561,
+          "num_clients": 10
+        }
+      },
+      "in_domain_domain_test_worst_token_accuracy": 0.47486788021139165,
+      "in_domain_domain_test_worst_perplexity": 10.042880035527721,
+      "in_domain_domain_test_worst_loss": 2.305342468261719,
+      "personalization_gap_token_accuracy": 0.00896092476890975,
+      "personalization_gap_perplexity": -0.1696401334993265,
+      "personalization_gap_loss": 0.046423213273601105
+    }
+  ],
+  "recommended_kpis": {
+    "token_accuracy": [
+      "domain_macro_token_accuracy",
+      "worst_domain_token_accuracy",
+      "client_local_macro_token_accuracy",
+      "in_domain_domain_test_macro_token_accuracy",
+      "in_domain_domain_test_worst_token_accuracy",
+      "off_domain_macro_token_accuracy"
+    ],
+    "perplexity": [
+      "domain_macro_perplexity",
+      "worst_domain_perplexity",
+      "client_local_macro_perplexity",
+      "in_domain_domain_test_macro_perplexity",
+      "in_domain_domain_test_worst_perplexity",
+      "off_domain_macro_perplexity"
+    ],
+    "communication": {
+      "path": "communication",
+      "fields": [
+        "down_bytes_per_client",
+        "up_bytes_per_client",
+        "agg_type"
+      ]
+    },
+    "fedplora_oneshot_conflict": {
+      "path": "rounds[i].fedplora_oneshot_conflict",
+      "note": "Present after FedPLoRA-Oneshot server aggregation; typically mean_conflict, max_conflict, high_conflict_row_frac, mean_init_gate. Other agg_type: omit or {}. Eval-only reload uses checkpoint meta when available."
+    },
+    "personalization_gaps": [
+      "personalization_gap_token_accuracy",
+      "personalization_gap_perplexity"
+    ]
+  },
+  "recommended_primary_personalization_metrics": [
+    "client_local_macro_token_accuracy",
+    "client_local_macro_perplexity",
+    "in_domain_domain_test_macro_token_accuracy",
+    "in_domain_domain_test_macro_perplexity",
+    "in_domain_domain_test_worst_token_accuracy",
+    "in_domain_domain_test_worst_perplexity",
+    "off_domain_macro_token_accuracy",
+    "off_domain_macro_perplexity",
+    "personalization_gap_token_accuracy",
+    "personalization_gap_perplexity"
+  ]
+}

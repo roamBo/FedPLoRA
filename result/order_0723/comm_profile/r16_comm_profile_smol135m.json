@@ -1,0 +1,41 @@
+{
+  "model": "/data/yaominghao/gb/models/SmolLM2-135M",
+  "methods": [
+    {
+      "agg_type": "normal",
+      "down_bytes_per_client": 19537920,
+      "up_bytes_per_client": 19537920,
+      "effective_down_bytes_per_client": 19537920,
+      "effective_up_bytes_per_client": 19537920,
+      "downlink_policy": "raw",
+      "v8_a_refresh_rounds": 0
+    },
+    {
+      "agg_type": "fedalt",
+      "down_bytes_per_client": 19537920,
+      "up_bytes_per_client": 19537920,
+      "effective_down_bytes_per_client": 19537920,
+      "effective_up_bytes_per_client": 19537920,
+      "downlink_policy": "raw",
+      "v8_a_refresh_rounds": 0
+    },
+    {
+      "agg_type": "fedplora_v13a_os",
+      "down_bytes_per_client": 11179920,
+      "up_bytes_per_client": 11179920,
+      "effective_down_bytes_per_client": 11179920,
+      "effective_up_bytes_per_client": 11179920,
+      "downlink_policy": "cache_shared_a_plus_true_v13_a_sketch",
+      "v8_a_refresh_rounds": 10
+    },
+    {
+      "agg_type": "yoco",
+      "down_bytes_per_client": 19537920,
+      "up_bytes_per_client": 19537920,
+      "effective_down_bytes_per_client": 19537920,
+      "effective_up_bytes_per_client": 19537920,
+      "downlink_policy": "raw",
+      "v8_a_refresh_rounds": 0
+    }
+  ]
+}

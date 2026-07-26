@@ -1,0 +1,2299 @@
+{
+  "protocol_tag": "strict_heldout:localtest:policy=offset:offset=0:scope=heldout:route_probe=1",
+  "config": {
+    "model": "/data/yaominghao/gb/models/Qwen2.5-3B",
+    "benchmark_dir": "/data/yaominghao/gb/FedPLoRA/data/domain_benchmark_flowertune_mixed_20c_dir05/seed_42",
+    "target_modules": "q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj",
+    "max_steps": 0,
+    "eval_max_batches": 0,
+    "v7_b_mode": "mean",
+    "local_epochs": 1,
+    "max_train_samples_per_client": 0,
+    "cold_start": true,
+    "eval_on_local": true,
+    "v11c_mu": 0.4,
+    "select_candidates": "global,coldstart,coldstart_geom",
+    "held_out_clients": "auto_one_per_domain",
+    "held_out_policy": "offset",
+    "held_out_offset": 0,
+    "held_out_eval_all": false,
+    "few_shot_caps": "1",
+    "held_out_route_probe_samples": 1,
+    "held_out_route_metrics": "flat_b_cosine,subspace,relative_l2,delta_w_cosine,nearest_client_subspace,largest_domain,random,oracle",
+    "onboarding_accounting": true
+  },
+  "benchmark_fingerprint": {
+    "fingerprint_version": 1,
+    "split_dir": "/data/yaominghao/gb/FedPLoRA/data/domain_benchmark_flowertune_mixed_20c_dir05/seed_42",
+    "combined_sha256": "866038870e74169c0ff9c453dc7151be13d9ef6c7d0a2f34a292c79c698ed10d",
+    "files_sha256": {
+      "clients.json": "8de82aa8165dac14d9a0bf1327fd4b2f8c070cbe34ee445a5e7add54bdec0141",
+      "domain_stats.json": "a2e289e28717bb2a618ffd38a658943a3754add7b9acffa9d105653b576097e2",
+      "train.jsonl": "bbf8d42da768abe6e4d88ec3dafc0c92a927f7f9bf1646cbaec67254a671b8e6",
+      "val.jsonl": "3df0323f8dafe9ea20e61eabe146a76b226d7583f4f4b52181c9cff2ade5e497",
+      "test_local.jsonl": "7beb6a1238f2ae694352f71e132b41e28d16420f8b16db8e11f3ab9f5a37e3c5",
+      "test_domain.jsonl": "dded64def7dc03766bbff2b22c18501ad6ad4eac0a69ae1b41a211b6edcf23ac",
+      "test_global.jsonl": "dded64def7dc03766bbff2b22c18501ad6ad4eac0a69ae1b41a211b6edcf23ac"
+    },
+    "file_sizes": {
+      "clients.json": 2290,
+      "domain_stats.json": 463,
+      "train.jsonl": 7362494,
+      "val.jsonl": 939675,
+      "test_local.jsonl": 944272,
+      "test_domain.jsonl": 997462,
+      "test_global.jsonl": 997462
+    },
+    "split_counts": {
+      "train": 11118,
+      "val": 1381,
+      "test_local": 1381,
+      "test_domain": 1541,
+      "test_global": 1541
+    },
+    "clients": {
+      "num_clients": 20,
+      "domain_counts": {
+        "code": 5,
+        "finance": 5,
+        "general": 5,
+        "medical": 5
+      },
+      "total_n_train_manifest": 11118,
+      "total_n_val_manifest": 1381,
+      "total_n_local_test_manifest": 1381,
+      "min_n_train": 243,
+      "median_n_train": 528.0,
+      "max_n_train": 1024,
+      "per_client_manifest": {
+        "0": {
+          "domain": "code",
+          "n_train": 372,
+          "n_val": 46,
+          "n_local_test": 46
+        },
+        "1": {
+          "domain": "code",
+          "n_train": 836,
+          "n_val": 104,
+          "n_local_test": 104
+        },
+        "2": {
+          "domain": "code",
+          "n_train": 553,
+          "n_val": 69,
+          "n_local_test": 69
+        },
+        "3": {
+          "domain": "code",
+          "n_train": 304,
+          "n_val": 38,
+          "n_local_test": 38
+        },
+        "4": {
+          "domain": "code",
+          "n_train": 817,
+          "n_val": 102,
+          "n_local_test": 102
+        },
+        "5": {
+          "domain": "finance",
+          "n_train": 361,
+          "n_val": 44,
+          "n_local_test": 44
+        },
+        "6": {
+          "domain": "finance",
+          "n_train": 408,
+          "n_val": 51,
+          "n_local_test": 51
+        },
+        "7": {
+          "domain": "finance",
+          "n_train": 1024,
+          "n_val": 128,
+          "n_local_test": 128
+        },
+        "8": {
+          "domain": "finance",
+          "n_train": 305,
+          "n_val": 38,
+          "n_local_test": 38
+        },
+        "9": {
+          "domain": "finance",
+          "n_train": 374,
+          "n_val": 46,
+          "n_local_test": 46
+        },
+        "10": {
+          "domain": "general",
+          "n_train": 867,
+          "n_val": 108,
+          "n_local_test": 108
+        },
+        "11": {
+          "domain": "general",
+          "n_train": 528,
+          "n_val": 65,
+          "n_local_test": 65
+        },
+        "12": {
+          "domain": "general",
+          "n_train": 824,
+          "n_val": 102,
+          "n_local_test": 102
+        },
+        "13": {
+          "domain": "general",
+          "n_train": 337,
+          "n_val": 41,
+          "n_local_test": 41
+        },
+        "14": {
+          "domain": "general",
+          "n_train": 330,
+          "n_val": 41,
+          "n_local_test": 41
+        },
+        "15": {
+          "domain": "medical",
+          "n_train": 555,
+          "n_val": 69,
+          "n_local_test": 69
+        },
+        "16": {
+          "domain": "medical",
+          "n_train": 713,
+          "n_val": 89,
+          "n_local_test": 89
+        },
+        "17": {
+          "domain": "medical",
+          "n_train": 855,
+          "n_val": 106,
+          "n_local_test": 106
+        },
+        "18": {
+          "domain": "medical",
+          "n_train": 243,
+          "n_val": 30,
+          "n_local_test": 30
+        },
+        "19": {
+          "domain": "medical",
+          "n_train": 512,
+          "n_val": 64,
+          "n_local_test": 64
+        }
+      }
+    },
+    "row_counts_by_client": {
+      "train": {
+        "0": 372,
+        "1": 836,
+        "2": 553,
+        "3": 304,
+        "4": 817,
+        "5": 361,
+        "6": 408,
+        "7": 1024,
+        "8": 305,
+        "9": 374,
+        "10": 867,
+        "11": 528,
+        "12": 824,
+        "13": 337,
+        "14": 330,
+        "15": 555,
+        "16": 713,
+        "17": 855,
+        "18": 243,
+        "19": 512
+      },
+      "val": {
+        "0": 46,
+        "1": 104,
+        "2": 69,
+        "3": 38,
+        "4": 102,
+        "5": 44,
+        "6": 51,
+        "7": 128,
+        "8": 38,
+        "9": 46,
+        "10": 108,
+        "11": 65,
+        "12": 102,
+        "13": 41,
+        "14": 41,
+        "15": 69,
+        "16": 89,
+        "17": 106,
+        "18": 30,
+        "19": 64
+      },
+      "test_local": {
+        "0": 46,
+        "1": 104,
+        "2": 69,
+        "3": 38,
+        "4": 102,
+        "5": 44,
+        "6": 51,
+        "7": 128,
+        "8": 38,
+        "9": 46,
+        "10": 108,
+        "11": 65,
+        "12": 102,
+        "13": 41,
+        "14": 41,
+        "15": 69,
+        "16": 89,
+        "17": 106,
+        "18": 30,
+        "19": 64
+      },
+      "test_domain": {},
+      "test_global": {}
+    },
+    "row_counts_by_domain": {
+      "train": {
+        "code": 2882,
+        "finance": 2472,
+        "general": 2886,
+        "medical": 2878
+      },
+      "val": {
+        "code": 359,
+        "finance": 307,
+        "general": 357,
+        "medical": 358
+      },
+      "test_local": {
+        "code": 359,
+        "finance": 307,
+        "general": 357,
+        "medical": 358
+      },
+      "test_domain": {
+        "code": 400,
+        "finance": 342,
+        "general": 400,
+        "medical": 399
+      },
+      "test_global": {
+        "code": 400,
+        "finance": 342,
+        "general": 400,
+        "medical": 399
+      }
+    }
+  },
+  "eval_objective": "per_client_local_test",
+  "strict_held_out": {
+    "enabled": true,
+    "selection_policy": "offset",
+    "selection_offset": 0,
+    "held_out_clients": [
+      0,
+      5,
+      10,
+      15
+    ],
+    "train_clients": [
+      1,
+      2,
+      3,
+      4,
+      6,
+      7,
+      8,
+      9,
+      11,
+      12,
+      13,
+      14,
+      16,
+      17,
+      18,
+      19
+    ],
+    "eval_clients": [
+      0,
+      5,
+      10,
+      15
+    ],
+    "held_out_domains": {
+      "0": "code",
+      "5": "finance",
+      "10": "general",
+      "15": "medical"
+    },
+    "held_out_client_manifest": {
+      "0": {
+        "domain": "code",
+        "n_train": 372,
+        "n_val": 46,
+        "n_local_test": 46,
+        "n_train_rows": 372,
+        "n_val_rows": 46,
+        "n_test_local_rows": 46
+      },
+      "5": {
+        "domain": "finance",
+        "n_train": 361,
+        "n_val": 44,
+        "n_local_test": 44,
+        "n_train_rows": 361,
+        "n_val_rows": 44,
+        "n_test_local_rows": 44
+      },
+      "10": {
+        "domain": "general",
+        "n_train": 867,
+        "n_val": 108,
+        "n_local_test": 108,
+        "n_train_rows": 867,
+        "n_val_rows": 108,
+        "n_test_local_rows": 108
+      },
+      "15": {
+        "domain": "medical",
+        "n_train": 555,
+        "n_val": 69,
+        "n_local_test": 69,
+        "n_train_rows": 555,
+        "n_val_rows": 69,
+        "n_test_local_rows": 69
+      }
+    },
+    "geom_route_domain_by_client": {
+      "0": "code",
+      "5": "finance",
+      "10": "code",
+      "15": "medical"
+    },
+    "geom_route_score_by_client": {
+      "0": 0.023002518340945244,
+      "5": 0.2888033390045166,
+      "10": 0.011032262817025185,
+      "15": 0.019494453445076942
+    },
+    "geom_route_top2_by_client": {
+      "0": [
+        {
+          "domain": "code",
+          "score": 0.023002518340945244
+        },
+        {
+          "domain": "general",
+          "score": 0.00819673016667366
+        }
+      ],
+      "5": [
+        {
+          "domain": "finance",
+          "score": 0.2888033390045166
+        },
+        {
+          "domain": "general",
+          "score": 0.020330920815467834
+        }
+      ],
+      "10": [
+        {
+          "domain": "code",
+          "score": 0.011032262817025185
+        },
+        {
+          "domain": "finance",
+          "score": 0.006624193396419287
+        }
+      ],
+      "15": [
+        {
+          "domain": "medical",
+          "score": 0.019494453445076942
+        },
+        {
+          "domain": "code",
+          "score": 0.0032387464307248592
+        }
+      ]
+    },
+    "geom_route_margin_by_client": {
+      "0": 0.014805788174271584,
+      "5": 0.26847241818904877,
+      "10": 0.004408069420605898,
+      "15": 0.016255707014352083
+    },
+    "geom_route_oracle_match_by_client": {
+      "0": true,
+      "5": true,
+      "10": false,
+      "15": true
+    },
+    "geom_route_oracle_match_rate": 0.75,
+    "geom_route_summary": {
+      "num_routed": 4,
+      "oracle_match_rate": 0.75,
+      "mean_margin": 0.07598549569956958,
+      "min_margin": 0.004408069420605898
+    },
+    "route_audits": {
+      "flat_b_cosine": {
+        "route_domain_by_client": {
+          "0": "code",
+          "5": "finance",
+          "10": "code",
+          "15": "medical"
+        },
+        "score_by_client": {
+          "0": 0.023002518340945244,
+          "5": 0.2888033390045166,
+          "10": 0.011032262817025185,
+          "15": 0.019494453445076942
+        },
+        "top2_by_client": {
+          "0": [
+            {
+              "domain": "code",
+              "score": 0.023002518340945244
+            },
+            {
+              "domain": "general",
+              "score": 0.00819673016667366
+            }
+          ],
+          "5": [
+            {
+              "domain": "finance",
+              "score": 0.2888033390045166
+            },
+            {
+              "domain": "general",
+              "score": 0.020330920815467834
+            }
+          ],
+          "10": [
+            {
+              "domain": "code",
+              "score": 0.011032262817025185
+            },
+            {
+              "domain": "finance",
+              "score": 0.006624193396419287
+            }
+          ],
+          "15": [
+            {
+              "domain": "medical",
+              "score": 0.019494453445076942
+            },
+            {
+              "domain": "code",
+              "score": 0.0032387464307248592
+            }
+          ]
+        },
+        "margin_by_client": {
+          "0": 0.014805788174271584,
+          "5": 0.26847241818904877,
+          "10": 0.004408069420605898,
+          "15": 0.016255707014352083
+        },
+        "oracle_match_by_client": {
+          "0": true,
+          "5": true,
+          "10": false,
+          "15": true
+        },
+        "route_compute_seconds_by_client": {
+          "0": 21.326635191217065,
+          "5": 22.309677019016817,
+          "10": 21.429028518032283,
+          "15": 21.034689716994762
+        },
+        "summary": {
+          "num_routed": 4,
+          "oracle_match_rate": 0.75,
+          "mean_margin": 0.07598549569956958,
+          "mean_route_compute_seconds": 21.52500761131523
+        }
+      },
+      "subspace": {
+        "route_domain_by_client": {
+          "0": "code",
+          "5": "finance",
+          "10": "general",
+          "15": "medical"
+        },
+        "score_by_client": {
+          "0": 0.10921439070934577,
+          "5": 0.26043022761032697,
+          "10": 0.10529424277474246,
+          "15": 0.1127681437850235
+        },
+        "top2_by_client": {
+          "0": [
+            {
+              "domain": "code",
+              "score": 0.10921439070934577
+            },
+            {
+              "domain": "general",
+              "score": 0.10254402231011125
+            }
+          ],
+          "5": [
+            {
+              "domain": "finance",
+              "score": 0.26043022761032697
+            },
+            {
+              "domain": "code",
+              "score": 0.10396246838989476
+            }
+          ],
+          "10": [
+            {
+              "domain": "general",
+              "score": 0.10529424277474246
+            },
+            {
+              "domain": "code",
+              "score": 0.10447983881310811
+            }
+          ],
+          "15": [
+            {
+              "domain": "medical",
+              "score": 0.1127681437850235
+            },
+            {
+              "domain": "general",
+              "score": 0.1027364674733863
+            }
+          ]
+        },
+        "margin_by_client": {
+          "0": 0.006670368399234516,
+          "5": 0.1564677592204322,
+          "10": 0.0008144039616343468,
+          "15": 0.010031676311637205
+        },
+        "oracle_match_by_client": {
+          "0": true,
+          "5": true,
+          "10": true,
+          "15": true
+        },
+        "route_compute_seconds_by_client": {
+          "0": 731.4944162480533,
+          "5": 720.9330530618317,
+          "10": 434.104606868932,
+          "15": 24.91437390795909
+        },
+        "summary": {
+          "num_routed": 4,
+          "oracle_match_rate": 1.0,
+          "mean_margin": 0.04349605197323457,
+          "mean_route_compute_seconds": 477.86161252169404
+        }
+      },
+      "relative_l2": {
+        "route_domain_by_client": {
+          "0": "finance",
+          "5": "finance",
+          "10": "finance",
+          "15": "finance"
+        },
+        "score_by_client": {
+          "0": -0.8942890602241779,
+          "5": -0.8596503389722124,
+          "10": -0.8931338310510163,
+          "15": -0.8934232315795961
+        },
+        "top2_by_client": {
+          "0": [
+            {
+              "domain": "finance",
+              "score": -0.8942890602241779
+            },
+            {
+              "domain": "general",
+              "score": -0.8997898955098806
+            }
+          ],
+          "5": [
+            {
+              "domain": "finance",
+              "score": -0.8596503389722124
+            },
+            {
+              "domain": "general",
+              "score": -0.8975700237177457
+            }
+          ],
+          "10": [
+            {
+              "domain": "finance",
+              "score": -0.8931338310510163
+            },
+            {
+              "domain": "general",
+              "score": -0.900409429332174
+            }
+          ],
+          "15": [
+            {
+              "domain": "finance",
+              "score": -0.8934232315795961
+            },
+            {
+              "domain": "general",
+              "score": -0.9007143242706318
+            }
+          ]
+        },
+        "margin_by_client": {
+          "0": 0.0055008352857027765,
+          "5": 0.03791968474553331,
+          "10": 0.007275598281157758,
+          "15": 0.007291092691035672
+        },
+        "oracle_match_by_client": {
+          "0": false,
+          "5": true,
+          "10": false,
+          "15": false
+        },
+        "route_compute_seconds_by_client": {
+          "0": 0.8804794298484921,
+          "5": 0.1425637719221413,
+          "10": 0.14139259397052228,
+          "15": 0.13670820998959243
+        },
+        "summary": {
+          "num_routed": 4,
+          "oracle_match_rate": 0.25,
+          "mean_margin": 0.01449680275085738,
+          "mean_route_compute_seconds": 0.32528600143268704
+        }
+      },
+      "delta_w_cosine": {
+        "route_domain_by_client": {
+          "0": "code",
+          "5": "finance",
+          "10": "code",
+          "15": "medical"
+        },
+        "score_by_client": {
+          "0": 0.02255385848354203,
+          "5": 0.28678592632099387,
+          "10": 0.01080190302275846,
+          "15": 0.019034806020089275
+        },
+        "top2_by_client": {
+          "0": [
+            {
+              "domain": "code",
+              "score": 0.02255385848354203
+            },
+            {
+              "domain": "general",
+              "score": 0.008459892299793992
+            }
+          ],
+          "5": [
+            {
+              "domain": "finance",
+              "score": 0.28678592632099387
+            },
+            {
+              "domain": "general",
+              "score": 0.02017745559799892
+            }
+          ],
+          "10": [
+            {
+              "domain": "code",
+              "score": 0.01080190302275846
+            },
+            {
+              "domain": "finance",
+              "score": 0.006377548861167371
+            }
+          ],
+          "15": [
+            {
+              "domain": "medical",
+              "score": 0.019034806020089275
+            },
+            {
+              "domain": "code",
+              "score": 0.0034193024634237472
+            }
+          ]
+        },
+        "margin_by_client": {
+          "0": 0.014093966183748037,
+          "5": 0.26660847072299493,
+          "10": 0.004424354161591089,
+          "15": 0.015615503556665529
+        },
+        "oracle_match_by_client": {
+          "0": true,
+          "5": true,
+          "10": false,
+          "15": true
+        },
+        "route_compute_seconds_by_client": {
+          "0": 0.22737470897845924,
+          "5": 0.2143849190324545,
+          "10": 0.21512419497594237,
+          "15": 0.21654353407211602
+        },
+        "summary": {
+          "num_routed": 4,
+          "oracle_match_rate": 0.75,
+          "mean_margin": 0.0751855736562499,
+          "mean_route_compute_seconds": 0.21835683926474303
+        }
+      },
+      "nearest_client_subspace": {
+        "route_domain_by_client": {
+          "0": "code",
+          "5": "finance",
+          "10": "general",
+          "15": "medical"
+        },
+        "score_by_client": {
+          "0": 0.10895965163344665,
+          "5": 0.28768568349972606,
+          "10": 0.10480651425729905,
+          "15": 0.11248605021290363
+        },
+        "top2_by_client": {
+          "0": [
+            {
+              "domain": "code",
+              "score": 0.10895965163344665
+            },
+            {
+              "domain": "general",
+              "score": 0.10177862163751371
+            }
+          ],
+          "5": [
+            {
+              "domain": "finance",
+              "score": 0.28768568349972606
+            },
+            {
+              "domain": "code",
+              "score": 0.1014167764076283
+            }
+          ],
+          "10": [
+            {
+              "domain": "general",
+              "score": 0.10480651425729905
+            },
+            {
+              "domain": "code",
+              "score": 0.10395647382866295
+            }
+          ],
+          "15": [
+            {
+              "domain": "medical",
+              "score": 0.11248605021290363
+            },
+            {
+              "domain": "general",
+              "score": 0.10323753686887878
+            }
+          ]
+        },
+        "margin_by_client": {
+          "0": 0.007181029995932939,
+          "5": 0.18626890709209776,
+          "10": 0.0008500404286360952,
+          "15": 0.00924851334402485
+        },
+        "oracle_match_by_client": {
+          "0": true,
+          "5": true,
+          "10": true,
+          "15": true
+        },
+        "route_compute_seconds_by_client": {
+          "0": 3.6755161490291357,
+          "5": 3.6757299460005015,
+          "10": 4.1453006870578974,
+          "15": 4.1738406650256366
+        },
+        "summary": {
+          "num_routed": 4,
+          "oracle_match_rate": 1.0,
+          "mean_margin": 0.050887122715172914,
+          "mean_route_compute_seconds": 3.917596861778293
+        }
+      },
+      "largest_domain": {
+        "route_domain_by_client": {
+          "0": "code",
+          "5": "code",
+          "10": "code",
+          "15": "code"
+        },
+        "score_by_client": {
+          "0": 1.0,
+          "5": 1.0,
+          "10": 1.0,
+          "15": 1.0
+        },
+        "top2_by_client": {
+          "0": [
+            {
+              "domain": "code",
+              "score": 1.0
+            },
+            {
+              "domain": "finance",
+              "score": 0.0
+            }
+          ],
+          "5": [
+            {
+              "domain": "code",
+              "score": 1.0
+            },
+            {
+              "domain": "finance",
+              "score": 0.0
+            }
+          ],
+          "10": [
+            {
+              "domain": "code",
+              "score": 1.0
+            },
+            {
+              "domain": "finance",
+              "score": 0.0
+            }
+          ],
+          "15": [
+            {
+              "domain": "code",
+              "score": 1.0
+            },
+            {
+              "domain": "finance",
+              "score": 0.0
+            }
+          ]
+        },
+        "margin_by_client": {
+          "0": 1.0,
+          "5": 1.0,
+          "10": 1.0,
+          "15": 1.0
+        },
+        "oracle_match_by_client": {
+          "0": true,
+          "5": false,
+          "10": false,
+          "15": false
+        },
+        "route_compute_seconds_by_client": {
+          "0": 3.147288225591183e-05,
+          "5": 1.1326977983117104e-05,
+          "10": 1.1112075299024582e-05,
+          "15": 9.024981409311295e-06
+        },
+        "summary": {
+          "num_routed": 4,
+          "oracle_match_rate": 0.25,
+          "mean_margin": 1.0,
+          "mean_route_compute_seconds": 1.5734229236841202e-05
+        }
+      },
+      "random": {
+        "route_domain_by_client": {
+          "0": "medical",
+          "5": "code",
+          "10": "medical",
+          "15": "code"
+        },
+        "score_by_client": {
+          "0": 1.0,
+          "5": 1.0,
+          "10": 1.0,
+          "15": 1.0
+        },
+        "top2_by_client": {
+          "0": [
+            {
+              "domain": "medical",
+              "score": 1.0
+            },
+            {
+              "domain": "code",
+              "score": 0.0
+            }
+          ],
+          "5": [
+            {
+              "domain": "code",
+              "score": 1.0
+            },
+            {
+              "domain": "finance",
+              "score": 0.0
+            }
+          ],
+          "10": [
+            {
+              "domain": "medical",
+              "score": 1.0
+            },
+            {
+              "domain": "code",
+              "score": 0.0
+            }
+          ],
+          "15": [
+            {
+              "domain": "code",
+              "score": 1.0
+            },
+            {
+              "domain": "finance",
+              "score": 0.0
+            }
+          ]
+        },
+        "margin_by_client": {
+          "0": 1.0,
+          "5": 1.0,
+          "10": 1.0,
+          "15": 1.0
+        },
+        "oracle_match_by_client": {
+          "0": false,
+          "5": false,
+          "10": false,
+          "15": false
+        },
+        "route_compute_seconds_by_client": {
+          "0": 0.0003846539184451103,
+          "5": 7.274909876286983e-05,
+          "10": 5.2854884415864944e-05,
+          "15": 4.922086372971535e-05
+        },
+        "summary": {
+          "num_routed": 4,
+          "oracle_match_rate": 0.0,
+          "mean_margin": 1.0,
+          "mean_route_compute_seconds": 0.0001398696913383901
+        }
+      },
+      "oracle": {
+        "route_domain_by_client": {
+          "0": "code",
+          "5": "finance",
+          "10": "general",
+          "15": "medical"
+        },
+        "score_by_client": {
+          "0": 1.0,
+          "5": 1.0,
+          "10": 1.0,
+          "15": 1.0
+        },
+        "top2_by_client": {
+          "0": [
+            {
+              "domain": "code",
+              "score": 1.0
+            }
+          ],
+          "5": [
+            {
+              "domain": "finance",
+              "score": 1.0
+            }
+          ],
+          "10": [
+            {
+              "domain": "general",
+              "score": 1.0
+            }
+          ],
+          "15": [
+            {
+              "domain": "medical",
+              "score": 1.0
+            }
+          ]
+        },
+        "margin_by_client": {
+          "0": null,
+          "5": null,
+          "10": null,
+          "15": null
+        },
+        "oracle_match_by_client": {
+          "0": true,
+          "5": true,
+          "10": true,
+          "15": true
+        },
+        "route_compute_seconds_by_client": {
+          "0": 1.7490237951278687e-06,
+          "5": 6.700865924358368e-07,
+          "10": 6.121117621660233e-07,
+          "15": 6.100162863731384e-07
+        },
+        "summary": {
+          "num_routed": 4,
+          "oracle_match_rate": 1.0,
+          "mean_margin": null,
+          "mean_route_compute_seconds": 9.103096090257168e-07
+        }
+      }
+    }
+  },
+  "onboarding_accounting": {
+    "enabled": true,
+    "measurement_scope": {
+      "probe_train_seconds": "wall-clock local adapter training in this process",
+      "route_compute_seconds": "server-side scoring only; excludes transport",
+      "payload_bytes": "tensor bytes only; excludes protocol/serialization overhead",
+      "base_model": "excluded because it is assumed pre-installed"
+    },
+    "per_client": {
+      "0": {
+        "domain": "code",
+        "probe_samples": 1,
+        "probe_train_seconds": 0.5027993218973279,
+        "probe_signature_b_bytes": 33030144,
+        "probe_a_bytes": 26836992,
+        "probe_upload_bytes_by_metric": {
+          "flat_b_cosine": 33030144,
+          "subspace": 33030144,
+          "relative_l2": 33030144,
+          "delta_w_cosine": 59867136,
+          "nearest_client_subspace": 33030144,
+          "largest_domain": 0,
+          "random": 0,
+          "oracle": 0
+        },
+        "route_compute_seconds_by_metric": {
+          "flat_b_cosine": 21.326635191217065,
+          "subspace": 731.4944162480533,
+          "relative_l2": 0.8804794298484921,
+          "delta_w_cosine": 0.22737470897845924,
+          "nearest_client_subspace": 3.6755161490291357,
+          "largest_domain": 3.147288225591183e-05,
+          "random": 0.0003846539184451103,
+          "oracle": 1.7490237951278687e-06
+        },
+        "shared_a_download_bytes": 26836992,
+        "selected_expert_b_download_bytes_by_metric": {
+          "flat_b_cosine": 33030144,
+          "subspace": 33030144,
+          "relative_l2": 33030144,
+          "delta_w_cosine": 33030144,
+          "nearest_client_subspace": 33030144,
+          "largest_domain": 33030144,
+          "random": 33030144,
+          "oracle": 33030144,
+          "legacy_flat_b_cosine": 33030144
+        },
+        "full_adapter_download_bytes_by_metric": {
+          "flat_b_cosine": 59867136,
+          "subspace": 59867136,
+          "relative_l2": 59867136,
+          "delta_w_cosine": 59867136,
+          "nearest_client_subspace": 59867136,
+          "largest_domain": 59867136,
+          "random": 59867136,
+          "oracle": 59867136,
+          "legacy_flat_b_cosine": 59867136
+        }
+      },
+      "5": {
+        "domain": "finance",
+        "probe_samples": 1,
+        "probe_train_seconds": 0.7145948049146682,
+        "probe_signature_b_bytes": 33030144,
+        "probe_a_bytes": 26836992,
+        "probe_upload_bytes_by_metric": {
+          "flat_b_cosine": 33030144,
+          "subspace": 33030144,
+          "relative_l2": 33030144,
+          "delta_w_cosine": 59867136,
+          "nearest_client_subspace": 33030144,
+          "largest_domain": 0,
+          "random": 0,
+          "oracle": 0
+        },
+        "route_compute_seconds_by_metric": {
+          "flat_b_cosine": 22.309677019016817,
+          "subspace": 720.9330530618317,
+          "relative_l2": 0.1425637719221413,
+          "delta_w_cosine": 0.2143849190324545,
+          "nearest_client_subspace": 3.6757299460005015,
+          "largest_domain": 1.1326977983117104e-05,
+          "random": 7.274909876286983e-05,
+          "oracle": 6.700865924358368e-07
+        },
+        "shared_a_download_bytes": 26836992,
+        "selected_expert_b_download_bytes_by_metric": {
+          "flat_b_cosine": 33030144,
+          "subspace": 33030144,
+          "relative_l2": 33030144,
+          "delta_w_cosine": 33030144,
+          "nearest_client_subspace": 33030144,
+          "largest_domain": 33030144,
+          "random": 33030144,
+          "oracle": 33030144,
+          "legacy_flat_b_cosine": 33030144
+        },
+        "full_adapter_download_bytes_by_metric": {
+          "flat_b_cosine": 59867136,
+          "subspace": 59867136,
+          "relative_l2": 59867136,
+          "delta_w_cosine": 59867136,
+          "nearest_client_subspace": 59867136,
+          "largest_domain": 59867136,
+          "random": 59867136,
+          "oracle": 59867136,
+          "legacy_flat_b_cosine": 59867136
+        }
+      },
+      "10": {
+        "domain": "general",
+        "probe_samples": 1,
+        "probe_train_seconds": 0.9136891230009496,
+        "probe_signature_b_bytes": 33030144,
+        "probe_a_bytes": 26836992,
+        "probe_upload_bytes_by_metric": {
+          "flat_b_cosine": 33030144,
+          "subspace": 33030144,
+          "relative_l2": 33030144,
+          "delta_w_cosine": 59867136,
+          "nearest_client_subspace": 33030144,
+          "largest_domain": 0,
+          "random": 0,
+          "oracle": 0
+        },
+        "route_compute_seconds_by_metric": {
+          "flat_b_cosine": 21.429028518032283,
+          "subspace": 434.104606868932,
+          "relative_l2": 0.14139259397052228,
+          "delta_w_cosine": 0.21512419497594237,
+          "nearest_client_subspace": 4.1453006870578974,
+          "largest_domain": 1.1112075299024582e-05,
+          "random": 5.2854884415864944e-05,
+          "oracle": 6.121117621660233e-07
+        },
+        "shared_a_download_bytes": 26836992,
+        "selected_expert_b_download_bytes_by_metric": {
+          "flat_b_cosine": 33030144,
+          "subspace": 33030144,
+          "relative_l2": 33030144,
+          "delta_w_cosine": 33030144,
+          "nearest_client_subspace": 33030144,
+          "largest_domain": 33030144,
+          "random": 33030144,
+          "oracle": 33030144,
+          "legacy_flat_b_cosine": 33030144
+        },
+        "full_adapter_download_bytes_by_metric": {
+          "flat_b_cosine": 59867136,
+          "subspace": 59867136,
+          "relative_l2": 59867136,
+          "delta_w_cosine": 59867136,
+          "nearest_client_subspace": 59867136,
+          "largest_domain": 59867136,
+          "random": 59867136,
+          "oracle": 59867136,
+          "legacy_flat_b_cosine": 59867136
+        }
+      },
+      "15": {
+        "domain": "medical",
+        "probe_samples": 1,
+        "probe_train_seconds": 0.6280478341504931,
+        "probe_signature_b_bytes": 33030144,
+        "probe_a_bytes": 26836992,
+        "probe_upload_bytes_by_metric": {
+          "flat_b_cosine": 33030144,
+          "subspace": 33030144,
+          "relative_l2": 33030144,
+          "delta_w_cosine": 59867136,
+          "nearest_client_subspace": 33030144,
+          "largest_domain": 0,
+          "random": 0,
+          "oracle": 0
+        },
+        "route_compute_seconds_by_metric": {
+          "flat_b_cosine": 21.034689716994762,
+          "subspace": 24.91437390795909,
+          "relative_l2": 0.13670820998959243,
+          "delta_w_cosine": 0.21654353407211602,
+          "nearest_client_subspace": 4.1738406650256366,
+          "largest_domain": 9.024981409311295e-06,
+          "random": 4.922086372971535e-05,
+          "oracle": 6.100162863731384e-07
+        },
+        "shared_a_download_bytes": 26836992,
+        "selected_expert_b_download_bytes_by_metric": {
+          "flat_b_cosine": 33030144,
+          "subspace": 33030144,
+          "relative_l2": 33030144,
+          "delta_w_cosine": 33030144,
+          "nearest_client_subspace": 33030144,
+          "largest_domain": 33030144,
+          "random": 33030144,
+          "oracle": 33030144,
+          "legacy_flat_b_cosine": 33030144
+        },
+        "full_adapter_download_bytes_by_metric": {
+          "flat_b_cosine": 59867136,
+          "subspace": 59867136,
+          "relative_l2": 59867136,
+          "delta_w_cosine": 59867136,
+          "nearest_client_subspace": 59867136,
+          "largest_domain": 59867136,
+          "random": 59867136,
+          "oracle": 59867136,
+          "legacy_flat_b_cosine": 59867136
+        }
+      }
+    },
+    "summary": {
+      "num_clients": 4,
+      "mean_probe_train_seconds": 0.6897827709908597,
+      "mean_probe_signature_b_bytes": 33030144.0,
+      "shared_a_download_bytes": 26836992
+    }
+  },
+  "results": {
+    "base": {
+      "macro_acc": 0.7299890124361262,
+      "worst_acc": 0.6260869565217392,
+      "per_domain_acc": {
+        "code": 0.8304635761589404,
+        "finance": 0.6260869565217392,
+        "general": 0.7007619246425216,
+        "medical": 0.7626435924213039
+      },
+      "per_domain_loss": {
+        "code": 0.6317115922637333,
+        "finance": 1.7031509026237157,
+        "general": 1.0706242447966463,
+        "medical": 0.8166347175289691
+      },
+      "per_client_acc": {
+        "0": 0.8304635761589404,
+        "5": 0.6260869565217392,
+        "10": 0.7007619246425216,
+        "15": 0.7626435924213039
+      }
+    },
+    "global": {
+      "macro_acc": 0.7914979254763919,
+      "worst_acc": 0.7077549316355286,
+      "per_domain_acc": {
+        "code": 0.847682119205298,
+        "finance": 0.8347826086956521,
+        "general": 0.7077549316355286,
+        "medical": 0.7757720423690885
+      },
+      "per_domain_loss": {
+        "code": 0.511700941553179,
+        "finance": 0.3642657165941985,
+        "general": 1.0425232882888391,
+        "medical": 0.7683656696204052
+      },
+      "per_client_acc": {
+        "0": 0.847682119205298,
+        "5": 0.8347826086956521,
+        "10": 0.7077549316355286,
+        "15": 0.7757720423690885
+      }
+    },
+    "coldstart": {
+      "macro_acc": 0.806780200768306,
+      "worst_acc": 0.7127648470932053,
+      "per_domain_acc": {
+        "code": 0.8533112582781457,
+        "finance": 0.8782608695652174,
+        "general": 0.7127648470932053,
+        "medical": 0.7827838281366553
+      },
+      "per_domain_loss": {
+        "code": 0.48614570794516054,
+        "finance": 0.2449441469233969,
+        "general": 1.0174561681609078,
+        "medical": 0.7245484394367713
+      },
+      "per_client_acc": {
+        "0": 0.8533112582781457,
+        "5": 0.8782608695652174,
+        "10": 0.7127648470932053,
+        "15": 0.7827838281366553
+      }
+    },
+    "coldstart_geom": {
+      "macro_acc": 0.8057625616909654,
+      "worst_acc": 0.708694290783843,
+      "per_domain_acc": {
+        "code": 0.8533112582781457,
+        "finance": 0.8782608695652174,
+        "general": 0.708694290783843,
+        "medical": 0.7827838281366553
+      },
+      "per_domain_loss": {
+        "code": 0.48614570794516054,
+        "finance": 0.2449441469233969,
+        "general": 1.052484832095174,
+        "medical": 0.7245484394367713
+      },
+      "per_client_acc": {
+        "0": 0.8533112582781457,
+        "5": 0.8782608695652174,
+        "10": 0.708694290783843,
+        "15": 0.7827838281366553
+      },
+      "geom_route_domain_by_client": {
+        "0": "code",
+        "5": "finance",
+        "10": "code",
+        "15": "medical"
+      },
+      "geom_route_score_by_client": {
+        "0": 0.023002518340945244,
+        "5": 0.2888033390045166,
+        "10": 0.011032262817025185,
+        "15": 0.019494453445076942
+      },
+      "geom_route_top2_by_client": {
+        "0": [
+          {
+            "domain": "code",
+            "score": 0.023002518340945244
+          },
+          {
+            "domain": "general",
+            "score": 0.00819673016667366
+          }
+        ],
+        "5": [
+          {
+            "domain": "finance",
+            "score": 0.2888033390045166
+          },
+          {
+            "domain": "general",
+            "score": 0.020330920815467834
+          }
+        ],
+        "10": [
+          {
+            "domain": "code",
+            "score": 0.011032262817025185
+          },
+          {
+            "domain": "finance",
+            "score": 0.006624193396419287
+          }
+        ],
+        "15": [
+          {
+            "domain": "medical",
+            "score": 0.019494453445076942
+          },
+          {
+            "domain": "code",
+            "score": 0.0032387464307248592
+          }
+        ]
+      },
+      "geom_route_margin_by_client": {
+        "0": 0.014805788174271584,
+        "5": 0.26847241818904877,
+        "10": 0.004408069420605898,
+        "15": 0.016255707014352083
+      },
+      "geom_route_oracle_match_by_client": {
+        "0": true,
+        "5": true,
+        "10": false,
+        "15": true
+      },
+      "geom_route_oracle_match_rate": 0.75
+    },
+    "local_fewshot1": {
+      "macro_acc": 0.7457613532046398,
+      "worst_acc": 0.6869565217391305,
+      "per_domain_acc": {
+        "code": 0.8301324503311258,
+        "finance": 0.6869565217391305,
+        "general": 0.7010750443586264,
+        "medical": 0.7648813963896762
+      },
+      "per_domain_loss": {
+        "code": 0.629431636759777,
+        "finance": 1.1236278326615043,
+        "general": 1.069572232185382,
+        "medical": 0.8129684110195018
+      },
+      "per_client_acc": {
+        "0": 0.8301324503311258,
+        "5": 0.6869565217391305,
+        "10": 0.7010750443586264,
+        "15": 0.7648813963896762
+      }
+    },
+    "v11c_coldstart": {
+      "macro_acc": 0.8077913572324779,
+      "worst_acc": 0.7115123682287862,
+      "per_domain_acc": {
+        "code": 0.8536423841059603,
+        "finance": 0.8869565217391304,
+        "general": 0.7115123682287862,
+        "medical": 0.7790541548560346
+      },
+      "per_domain_loss": {
+        "code": 0.4871640448538673,
+        "finance": 0.2692364096641541,
+        "general": 1.0245847922503208,
+        "medical": 0.7351365662076376
+      },
+      "per_client_acc": {
+        "0": 0.8536423841059603,
+        "5": 0.8869565217391304,
+        "10": 0.7115123682287862,
+        "15": 0.7790541548560346
+      }
+    },
+    "coldstart_route_flat_b_cosine": {
+      "macro_acc": 0.8057625616909654,
+      "worst_acc": 0.708694290783843,
+      "per_domain_acc": {
+        "code": 0.8533112582781457,
+        "finance": 0.8782608695652174,
+        "general": 0.708694290783843,
+        "medical": 0.7827838281366553
+      },
+      "per_domain_loss": {
+        "code": 0.48614570794516054,
+        "finance": 0.2449441469233969,
+        "general": 1.052484832095174,
+        "medical": 0.7245484394367713
+      },
+      "per_client_acc": {
+        "0": 0.8533112582781457,
+        "5": 0.8782608695652174,
+        "10": 0.708694290783843,
+        "15": 0.7827838281366553
+      },
+      "route_metric": "flat_b_cosine",
+      "route_audit": {
+        "route_domain_by_client": {
+          "0": "code",
+          "5": "finance",
+          "10": "code",
+          "15": "medical"
+        },
+        "score_by_client": {
+          "0": 0.023002518340945244,
+          "5": 0.2888033390045166,
+          "10": 0.011032262817025185,
+          "15": 0.019494453445076942
+        },
+        "top2_by_client": {
+          "0": [
+            {
+              "domain": "code",
+              "score": 0.023002518340945244
+            },
+            {
+              "domain": "general",
+              "score": 0.00819673016667366
+            }
+          ],
+          "5": [
+            {
+              "domain": "finance",
+              "score": 0.2888033390045166
+            },
+            {
+              "domain": "general",
+              "score": 0.020330920815467834
+            }
+          ],
+          "10": [
+            {
+              "domain": "code",
+              "score": 0.011032262817025185
+            },
+            {
+              "domain": "finance",
+              "score": 0.006624193396419287
+            }
+          ],
+          "15": [
+            {
+              "domain": "medical",
+              "score": 0.019494453445076942
+            },
+            {
+              "domain": "code",
+              "score": 0.0032387464307248592
+            }
+          ]
+        },
+        "margin_by_client": {
+          "0": 0.014805788174271584,
+          "5": 0.26847241818904877,
+          "10": 0.004408069420605898,
+          "15": 0.016255707014352083
+        },
+        "oracle_match_by_client": {
+          "0": true,
+          "5": true,
+          "10": false,
+          "15": true
+        },
+        "route_compute_seconds_by_client": {
+          "0": 21.326635191217065,
+          "5": 22.309677019016817,
+          "10": 21.429028518032283,
+          "15": 21.034689716994762
+        },
+        "summary": {
+          "num_routed": 4,
+          "oracle_match_rate": 0.75,
+          "mean_margin": 0.07598549569956958,
+          "mean_route_compute_seconds": 21.52500761131523
+        }
+      }
+    },
+    "coldstart_route_subspace": {
+      "macro_acc": 0.806780200768306,
+      "worst_acc": 0.7127648470932053,
+      "per_domain_acc": {
+        "code": 0.8533112582781457,
+        "finance": 0.8782608695652174,
+        "general": 0.7127648470932053,
+        "medical": 0.7827838281366553
+      },
+      "per_domain_loss": {
+        "code": 0.48614570794516054,
+        "finance": 0.2449441469233969,
+        "general": 1.0174561681609078,
+        "medical": 0.7245484394367713
+      },
+      "per_client_acc": {
+        "0": 0.8533112582781457,
+        "5": 0.8782608695652174,
+        "10": 0.7127648470932053,
+        "15": 0.7827838281366553
+      },
+      "route_metric": "subspace",
+      "route_audit": {
+        "route_domain_by_client": {
+          "0": "code",
+          "5": "finance",
+          "10": "general",
+          "15": "medical"
+        },
+        "score_by_client": {
+          "0": 0.10921439070934577,
+          "5": 0.26043022761032697,
+          "10": 0.10529424277474246,
+          "15": 0.1127681437850235
+        },
+        "top2_by_client": {
+          "0": [
+            {
+              "domain": "code",
+              "score": 0.10921439070934577
+            },
+            {
+              "domain": "general",
+              "score": 0.10254402231011125
+            }
+          ],
+          "5": [
+            {
+              "domain": "finance",
+              "score": 0.26043022761032697
+            },
+            {
+              "domain": "code",
+              "score": 0.10396246838989476
+            }
+          ],
+          "10": [
+            {
+              "domain": "general",
+              "score": 0.10529424277474246
+            },
+            {
+              "domain": "code",
+              "score": 0.10447983881310811
+            }
+          ],
+          "15": [
+            {
+              "domain": "medical",
+              "score": 0.1127681437850235
+            },
+            {
+              "domain": "general",
+              "score": 0.1027364674733863
+            }
+          ]
+        },
+        "margin_by_client": {
+          "0": 0.006670368399234516,
+          "5": 0.1564677592204322,
+          "10": 0.0008144039616343468,
+          "15": 0.010031676311637205
+        },
+        "oracle_match_by_client": {
+          "0": true,
+          "5": true,
+          "10": true,
+          "15": true
+        },
+        "route_compute_seconds_by_client": {
+          "0": 731.4944162480533,
+          "5": 720.9330530618317,
+          "10": 434.104606868932,
+          "15": 24.91437390795909
+        },
+        "summary": {
+          "num_routed": 4,
+          "oracle_match_rate": 1.0,
+          "mean_margin": 0.04349605197323457,
+          "mean_route_compute_seconds": 477.86161252169404
+        }
+      }
+    },
+    "coldstart_route_relative_l2": {
+      "macro_acc": 0.793955191690158,
+      "worst_acc": 0.70065755140382,
+      "per_domain_acc": {
+        "code": 0.8311258278145696,
+        "finance": 0.8782608695652174,
+        "general": 0.70065755140382,
+        "medical": 0.7657765179770252
+      },
+      "per_domain_loss": {
+        "code": 0.6256663492973277,
+        "finance": 0.2449441469233969,
+        "general": 1.0711755257361544,
+        "medical": 0.8099856290571124
+      },
+      "per_client_acc": {
+        "0": 0.8311258278145696,
+        "5": 0.8782608695652174,
+        "10": 0.70065755140382,
+        "15": 0.7657765179770252
+      },
+      "route_metric": "relative_l2",
+      "route_audit": {
+        "route_domain_by_client": {
+          "0": "finance",
+          "5": "finance",
+          "10": "finance",
+          "15": "finance"
+        },
+        "score_by_client": {
+          "0": -0.8942890602241779,
+          "5": -0.8596503389722124,
+          "10": -0.8931338310510163,
+          "15": -0.8934232315795961
+        },
+        "top2_by_client": {
+          "0": [
+            {
+              "domain": "finance",
+              "score": -0.8942890602241779
+            },
+            {
+              "domain": "general",
+              "score": -0.8997898955098806
+            }
+          ],
+          "5": [
+            {
+              "domain": "finance",
+              "score": -0.8596503389722124
+            },
+            {
+              "domain": "general",
+              "score": -0.8975700237177457
+            }
+          ],
+          "10": [
+            {
+              "domain": "finance",
+              "score": -0.8931338310510163
+            },
+            {
+              "domain": "general",
+              "score": -0.900409429332174
+            }
+          ],
+          "15": [
+            {
+              "domain": "finance",
+              "score": -0.8934232315795961
+            },
+            {
+              "domain": "general",
+              "score": -0.9007143242706318
+            }
+          ]
+        },
+        "margin_by_client": {
+          "0": 0.0055008352857027765,
+          "5": 0.03791968474553331,
+          "10": 0.007275598281157758,
+          "15": 0.007291092691035672
+        },
+        "oracle_match_by_client": {
+          "0": false,
+          "5": true,
+          "10": false,
+          "15": false
+        },
+        "route_compute_seconds_by_client": {
+          "0": 0.8804794298484921,
+          "5": 0.1425637719221413,
+          "10": 0.14139259397052228,
+          "15": 0.13670820998959243
+        },
+        "summary": {
+          "num_routed": 4,
+          "oracle_match_rate": 0.25,
+          "mean_margin": 0.01449680275085738,
+          "mean_route_compute_seconds": 0.32528600143268704
+        }
+      }
+    },
+    "coldstart_route_delta_w_cosine": {
+      "macro_acc": 0.8057625616909654,
+      "worst_acc": 0.708694290783843,
+      "per_domain_acc": {
+        "code": 0.8533112582781457,
+        "finance": 0.8782608695652174,
+        "general": 0.708694290783843,
+        "medical": 0.7827838281366553
+      },
+      "per_domain_loss": {
+        "code": 0.48614570794516054,
+        "finance": 0.2449441469233969,
+        "general": 1.052484832095174,
+        "medical": 0.7245484394367713
+      },
+      "per_client_acc": {
+        "0": 0.8533112582781457,
+        "5": 0.8782608695652174,
+        "10": 0.708694290783843,
+        "15": 0.7827838281366553
+      },
+      "route_metric": "delta_w_cosine",
+      "route_audit": {
+        "route_domain_by_client": {
+          "0": "code",
+          "5": "finance",
+          "10": "code",
+          "15": "medical"
+        },
+        "score_by_client": {
+          "0": 0.02255385848354203,
+          "5": 0.28678592632099387,
+          "10": 0.01080190302275846,
+          "15": 0.019034806020089275
+        },
+        "top2_by_client": {
+          "0": [
+            {
+              "domain": "code",
+              "score": 0.02255385848354203
+            },
+            {
+              "domain": "general",
+              "score": 0.008459892299793992
+            }
+          ],
+          "5": [
+            {
+              "domain": "finance",
+              "score": 0.28678592632099387
+            },
+            {
+              "domain": "general",
+              "score": 0.02017745559799892
+            }
+          ],
+          "10": [
+            {
+              "domain": "code",
+              "score": 0.01080190302275846
+            },
+            {
+              "domain": "finance",
+              "score": 0.006377548861167371
+            }
+          ],
+          "15": [
+            {
+              "domain": "medical",
+              "score": 0.019034806020089275
+            },
+            {
+              "domain": "code",
+              "score": 0.0034193024634237472
+            }
+          ]
+        },
+        "margin_by_client": {
+          "0": 0.014093966183748037,
+          "5": 0.26660847072299493,
+          "10": 0.004424354161591089,
+          "15": 0.015615503556665529
+        },
+        "oracle_match_by_client": {
+          "0": true,
+          "5": true,
+          "10": false,
+          "15": true
+        },
+        "route_compute_seconds_by_client": {
+          "0": 0.22737470897845924,
+          "5": 0.2143849190324545,
+          "10": 0.21512419497594237,
+          "15": 0.21654353407211602
+        },
+        "summary": {
+          "num_routed": 4,
+          "oracle_match_rate": 0.75,
+          "mean_margin": 0.0751855736562499,
+          "mean_route_compute_seconds": 0.21835683926474303
+        }
+      }
+    },
+    "coldstart_route_nearest_client_subspace": {
+      "macro_acc": 0.806780200768306,
+      "worst_acc": 0.7127648470932053,
+      "per_domain_acc": {
+        "code": 0.8533112582781457,
+        "finance": 0.8782608695652174,
+        "general": 0.7127648470932053,
+        "medical": 0.7827838281366553
+      },
+      "per_domain_loss": {
+        "code": 0.48614570794516054,
+        "finance": 0.2449441469233969,
+        "general": 1.0174561681609078,
+        "medical": 0.7245484394367713
+      },
+      "per_client_acc": {
+        "0": 0.8533112582781457,
+        "5": 0.8782608695652174,
+        "10": 0.7127648470932053,
+        "15": 0.7827838281366553
+      },
+      "route_metric": "nearest_client_subspace",
+      "route_audit": {
+        "route_domain_by_client": {
+          "0": "code",
+          "5": "finance",
+          "10": "general",
+          "15": "medical"
+        },
+        "score_by_client": {
+          "0": 0.10895965163344665,
+          "5": 0.28768568349972606,
+          "10": 0.10480651425729905,
+          "15": 0.11248605021290363
+        },
+        "top2_by_client": {
+          "0": [
+            {
+              "domain": "code",
+              "score": 0.10895965163344665
+            },
+            {
+              "domain": "general",
+              "score": 0.10177862163751371
+            }
+          ],
+          "5": [
+            {
+              "domain": "finance",
+              "score": 0.28768568349972606
+            },
+            {
+              "domain": "code",
+              "score": 0.1014167764076283
+            }
+          ],
+          "10": [
+            {
+              "domain": "general",
+              "score": 0.10480651425729905
+            },
+            {
+              "domain": "code",
+              "score": 0.10395647382866295
+            }
+          ],
+          "15": [
+            {
+              "domain": "medical",
+              "score": 0.11248605021290363
+            },
+            {
+              "domain": "general",
+              "score": 0.10323753686887878
+            }
+          ]
+        },
+        "margin_by_client": {
+          "0": 0.007181029995932939,
+          "5": 0.18626890709209776,
+          "10": 0.0008500404286360952,
+          "15": 0.00924851334402485
+        },
+        "oracle_match_by_client": {
+          "0": true,
+          "5": true,
+          "10": true,
+          "15": true
+        },
+        "route_compute_seconds_by_client": {
+          "0": 3.6755161490291357,
+          "5": 3.6757299460005015,
+          "10": 4.1453006870578974,
+          "15": 4.1738406650256366
+        },
+        "summary": {
+          "num_routed": 4,
+          "oracle_match_rate": 1.0,
+          "mean_margin": 0.050887122715172914,
+          "mean_route_compute_seconds": 3.917596861778293
+        }
+      }
+    },
+    "coldstart_route_largest_domain": {
+      "macro_acc": 0.7635737948182477,
+      "worst_acc": 0.708694290783843,
+      "per_domain_acc": {
+        "code": 0.8533112582781457,
+        "finance": 0.7217391304347827,
+        "general": 0.708694290783843,
+        "medical": 0.7705504997762196
+      },
+      "per_domain_loss": {
+        "code": 0.48614570794516054,
+        "finance": 0.7277184268702631,
+        "general": 1.052484832095174,
+        "medical": 0.799041163009013
+      },
+      "per_client_acc": {
+        "0": 0.8533112582781457,
+        "5": 0.7217391304347827,
+        "10": 0.708694290783843,
+        "15": 0.7705504997762196
+      },
+      "route_metric": "largest_domain",
+      "route_audit": {
+        "route_domain_by_client": {
+          "0": "code",
+          "5": "code",
+          "10": "code",
+          "15": "code"
+        },
+        "score_by_client": {
+          "0": 1.0,
+          "5": 1.0,
+          "10": 1.0,
+          "15": 1.0
+        },
+        "top2_by_client": {
+          "0": [
+            {
+              "domain": "code",
+              "score": 1.0
+            },
+            {
+              "domain": "finance",
+              "score": 0.0
+            }
+          ],
+          "5": [
+            {
+              "domain": "code",
+              "score": 1.0
+            },
+            {
+              "domain": "finance",
+              "score": 0.0
+            }
+          ],
+          "10": [
+            {
+              "domain": "code",
+              "score": 1.0
+            },
+            {
+              "domain": "finance",
+              "score": 0.0
+            }
+          ],
+          "15": [
+            {
+              "domain": "code",
+              "score": 1.0
+            },
+            {
+              "domain": "finance",
+              "score": 0.0
+            }
+          ]
+        },
+        "margin_by_client": {
+          "0": 1.0,
+          "5": 1.0,
+          "10": 1.0,
+          "15": 1.0
+        },
+        "oracle_match_by_client": {
+          "0": true,
+          "5": false,
+          "10": false,
+          "15": false
+        },
+        "route_compute_seconds_by_client": {
+          "0": 3.147288225591183e-05,
+          "5": 1.1326977983117104e-05,
+          "10": 1.1112075299024582e-05,
+          "15": 9.024981409311295e-06
+        },
+        "summary": {
+          "num_routed": 4,
+          "oracle_match_rate": 0.25,
+          "mean_margin": 1.0,
+          "mean_route_compute_seconds": 1.5734229236841202e-05
+        }
+      }
+    },
+    "coldstart_route_random": {
+      "macro_acc": 0.7580904585933379,
+      "worst_acc": 0.704310614758376,
+      "per_domain_acc": {
+        "code": 0.8357615894039735,
+        "finance": 0.7217391304347827,
+        "general": 0.704310614758376,
+        "medical": 0.7705504997762196
+      },
+      "per_domain_loss": {
+        "code": 0.6030610747684706,
+        "finance": 0.7277184268702631,
+        "general": 1.066135168822097,
+        "medical": 0.799041163009013
+      },
+      "per_client_acc": {
+        "0": 0.8357615894039735,
+        "5": 0.7217391304347827,
+        "10": 0.704310614758376,
+        "15": 0.7705504997762196
+      },
+      "route_metric": "random",
+      "route_audit": {
+        "route_domain_by_client": {
+          "0": "medical",
+          "5": "code",
+          "10": "medical",
+          "15": "code"
+        },
+        "score_by_client": {
+          "0": 1.0,
+          "5": 1.0,
+          "10": 1.0,
+          "15": 1.0
+        },
+        "top2_by_client": {
+          "0": [
+            {
+              "domain": "medical",
+              "score": 1.0
+            },
+            {
+              "domain": "code",
+              "score": 0.0
+            }
+          ],
+          "5": [
+            {
+              "domain": "code",
+              "score": 1.0
+            },
+            {
+              "domain": "finance",
+              "score": 0.0
+            }
+          ],
+          "10": [
+            {
+              "domain": "medical",
+              "score": 1.0
+            },
+            {
+              "domain": "code",
+              "score": 0.0
+            }
+          ],
+          "15": [
+            {
+              "domain": "code",
+              "score": 1.0
+            },
+            {
+              "domain": "finance",
+              "score": 0.0
+            }
+          ]
+        },
+        "margin_by_client": {
+          "0": 1.0,
+          "5": 1.0,
+          "10": 1.0,
+          "15": 1.0
+        },
+        "oracle_match_by_client": {
+          "0": false,
+          "5": false,
+          "10": false,
+          "15": false
+        },
+        "route_compute_seconds_by_client": {
+          "0": 0.0003846539184451103,
+          "5": 7.274909876286983e-05,
+          "10": 5.2854884415864944e-05,
+          "15": 4.922086372971535e-05
+        },
+        "summary": {
+          "num_routed": 4,
+          "oracle_match_rate": 0.0,
+          "mean_margin": 1.0,
+          "mean_route_compute_seconds": 0.0001398696913383901
+        }
+      }
+    },
+    "coldstart_route_oracle": {
+      "macro_acc": 0.806780200768306,
+      "worst_acc": 0.7127648470932053,
+      "per_domain_acc": {
+        "code": 0.8533112582781457,
+        "finance": 0.8782608695652174,
+        "general": 0.7127648470932053,
+        "medical": 0.7827838281366553
+      },
+      "per_domain_loss": {
+        "code": 0.48614570794516054,
+        "finance": 0.2449441469233969,
+        "general": 1.0174561681609078,
+        "medical": 0.7245484394367713
+      },
+      "per_client_acc": {
+        "0": 0.8533112582781457,
+        "5": 0.8782608695652174,
+        "10": 0.7127648470932053,
+        "15": 0.7827838281366553
+      },
+      "route_metric": "oracle",
+      "route_audit": {
+        "route_domain_by_client": {
+          "0": "code",
+          "5": "finance",
+          "10": "general",
+          "15": "medical"
+        },
+        "score_by_client": {
+          "0": 1.0,
+          "5": 1.0,
+          "10": 1.0,
+          "15": 1.0
+        },
+        "top2_by_client": {
+          "0": [
+            {
+              "domain": "code",
+              "score": 1.0
+            }
+          ],
+          "5": [
+            {
+              "domain": "finance",
+              "score": 1.0
+            }
+          ],
+          "10": [
+            {
+              "domain": "general",
+              "score": 1.0
+            }
+          ],
+          "15": [
+            {
+              "domain": "medical",
+              "score": 1.0
+            }
+          ]
+        },
+        "margin_by_client": {
+          "0": null,
+          "5": null,
+          "10": null,
+          "15": null
+        },
+        "oracle_match_by_client": {
+          "0": true,
+          "5": true,
+          "10": true,
+          "15": true
+        },
+        "route_compute_seconds_by_client": {
+          "0": 1.7490237951278687e-06,
+          "5": 6.700865924358368e-07,
+          "10": 6.121117621660233e-07,
+          "15": 6.100162863731384e-07
+        },
+        "summary": {
+          "num_routed": 4,
+          "oracle_match_rate": 1.0,
+          "mean_margin": null,
+          "mean_route_compute_seconds": 9.103096090257168e-07
+        }
+      }
+    }
+  }
+}
