@@ -289,19 +289,25 @@ MD_LOG_DIR="$MD_ROOT/logs" MD_PID_DIR="$MD_ROOT/pids" \
 
 ### 1.2.2 A100 节点：新补 Flower baseline 的 matched-domain
 
-必须先完成 1.1 的训练。每个新结果 JSON 单独启动：
+必须先完成 1.1 的训练。每个新结果 JSON 单独启动。这里采用**双层 detach**：外层 `nohup` 保证命令行立即返回，内层 `launch_eval_only_matched_domain_one.sh` 再为真正的 eval 写 `md_*.pid` / `md_*.log`。
 
 ```bash
 export NEW_MD_ROOT="$RESULT_ROOT/matched_domain_new_flower"
-mkdir -p "$NEW_MD_ROOT" "$RESULT_ROOT/launcher_logs" "$RESULT_ROOT/pids"
+mkdir -p "$NEW_MD_ROOT" "$RESULT_ROOT/launcher_logs" "$RESULT_ROOT/pids" "$RESULT_ROOT/launcher_pids"
 
 launch_new_flower_md () {
   local tag="$1" agg="$2" seed="$3" gpu="$4"
   local method="N9_${tag}_${agg}"
+  local launch_log="$RESULT_ROOT/launcher_logs/launch_md_${tag}.log"
+  local launch_pid="$RESULT_ROOT/launcher_pids/launch_md_${tag}.pid"
   mapfile -t hits < <(find "$RESULT_ROOT/$tag/result_logs/$method" -maxdepth 1 -name '*.json' | sort)
   [[ "${#hits[@]}" -eq 1 ]] || { echo "[new-md][error] $tag" >&2; return 2; }
-  MD_ROOT="$NEW_MD_ROOT" MD_LOG_DIR="$RESULT_ROOT/launcher_logs" MD_PID_DIR="$RESULT_ROOT/pids" \
-    bash scripts/RunScripts/launch_eval_only_matched_domain_one.sh "md_${tag}" "${hits[0]}" "$NEW_MD_ROOT" "$gpu"
+  nohup env MD_ROOT="$NEW_MD_ROOT" MD_LOG_DIR="$RESULT_ROOT/launcher_logs" MD_PID_DIR="$RESULT_ROOT/pids" \
+    bash scripts/RunScripts/launch_eval_only_matched_domain_one.sh "md_${tag}" "${hits[0]}" "$NEW_MD_ROOT" "$gpu" \
+    > "$launch_log" 2>&1 &
+  echo $! > "$launch_pid"
+  echo "[new-md][launcher-bg] tag=${tag} gpu=${gpu} launcher_pid=$(cat "$launch_pid") launcher_log=$launch_log"
+  echo "[new-md][eval-status] later check: MD_LOG_DIR=\"$RESULT_ROOT/launcher_logs\" MD_PID_DIR=\"$RESULT_ROOT/pids\" bash scripts/RunScripts/check_eval_only_matched_domain_jobs.sh \"$NEW_MD_ROOT\""
 }
 
 launch_new_flower_md flower_yoco_seed42 yoco 42 0
