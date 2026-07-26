@@ -87,21 +87,11 @@ if ! command -v conda >/dev/null 2>&1; then
 fi
 
 export CONDA_ENV_NAME=${CONDA_ENV_NAME:-FedRepo2}
-_activate_ok=0
-if [ "${CONDA_DEFAULT_ENV:-}" = "$CONDA_ENV_NAME" ]; then
-  _activate_ok=1
-elif conda activate "$CONDA_ENV_NAME" 2>/dev/null; then
-  _activate_ok=1
-elif [ "${FEDPLORA_ALLOW_PATH_PYTHON:-0}" = "1" ]; then
-  if python -c 'import importlib.util; assert importlib.util.find_spec("torch")' >/dev/null 2>&1; then
-    echo "[preflight][warn] conda activate ${CONDA_ENV_NAME} skipped; using PATH python=$(command -v python)" >&2
-    _activate_ok=1
+if [ "${CONDA_DEFAULT_ENV:-}" != "$CONDA_ENV_NAME" ]; then
+  if ! conda activate "$CONDA_ENV_NAME"; then
+    echo "[preflight][error] conda activate $CONDA_ENV_NAME 失败。" >&2
+    return 2
   fi
-fi
-if [ "$_activate_ok" != "1" ]; then
-  echo "[preflight][error] conda activate $CONDA_ENV_NAME 失败。" >&2
-  echo "[preflight][hint] gb 请先 export CONDA_ENV_NAME=fedplora FEDPLORA_ALLOW_PATH_PYTHON=1 PATH=.../envs/fedplora/bin:\$PATH" >&2
-  return 2
 fi
 
 export CODE_DIR=${CODE_DIR:-$_FEDPLORA_DEFAULT_CODE_DIR}

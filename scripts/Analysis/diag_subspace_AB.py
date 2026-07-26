@@ -13,7 +13,12 @@ diag_subspace_AB.py — 对 A(行空间) 与 B(列空间) 同时做"域内 vs �
     --benchmark_dir data/domain_benchmark_35c/seed_42 \
     --target_modules q_proj,k_proj,v_proj,o_proj,up_proj,down_proj,gate_proj \
     --max_seq_length 512 --max_steps 0 \
-    --out artifacts_LW/diag_AB_smol_35c.json --save_figs
+    --out artifacts_LW/diag_AB_smol_35c.json --dump_matrices --save_figs
+
+输出：
+  - JSON：原有 aggregate intra/inter/null 与 domain_signal_ratio。
+  - 若 --dump_matrices：额外保存同一 run、同一 client 顺序下的 A/B 35×35
+    pairwise principal-angle 矩阵与归一化 similarity 矩阵，避免论文热力图混用不同来源。
 """
 
 import argparse
@@ -118,6 +123,126 @@ def _intra_inter_null(Q_by_client, keys, client_ids, domain_of, shape, seed, n_n
     return np.array(intra or [np.nan]), np.array(inter or [np.nan]), np.array(null)
 
 
+def _pairwise_angle_matrix(Q_by_client, keys, client_ids):
+    """Mean principal-angle matrix over all selected LoRA keys."""
+    n = len(client_ids)
+    mat = np.full((n, n), np.nan, dtype=np.float32)
+    np.fill_diagonal(mat, 0.0)
+    for i in range(n):
+        for j in range(i + 1, n):
+            ci, cj = client_ids[i], client_ids[j]
+            vals = [
+                _pa_mean_deg(Q_by_client[ci][k], Q_by_client[cj][k])
+                for k in keys
+                if k in Q_by_client.get(ci, {}) and k in Q_by_client.get(cj, {})
+            ]
+            ang = float(np.mean(vals)) if vals else float("nan")
+            mat[i, j] = mat[j, i] = ang
+    return mat
+
+
+def _angle_to_similarity(angle_deg):
+    """Convert degrees to a [0, 1] similarity; higher means closer subspaces."""
+    return np.clip(1.0 - np.asarray(angle_deg, dtype=np.float32) / 90.0, 0.0, 1.0).astype(np.float32)
+
+
+def _matrix_out_path(args):
+    if args.matrix_out:
+        return args.matrix_out
+    stem, _ = os.path.splitext(os.path.abspath(args.out))
+    return stem + "_pairwise.npz"
+
+
+def _dump_pairwise_matrices(args, QA, QB, a_keys, b_keys, client_ids, domain_of):
+    a_angle = _pairwise_angle_matrix(QA, a_keys, client_ids)
+    b_angle = _pairwise_angle_matrix(QB, b_keys, client_ids)
+    a_sim = _angle_to_similarity(a_angle)
+    b_sim = _angle_to_similarity(b_angle)
+
+    out_path = _matrix_out_path(args)
+    os.makedirs(os.path.dirname(os.path.abspath(out_path)), exist_ok=True)
+    client_ids_arr = np.asarray(client_ids, dtype=np.int64)
+    client_domains_arr = np.asarray([domain_of.get(cid, "?") for cid in client_ids], dtype="U64")
+    similarity_definition = "clip(1 - mean_principal_angle_deg / 90, 0, 1)"
+    np.savez_compressed(
+        out_path,
+        client_ids=client_ids_arr,
+        client_domains=client_domains_arr,
+        a_angle_deg=a_angle,
+        b_angle_deg=b_angle,
+        a_similarity=a_sim,
+        b_similarity=b_sim,
+        a_keys=np.asarray(a_keys, dtype="U512"),
+        b_keys=np.asarray(b_keys, dtype="U512"),
+        similarity_definition=np.asarray(similarity_definition, dtype="U128"),
+    )
+
+    manifest = {
+        "matrix_npz": out_path,
+        "shape": [int(a_sim.shape[0]), int(a_sim.shape[1])],
+        "client_order": [int(cid) for cid in client_ids],
+        "domain_order": [domain_of.get(cid, "?") for cid in client_ids],
+        "similarity_definition": similarity_definition,
+        "arrays": {
+            "a_angle_deg": "LoRA-A row-space mean principal angle in degrees",
+            "b_angle_deg": "LoRA-B column-space mean principal angle in degrees",
+            "a_similarity": "LoRA-A normalized similarity, higher is more similar",
+            "b_similarity": "LoRA-B normalized similarity, higher is more similar",
+        },
+    }
+    manifest_path = os.path.splitext(out_path)[0] + ".json"
+    with open(manifest_path, "w", encoding="utf-8") as f:
+        json.dump(manifest, f, indent=2, ensure_ascii=False)
+    return {
+        "path": out_path,
+        "manifest_path": manifest_path,
+        "a_angle_deg": a_angle,
+        "b_angle_deg": b_angle,
+        "a_similarity": a_sim,
+        "b_similarity": b_sim,
+        "client_domains": client_domains_arr.tolist(),
+    }
+
+
+def _draw_pairwise_heatmaps(matrix_payload, args):
+    import matplotlib; matplotlib.use("Agg"); import matplotlib.pyplot as plt
+
+    sims = (matrix_payload["a_similarity"], matrix_payload["b_similarity"])
+    titles = ("LoRA-A row-space similarity", "LoRA-B column-space similarity")
+    domains = list(matrix_payload["client_domains"])
+
+    fig, ax = plt.subplots(1, 2, figsize=(10.6, 4.6), sharex=True, sharey=True)
+    im = None
+    for a, sim, title in zip(ax, sims, titles):
+        im = a.imshow(sim, cmap="Blues", vmin=0.0, vmax=1.0, interpolation="nearest")
+        a.set_title(title)
+        a.set_xlabel("client")
+        a.set_ylabel("client")
+        a.set_xticks([])
+        a.set_yticks([])
+
+        start = 0
+        centers, labels = [], []
+        for idx in range(1, len(domains) + 1):
+            if idx == len(domains) or domains[idx] != domains[start]:
+                end = idx
+                if start > 0:
+                    a.axhline(start - 0.5, color="white", linewidth=0.8)
+                    a.axvline(start - 0.5, color="white", linewidth=0.8)
+                centers.append((start + end - 1) / 2.0)
+                labels.append(str(domains[start])[:4])
+                start = idx
+        a.set_xticks(centers, labels, rotation=45, ha="right", fontsize=7)
+        a.set_yticks(centers, labels, fontsize=7)
+
+    if im is not None:
+        fig.colorbar(im, ax=ax.ravel().tolist(), fraction=0.027, pad=0.02, label="similarity")
+    heatmap_path = os.path.splitext(matrix_payload["path"])[0] + "_heatmap.png"
+    plt.tight_layout()
+    plt.savefig(heatmap_path, dpi=180)
+    print(f"[diag] pairwise heatmap: {heatmap_path}", flush=True)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--model", required=True)
@@ -142,6 +267,10 @@ def main():
     ap.add_argument("--seed", type=int, default=42)
     ap.add_argument("--n_null", type=int, default=200)
     ap.add_argument("--out", type=str, default="diag_AB.json")
+    ap.add_argument("--dump_matrices", action="store_true",
+                    help="Dump same-run A/B pairwise angle and similarity matrices as compressed NPZ.")
+    ap.add_argument("--matrix_out", type=str, default="",
+                    help="Optional .npz path for --dump_matrices. Default: <out_stem>_pairwise.npz.")
     ap.add_argument("--save_figs", action="store_true")
     args = ap.parse_args()
 
@@ -193,6 +322,12 @@ def main():
     a_intra, a_inter, a_null = _intra_inter_null(QA, a_keys, client_ids, domain_of, (rA, dA), args.seed, args.n_null)
     b_intra, b_inter, b_null = _intra_inter_null(QB, b_keys, client_ids, domain_of, (rA, dOut), args.seed + 1, args.n_null)
 
+    matrix_payload = None
+    if args.dump_matrices:
+        matrix_payload = _dump_pairwise_matrices(args, QA, QB, a_keys, b_keys, client_ids, domain_of)
+        print(f"[diag] pairwise matrices: {matrix_payload['path']}", flush=True)
+        print(f"[diag] pairwise manifest: {matrix_payload['manifest_path']}", flush=True)
+
     def ratio(intra, inter, null):
         denom = (np.nanmedian(null) - np.nanmedian(intra))
         return float((np.nanmedian(inter) - np.nanmedian(intra)) / denom) if abs(denom) > 1e-9 else float("nan")
@@ -204,6 +339,15 @@ def main():
         "B_colspace": {"intra": float(np.nanmedian(b_intra)), "inter": float(np.nanmedian(b_inter)),
                        "null": float(np.nanmedian(b_null)), "domain_signal_ratio": ratio(b_intra, b_inter, b_null)},
     }
+    if matrix_payload is not None:
+        rep["pairwise_matrices"] = {
+            "matrix_npz": matrix_payload["path"],
+            "manifest_json": matrix_payload["manifest_path"],
+            "shape": [int(matrix_payload["a_similarity"].shape[0]), int(matrix_payload["a_similarity"].shape[1])],
+            "client_order": [int(cid) for cid in client_ids],
+            "domain_order": matrix_payload["client_domains"],
+            "similarity_definition": "clip(1 - mean_principal_angle_deg / 90, 0, 1)",
+        }
     os.makedirs(os.path.dirname(os.path.abspath(args.out)), exist_ok=True)
     with open(args.out, "w", encoding="utf-8") as f:
         json.dump(rep, f, indent=2, ensure_ascii=False)
@@ -237,6 +381,8 @@ def main():
             figpath = os.path.splitext(args.out)[0] + ".png"
             plt.tight_layout(); plt.savefig(figpath, dpi=120)
             print(f"[diag] 图: {figpath}", flush=True)
+            if matrix_payload is not None:
+                _draw_pairwise_heatmaps(matrix_payload, args)
         except Exception as e:
             print(f"[diag][warn] 画图失败: {e!r}", flush=True)
 
