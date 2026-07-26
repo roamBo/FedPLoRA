@@ -503,11 +503,77 @@ done
 
 ## Main-2.2 【原 6】70-client FedPLoRA-OS ×3 seeds
 
-若 `$FED_RESULT_ROOT/order_0723_sup/70c_v13a_seed42/result_logs` 已有 final JSON，**跳过**。
+若 `$FED_RESULT_ROOT/order_0723_sup/70c_v13a_seed42/result_logs` 已有 final JSON，**跳过**。  
+须先完成 **Main-2.2-prep** 与 **0.4 `COMMON_SFT_ARGS`/`LORA_R8_ARGS`**；三条 **串行**（等上一条结束再跑下一条）。
+
+### Main-2.2 seed42
 
 ```bash
-cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-0}" nohup /usr/bin/time -v python -u tasks/fed_train_sft.py --model "$MODEL_135M" --benchmark_dir "$D1_70C_ROOT/seed_42" --num_clients 70 --agg_type fedplora_v13a_os "${COMMON_SFT_ARGS[@]}" "${LORA_R8_ARGS[@]}" --client_state_dir "$MAIN_RESULT_ROOT/70c_v13a_seed42/result_files/client_states/N7_70c_v13a_seed42" --metrics_output_dir "$MAIN_RESULT_ROOT/70c_v13a_seed42/result_logs/N7_70c_v13a_seed42" --save_run_checkpoint_dir "$MAIN_MODEL_ROOT/70c_v13a_seed42/N7_70c_v13a_seed42" --trained_models_root "$MAIN_MODEL_ROOT/70c_v13a_seed42" --eval_max_batches 0 --seed 42 --force_retrain > "$MAIN_RESULT_ROOT/launcher_logs/test20260725_main_70c_v13a_seed42.log" 2>&1 &
-# seed43/44 同上，改 seed 与路径
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-0}" nohup /usr/bin/time -v python -u tasks/fed_train_sft.py \
+  --model "$MODEL_135M" \
+  --benchmark_dir "$D1_70C_ROOT/seed_42" \
+  --num_clients 70 \
+  --agg_type fedplora_v13a_os \
+  "${COMMON_SFT_ARGS[@]}" "${LORA_R8_ARGS[@]}" \
+  --client_state_dir "$MAIN_RESULT_ROOT/70c_v13a_seed42/result_files/client_states/N7_70c_v13a_seed42" \
+  --metrics_output_dir "$MAIN_RESULT_ROOT/70c_v13a_seed42/result_logs/N7_70c_v13a_seed42" \
+  --save_run_checkpoint_dir "$MAIN_MODEL_ROOT/70c_v13a_seed42/N7_70c_v13a_seed42" \
+  --trained_models_root "$MAIN_MODEL_ROOT/70c_v13a_seed42" \
+  --eval_max_batches 0 \
+  --seed 42 \
+  --force_retrain \
+  > "$MAIN_RESULT_ROOT/launcher_logs/test20260725_main_70c_v13a_seed42.log" 2>&1 &
+echo $! > "$MAIN_RESULT_ROOT/pids/70c_v13a_seed42.pid"
+```
+
+### Main-2.2 seed43
+
+```bash
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-0}" nohup /usr/bin/time -v python -u tasks/fed_train_sft.py \
+  --model "$MODEL_135M" \
+  --benchmark_dir "$D1_70C_ROOT/seed_43" \
+  --num_clients 70 \
+  --agg_type fedplora_v13a_os \
+  "${COMMON_SFT_ARGS[@]}" "${LORA_R8_ARGS[@]}" \
+  --client_state_dir "$MAIN_RESULT_ROOT/70c_v13a_seed43/result_files/client_states/N7_70c_v13a_seed43" \
+  --metrics_output_dir "$MAIN_RESULT_ROOT/70c_v13a_seed43/result_logs/N7_70c_v13a_seed43" \
+  --save_run_checkpoint_dir "$MAIN_MODEL_ROOT/70c_v13a_seed43/N7_70c_v13a_seed43" \
+  --trained_models_root "$MAIN_MODEL_ROOT/70c_v13a_seed43" \
+  --eval_max_batches 0 \
+  --seed 43 \
+  --force_retrain \
+  > "$MAIN_RESULT_ROOT/launcher_logs/test20260725_main_70c_v13a_seed43.log" 2>&1 &
+echo $! > "$MAIN_RESULT_ROOT/pids/70c_v13a_seed43.pid"
+```
+
+### Main-2.2 seed44
+
+```bash
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-0}" nohup /usr/bin/time -v python -u tasks/fed_train_sft.py \
+  --model "$MODEL_135M" \
+  --benchmark_dir "$D1_70C_ROOT/seed_44" \
+  --num_clients 70 \
+  --agg_type fedplora_v13a_os \
+  "${COMMON_SFT_ARGS[@]}" "${LORA_R8_ARGS[@]}" \
+  --client_state_dir "$MAIN_RESULT_ROOT/70c_v13a_seed44/result_files/client_states/N7_70c_v13a_seed44" \
+  --metrics_output_dir "$MAIN_RESULT_ROOT/70c_v13a_seed44/result_logs/N7_70c_v13a_seed44" \
+  --save_run_checkpoint_dir "$MAIN_MODEL_ROOT/70c_v13a_seed44/N7_70c_v13a_seed44" \
+  --trained_models_root "$MAIN_MODEL_ROOT/70c_v13a_seed44" \
+  --eval_max_batches 0 \
+  --seed 44 \
+  --force_retrain \
+  > "$MAIN_RESULT_ROOT/launcher_logs/test20260725_main_70c_v13a_seed44.log" 2>&1 &
+echo $! > "$MAIN_RESULT_ROOT/pids/70c_v13a_seed44.pid"
+```
+
+### Main-2.2-check
+
+```bash
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && for SEED in 42 43 44; do
+  find "$MAIN_RESULT_ROOT/70c_v13a_seed${SEED}/result_logs" -maxdepth 2 -name '*.json' | head -1 | grep -q . \
+    || { echo "[70c-v13a][error] missing JSON seed${SEED}"; exit 1; }
+  echo "[70c-v13a][ok] seed${SEED}"
+done
 ```
 
 ---
@@ -663,32 +729,147 @@ cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs
 
 ## Baseline-1.1 【原 2】FlowerTune 缺失 baseline
 
-### B-YOCO ×3
+YOCO/FFA/FLoRA/FlexLoRA/FedDAT/HiLoRA ×3 seeds，共 **18 条 GPU**，**串行**（等上一条结束再跑下一条）。  
+若 `$FED_RESULT_ROOT/order_0723_sup/yoco_flower_seed42/result_logs` 已有 final JSON，**跳过对应 YOCO 训练**，仅做 Baseline-1.2 matched-domain。
 
-若 `$FED_RESULT_ROOT/order_0723_sup/yoco_flower_seed42/result_logs` 已有 final JSON，**跳过训练**，仅做 B1-md matched-domain。
+### B-YOCO seed42
 
 ```bash
 cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-0}" nohup /usr/bin/time -v python -u tasks/fed_train_sft.py --model "$MODEL_135M" --benchmark_dir "$FLOWER_ROOT/seed_42" --num_clients 20 --agg_type yoco "${COMMON_SFT_ARGS[@]}" "${LORA_R8_ARGS[@]}" "${YOCO_ARGS[@]}" --client_state_dir "$BASELINE_RESULT_ROOT/flower_yoco_seed42/result_files/client_states/N9_flower_yoco_seed42" --metrics_output_dir "$BASELINE_RESULT_ROOT/flower_yoco_seed42/result_logs/N9_flower_yoco_seed42" --save_run_checkpoint_dir "$BASELINE_MODEL_ROOT/flower_yoco_seed42/N9_flower_yoco_seed42" --trained_models_root "$BASELINE_MODEL_ROOT/flower_yoco_seed42" --eval_max_batches 0 --seed 42 --force_retrain > "$BASELINE_RESULT_ROOT/launcher_logs/test20260725_baseline_flower_yoco_seed42.log" 2>&1 &
-# seed43/44 同上
 ```
 
-### B-OTHER ×15（ffa/flora/flexlora/feddat/hilora ×3 seeds，串行）
+### B-YOCO seed43
 
-以 ffa seed42 为例；feddat/hilora 追加对应 EXTRA 数组：
+```bash
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-0}" nohup /usr/bin/time -v python -u tasks/fed_train_sft.py --model "$MODEL_135M" --benchmark_dir "$FLOWER_ROOT/seed_43" --num_clients 20 --agg_type yoco "${COMMON_SFT_ARGS[@]}" "${LORA_R8_ARGS[@]}" "${YOCO_ARGS[@]}" --client_state_dir "$BASELINE_RESULT_ROOT/flower_yoco_seed43/result_files/client_states/N9_flower_yoco_seed43" --metrics_output_dir "$BASELINE_RESULT_ROOT/flower_yoco_seed43/result_logs/N9_flower_yoco_seed43" --save_run_checkpoint_dir "$BASELINE_MODEL_ROOT/flower_yoco_seed43/N9_flower_yoco_seed43" --trained_models_root "$BASELINE_MODEL_ROOT/flower_yoco_seed43" --eval_max_batches 0 --seed 43 --force_retrain > "$BASELINE_RESULT_ROOT/launcher_logs/test20260725_baseline_flower_yoco_seed43.log" 2>&1 &
+```
+
+### B-YOCO seed44
+
+```bash
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-0}" nohup /usr/bin/time -v python -u tasks/fed_train_sft.py --model "$MODEL_135M" --benchmark_dir "$FLOWER_ROOT/seed_44" --num_clients 20 --agg_type yoco "${COMMON_SFT_ARGS[@]}" "${LORA_R8_ARGS[@]}" "${YOCO_ARGS[@]}" --client_state_dir "$BASELINE_RESULT_ROOT/flower_yoco_seed44/result_files/client_states/N9_flower_yoco_seed44" --metrics_output_dir "$BASELINE_RESULT_ROOT/flower_yoco_seed44/result_logs/N9_flower_yoco_seed44" --save_run_checkpoint_dir "$BASELINE_MODEL_ROOT/flower_yoco_seed44/N9_flower_yoco_seed44" --trained_models_root "$BASELINE_MODEL_ROOT/flower_yoco_seed44" --eval_max_batches 0 --seed 44 --force_retrain > "$BASELINE_RESULT_ROOT/launcher_logs/test20260725_baseline_flower_yoco_seed44.log" 2>&1 &
+```
+
+### B-FFA seed42
 
 ```bash
 cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-0}" nohup /usr/bin/time -v python -u tasks/fed_train_sft.py --model "$MODEL_135M" --benchmark_dir "$FLOWER_ROOT/seed_42" --num_clients 20 --agg_type ffa "${COMMON_SFT_ARGS[@]}" "${LORA_R8_ARGS[@]}" --client_state_dir "$BASELINE_RESULT_ROOT/flower_ffa_seed42/result_files/client_states/N9_flower_ffa_seed42" --metrics_output_dir "$BASELINE_RESULT_ROOT/flower_ffa_seed42/result_logs/N9_flower_ffa_seed42" --save_run_checkpoint_dir "$BASELINE_MODEL_ROOT/flower_ffa_seed42/N9_flower_ffa_seed42" --trained_models_root "$BASELINE_MODEL_ROOT/flower_ffa_seed42" --eval_max_batches 0 --seed 42 --force_retrain > "$BASELINE_RESULT_ROOT/launcher_logs/test20260725_baseline_flower_ffa_seed42.log" 2>&1 &
+```
+
+### B-FFA seed43
+
+```bash
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-0}" nohup /usr/bin/time -v python -u tasks/fed_train_sft.py --model "$MODEL_135M" --benchmark_dir "$FLOWER_ROOT/seed_43" --num_clients 20 --agg_type ffa "${COMMON_SFT_ARGS[@]}" "${LORA_R8_ARGS[@]}" --client_state_dir "$BASELINE_RESULT_ROOT/flower_ffa_seed43/result_files/client_states/N9_flower_ffa_seed43" --metrics_output_dir "$BASELINE_RESULT_ROOT/flower_ffa_seed43/result_logs/N9_flower_ffa_seed43" --save_run_checkpoint_dir "$BASELINE_MODEL_ROOT/flower_ffa_seed43/N9_flower_ffa_seed43" --trained_models_root "$BASELINE_MODEL_ROOT/flower_ffa_seed43" --eval_max_batches 0 --seed 43 --force_retrain > "$BASELINE_RESULT_ROOT/launcher_logs/test20260725_baseline_flower_ffa_seed43.log" 2>&1 &
+```
+
+### B-FFA seed44
+
+```bash
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-0}" nohup /usr/bin/time -v python -u tasks/fed_train_sft.py --model "$MODEL_135M" --benchmark_dir "$FLOWER_ROOT/seed_44" --num_clients 20 --agg_type ffa "${COMMON_SFT_ARGS[@]}" "${LORA_R8_ARGS[@]}" --client_state_dir "$BASELINE_RESULT_ROOT/flower_ffa_seed44/result_files/client_states/N9_flower_ffa_seed44" --metrics_output_dir "$BASELINE_RESULT_ROOT/flower_ffa_seed44/result_logs/N9_flower_ffa_seed44" --save_run_checkpoint_dir "$BASELINE_MODEL_ROOT/flower_ffa_seed44/N9_flower_ffa_seed44" --trained_models_root "$BASELINE_MODEL_ROOT/flower_ffa_seed44" --eval_max_batches 0 --seed 44 --force_retrain > "$BASELINE_RESULT_ROOT/launcher_logs/test20260725_baseline_flower_ffa_seed44.log" 2>&1 &
+```
+
+### B-FLoRA seed42
+
+```bash
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-0}" nohup /usr/bin/time -v python -u tasks/fed_train_sft.py --model "$MODEL_135M" --benchmark_dir "$FLOWER_ROOT/seed_42" --num_clients 20 --agg_type flora "${COMMON_SFT_ARGS[@]}" "${LORA_R8_ARGS[@]}" --client_state_dir "$BASELINE_RESULT_ROOT/flower_flora_seed42/result_files/client_states/N9_flower_flora_seed42" --metrics_output_dir "$BASELINE_RESULT_ROOT/flower_flora_seed42/result_logs/N9_flower_flora_seed42" --save_run_checkpoint_dir "$BASELINE_MODEL_ROOT/flower_flora_seed42/N9_flower_flora_seed42" --trained_models_root "$BASELINE_MODEL_ROOT/flower_flora_seed42" --eval_max_batches 0 --seed 42 --force_retrain > "$BASELINE_RESULT_ROOT/launcher_logs/test20260725_baseline_flower_flora_seed42.log" 2>&1 &
+```
+
+### B-FLoRA seed43
+
+```bash
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-0}" nohup /usr/bin/time -v python -u tasks/fed_train_sft.py --model "$MODEL_135M" --benchmark_dir "$FLOWER_ROOT/seed_43" --num_clients 20 --agg_type flora "${COMMON_SFT_ARGS[@]}" "${LORA_R8_ARGS[@]}" --client_state_dir "$BASELINE_RESULT_ROOT/flower_flora_seed43/result_files/client_states/N9_flower_flora_seed43" --metrics_output_dir "$BASELINE_RESULT_ROOT/flower_flora_seed43/result_logs/N9_flower_flora_seed43" --save_run_checkpoint_dir "$BASELINE_MODEL_ROOT/flower_flora_seed43/N9_flower_flora_seed43" --trained_models_root "$BASELINE_MODEL_ROOT/flower_flora_seed43" --eval_max_batches 0 --seed 43 --force_retrain > "$BASELINE_RESULT_ROOT/launcher_logs/test20260725_baseline_flower_flora_seed43.log" 2>&1 &
+```
+
+### B-FLoRA seed44
+
+```bash
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-0}" nohup /usr/bin/time -v python -u tasks/fed_train_sft.py --model "$MODEL_135M" --benchmark_dir "$FLOWER_ROOT/seed_44" --num_clients 20 --agg_type flora "${COMMON_SFT_ARGS[@]}" "${LORA_R8_ARGS[@]}" --client_state_dir "$BASELINE_RESULT_ROOT/flower_flora_seed44/result_files/client_states/N9_flower_flora_seed44" --metrics_output_dir "$BASELINE_RESULT_ROOT/flower_flora_seed44/result_logs/N9_flower_flora_seed44" --save_run_checkpoint_dir "$BASELINE_MODEL_ROOT/flower_flora_seed44/N9_flower_flora_seed44" --trained_models_root "$BASELINE_MODEL_ROOT/flower_flora_seed44" --eval_max_batches 0 --seed 44 --force_retrain > "$BASELINE_RESULT_ROOT/launcher_logs/test20260725_baseline_flower_flora_seed44.log" 2>&1 &
+```
+
+### B-FlexLoRA seed42
+
+```bash
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-0}" nohup /usr/bin/time -v python -u tasks/fed_train_sft.py --model "$MODEL_135M" --benchmark_dir "$FLOWER_ROOT/seed_42" --num_clients 20 --agg_type flexlora "${COMMON_SFT_ARGS[@]}" "${LORA_R8_ARGS[@]}" --client_state_dir "$BASELINE_RESULT_ROOT/flower_flexlora_seed42/result_files/client_states/N9_flower_flexlora_seed42" --metrics_output_dir "$BASELINE_RESULT_ROOT/flower_flexlora_seed42/result_logs/N9_flower_flexlora_seed42" --save_run_checkpoint_dir "$BASELINE_MODEL_ROOT/flower_flexlora_seed42/N9_flower_flexlora_seed42" --trained_models_root "$BASELINE_MODEL_ROOT/flower_flexlora_seed42" --eval_max_batches 0 --seed 42 --force_retrain > "$BASELINE_RESULT_ROOT/launcher_logs/test20260725_baseline_flower_flexlora_seed42.log" 2>&1 &
+```
+
+### B-FlexLoRA seed43
+
+```bash
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-0}" nohup /usr/bin/time -v python -u tasks/fed_train_sft.py --model "$MODEL_135M" --benchmark_dir "$FLOWER_ROOT/seed_43" --num_clients 20 --agg_type flexlora "${COMMON_SFT_ARGS[@]}" "${LORA_R8_ARGS[@]}" --client_state_dir "$BASELINE_RESULT_ROOT/flower_flexlora_seed43/result_files/client_states/N9_flower_flexlora_seed43" --metrics_output_dir "$BASELINE_RESULT_ROOT/flower_flexlora_seed43/result_logs/N9_flower_flexlora_seed43" --save_run_checkpoint_dir "$BASELINE_MODEL_ROOT/flower_flexlora_seed43/N9_flower_flexlora_seed43" --trained_models_root "$BASELINE_MODEL_ROOT/flower_flexlora_seed43" --eval_max_batches 0 --seed 43 --force_retrain > "$BASELINE_RESULT_ROOT/launcher_logs/test20260725_baseline_flower_flexlora_seed43.log" 2>&1 &
+```
+
+### B-FlexLoRA seed44
+
+```bash
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-0}" nohup /usr/bin/time -v python -u tasks/fed_train_sft.py --model "$MODEL_135M" --benchmark_dir "$FLOWER_ROOT/seed_44" --num_clients 20 --agg_type flexlora "${COMMON_SFT_ARGS[@]}" "${LORA_R8_ARGS[@]}" --client_state_dir "$BASELINE_RESULT_ROOT/flower_flexlora_seed44/result_files/client_states/N9_flower_flexlora_seed44" --metrics_output_dir "$BASELINE_RESULT_ROOT/flower_flexlora_seed44/result_logs/N9_flower_flexlora_seed44" --save_run_checkpoint_dir "$BASELINE_MODEL_ROOT/flower_flexlora_seed44/N9_flower_flexlora_seed44" --trained_models_root "$BASELINE_MODEL_ROOT/flower_flexlora_seed44" --eval_max_batches 0 --seed 44 --force_retrain > "$BASELINE_RESULT_ROOT/launcher_logs/test20260725_baseline_flower_flexlora_seed44.log" 2>&1 &
+```
+
+### B-FedDAT seed42
+
+```bash
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-0}" nohup /usr/bin/time -v python -u tasks/fed_train_sft.py --model "$MODEL_135M" --benchmark_dir "$FLOWER_ROOT/seed_42" --num_clients 20 --agg_type feddat "${COMMON_SFT_ARGS[@]}" "${LORA_R8_ARGS[@]}" "${FEDDAT_EXTRA[@]}" --client_state_dir "$BASELINE_RESULT_ROOT/flower_feddat_seed42/result_files/client_states/N9_flower_feddat_seed42" --metrics_output_dir "$BASELINE_RESULT_ROOT/flower_feddat_seed42/result_logs/N9_flower_feddat_seed42" --save_run_checkpoint_dir "$BASELINE_MODEL_ROOT/flower_feddat_seed42/N9_flower_feddat_seed42" --trained_models_root "$BASELINE_MODEL_ROOT/flower_feddat_seed42" --eval_max_batches 0 --seed 42 --force_retrain > "$BASELINE_RESULT_ROOT/launcher_logs/test20260725_baseline_flower_feddat_seed42.log" 2>&1 &
+```
+
+### B-FedDAT seed43
+
+```bash
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-0}" nohup /usr/bin/time -v python -u tasks/fed_train_sft.py --model "$MODEL_135M" --benchmark_dir "$FLOWER_ROOT/seed_43" --num_clients 20 --agg_type feddat "${COMMON_SFT_ARGS[@]}" "${LORA_R8_ARGS[@]}" "${FEDDAT_EXTRA[@]}" --client_state_dir "$BASELINE_RESULT_ROOT/flower_feddat_seed43/result_files/client_states/N9_flower_feddat_seed43" --metrics_output_dir "$BASELINE_RESULT_ROOT/flower_feddat_seed43/result_logs/N9_flower_feddat_seed43" --save_run_checkpoint_dir "$BASELINE_MODEL_ROOT/flower_feddat_seed43/N9_flower_feddat_seed43" --trained_models_root "$BASELINE_MODEL_ROOT/flower_feddat_seed43" --eval_max_batches 0 --seed 43 --force_retrain > "$BASELINE_RESULT_ROOT/launcher_logs/test20260725_baseline_flower_feddat_seed43.log" 2>&1 &
+```
+
+### B-FedDAT seed44
+
+```bash
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-0}" nohup /usr/bin/time -v python -u tasks/fed_train_sft.py --model "$MODEL_135M" --benchmark_dir "$FLOWER_ROOT/seed_44" --num_clients 20 --agg_type feddat "${COMMON_SFT_ARGS[@]}" "${LORA_R8_ARGS[@]}" "${FEDDAT_EXTRA[@]}" --client_state_dir "$BASELINE_RESULT_ROOT/flower_feddat_seed44/result_files/client_states/N9_flower_feddat_seed44" --metrics_output_dir "$BASELINE_RESULT_ROOT/flower_feddat_seed44/result_logs/N9_flower_feddat_seed44" --save_run_checkpoint_dir "$BASELINE_MODEL_ROOT/flower_feddat_seed44/N9_flower_feddat_seed44" --trained_models_root "$BASELINE_MODEL_ROOT/flower_feddat_seed44" --eval_max_batches 0 --seed 44 --force_retrain > "$BASELINE_RESULT_ROOT/launcher_logs/test20260725_baseline_flower_feddat_seed44.log" 2>&1 &
+```
+
+### B-HiLoRA seed42
+
+```bash
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-0}" nohup /usr/bin/time -v python -u tasks/fed_train_sft.py --model "$MODEL_135M" --benchmark_dir "$FLOWER_ROOT/seed_42" --num_clients 20 --agg_type hilora "${COMMON_SFT_ARGS[@]}" "${LORA_R8_ARGS[@]}" "${HILORA_EXTRA[@]}" --client_state_dir "$BASELINE_RESULT_ROOT/flower_hilora_seed42/result_files/client_states/N9_flower_hilora_seed42" --metrics_output_dir "$BASELINE_RESULT_ROOT/flower_hilora_seed42/result_logs/N9_flower_hilora_seed42" --save_run_checkpoint_dir "$BASELINE_MODEL_ROOT/flower_hilora_seed42/N9_flower_hilora_seed42" --trained_models_root "$BASELINE_MODEL_ROOT/flower_hilora_seed42" --eval_max_batches 0 --seed 42 --force_retrain > "$BASELINE_RESULT_ROOT/launcher_logs/test20260725_baseline_flower_hilora_seed42.log" 2>&1 &
+```
+
+### B-HiLoRA seed43
+
+```bash
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-0}" nohup /usr/bin/time -v python -u tasks/fed_train_sft.py --model "$MODEL_135M" --benchmark_dir "$FLOWER_ROOT/seed_43" --num_clients 20 --agg_type hilora "${COMMON_SFT_ARGS[@]}" "${LORA_R8_ARGS[@]}" "${HILORA_EXTRA[@]}" --client_state_dir "$BASELINE_RESULT_ROOT/flower_hilora_seed43/result_files/client_states/N9_flower_hilora_seed43" --metrics_output_dir "$BASELINE_RESULT_ROOT/flower_hilora_seed43/result_logs/N9_flower_hilora_seed43" --save_run_checkpoint_dir "$BASELINE_MODEL_ROOT/flower_hilora_seed43/N9_flower_hilora_seed43" --trained_models_root "$BASELINE_MODEL_ROOT/flower_hilora_seed43" --eval_max_batches 0 --seed 43 --force_retrain > "$BASELINE_RESULT_ROOT/launcher_logs/test20260725_baseline_flower_hilora_seed43.log" 2>&1 &
+```
+
+### B-HiLoRA seed44
+
+```bash
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-0}" nohup /usr/bin/time -v python -u tasks/fed_train_sft.py --model "$MODEL_135M" --benchmark_dir "$FLOWER_ROOT/seed_44" --num_clients 20 --agg_type hilora "${COMMON_SFT_ARGS[@]}" "${LORA_R8_ARGS[@]}" "${HILORA_EXTRA[@]}" --client_state_dir "$BASELINE_RESULT_ROOT/flower_hilora_seed44/result_files/client_states/N9_flower_hilora_seed44" --metrics_output_dir "$BASELINE_RESULT_ROOT/flower_hilora_seed44/result_logs/N9_flower_hilora_seed44" --save_run_checkpoint_dir "$BASELINE_MODEL_ROOT/flower_hilora_seed44/N9_flower_hilora_seed44" --trained_models_root "$BASELINE_MODEL_ROOT/flower_hilora_seed44" --eval_max_batches 0 --seed 44 --force_retrain > "$BASELINE_RESULT_ROOT/launcher_logs/test20260725_baseline_flower_hilora_seed44.log" 2>&1 &
+```
+
+### Baseline-1.1-check
+
+```bash
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && for TAG in \
+  flower_yoco_seed42 flower_yoco_seed43 flower_yoco_seed44 \
+  flower_ffa_seed42 flower_ffa_seed43 flower_ffa_seed44 \
+  flower_flora_seed42 flower_flora_seed43 flower_flora_seed44 \
+  flower_flexlora_seed42 flower_flexlora_seed43 flower_flexlora_seed44 \
+  flower_feddat_seed42 flower_feddat_seed43 flower_feddat_seed44 \
+  flower_hilora_seed42 flower_hilora_seed43 flower_hilora_seed44; do
+  find "$BASELINE_RESULT_ROOT/$TAG/result_logs" -maxdepth 2 -name '*.json' | head -1 | grep -q . \
+    || { echo "[baseline-flower][error] missing JSON $TAG"; exit 1; }
+  echo "[baseline-flower][ok] $TAG"
+done
 ```
 
 ---
 
 ## Baseline-1.2 【原 1、10】baseline Worst In-Domain（gb 顺序 runner）
 
+D1 12 baselines ×3 seeds = **36** eval-only；Flower 已有 6 baselines ×3 seeds = **18** eval-only；Baseline-1.1 新补 Flower ×18 eval-only。gb **单卡串行**。
+
+### Baseline-1.2-A 历史 checkpoint：D1 36 + Flower 已有 18
+
 ```bash
 set -euo pipefail
 cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}"
 export MD_ROOT="$ORDER_ROOT/eval_only_baseline_20260725"
 export MD_RUNNER=scripts/RunScripts/run_eval_only_matched_domain.sh
+export MD_SUMMARIZER=scripts/Analysis/summarize_matched_domain_eval.py
 mkdir -p "$MD_ROOT/d1" "$MD_ROOT/flowertune_existing" "$MD_ROOT/logs" "$MD_ROOT/pids"
 
 D1_METHOD_DIRS=(OS1_normal OS1_ffa OS1_flora OS1_flexlora OS1_ecolora OS1_fedsa_lora OS1_feddat OS1_yoco OS1_fedalt OS1_hydralora OS1_hilora OS1_fedlease)
@@ -716,6 +897,8 @@ done
 
 [[ "${#D1_RESULTS[@]}" -eq 36 ]]
 [[ "${#FLOWER_RESULTS[@]}" -eq 18 ]]
+printf '%s\n' "${D1_RESULTS[@]}" > "$MD_ROOT/d1_source_results.txt"
+printf '%s\n' "${FLOWER_RESULTS[@]}" > "$MD_ROOT/flower_source_results.txt"
 
 nohup env CUDA_VISIBLE_DEVICES="${GPU_ID:-0}" EVAL_MAX_BATCHES=0 EVAL_MAX_SEQ_LENGTH=256 \
   EVAL_BATCH_SIZE=2 EVAL_TORCH_DTYPE=bfloat16 MATCHED_DOMAIN_OUTPUT_ROOT="$MD_ROOT/d1" \
@@ -728,20 +911,69 @@ nohup env CUDA_VISIBLE_DEVICES="${GPU_ID:-0}" EVAL_MAX_BATCHES=0 EVAL_MAX_SEQ_LE
   bash "$MD_RUNNER" "${FLOWER_RESULTS[@]}" > "$MD_ROOT/logs/flower_existing_baselines.log" 2>&1 &
 echo $! > "$MD_ROOT/pids/flower_existing_baselines.pid"
 wait $(cat "$MD_ROOT/pids/flower_existing_baselines.pid")
+
+[[ "$(find "$MD_ROOT/d1" -name '*_matched_domain.json' | wc -l)" -eq 36 ]]
+[[ "$(find "$MD_ROOT/flowertune_existing" -name '*_matched_domain.json' | wc -l)" -eq 18 ]]
+python "$MD_SUMMARIZER" "$MD_ROOT/d1" | tee "$MD_ROOT/d1_baselines_summary.tsv"
+python "$MD_SUMMARIZER" "$MD_ROOT/flowertune_existing" | tee "$MD_ROOT/flower_existing_baselines_summary.tsv"
+grep -R 'max_seq_length=256' "$MD_ROOT/logs"
 ```
 
-新补 Flower baseline（YOCO 等）训练完成后，对每个 JSON 单独跑 matched-domain（串行）：
+### Baseline-1.2-B 新补 Flower baseline matched-domain ×18（串行）
+
+须 **Baseline-1.1** 训练完成后再跑。每条等前一条结束。
 
 ```bash
+set -euo pipefail
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}"
+export NEW_MD_ROOT="$BASELINE_RESULT_ROOT/matched_domain_new_flower"
+export MD_RUNNER=scripts/RunScripts/run_eval_only_matched_domain.sh
+mkdir -p "$NEW_MD_ROOT" "$BASELINE_RESULT_ROOT/launcher_logs" "$BASELINE_RESULT_ROOT/pids"
+
 launch_new_flower_md () {
-  local tag="$1" agg="$2"
-  mapfile -t hits < <(find "$BASELINE_RESULT_ROOT/$tag/result_logs/N9_${tag}_${agg}" -maxdepth 1 -name '*.json' | sort)
-  [[ "${#hits[@]}" -eq 1 ]]
-  env CUDA_VISIBLE_DEVICES="${GPU_ID:-0}" EVAL_MAX_BATCHES=0 EVAL_MAX_SEQ_LENGTH=256 \
-    EVAL_BATCH_SIZE=2 EVAL_TORCH_DTYPE=bfloat16 MATCHED_DOMAIN_OUTPUT_ROOT="$BASELINE_RESULT_ROOT/matched_domain_new_flower" \
-    bash scripts/RunScripts/run_eval_only_matched_domain.sh "${hits[0]}"
+  local tag="$1"
+  mapfile -t hits < <(find "$BASELINE_RESULT_ROOT/$tag/result_logs/N9_${tag}" -maxdepth 1 -name '*.json' | sort)
+  [[ "${#hits[@]}" -eq 1 ]] || { echo "[new-md][error] expected one JSON: $tag, got ${#hits[@]}" >&2; return 2; }
+  nohup env CUDA_VISIBLE_DEVICES="${GPU_ID:-0}" EVAL_MAX_BATCHES=0 EVAL_MAX_SEQ_LENGTH=256 \
+    EVAL_BATCH_SIZE=2 EVAL_TORCH_DTYPE=bfloat16 MATCHED_DOMAIN_OUTPUT_ROOT="$NEW_MD_ROOT" \
+    bash "$MD_RUNNER" "${hits[0]}" > "$BASELINE_RESULT_ROOT/launcher_logs/test20260725_md_${tag}.log" 2>&1 &
+  echo $! > "$BASELINE_RESULT_ROOT/pids/md_${tag}.pid"
+  wait $(cat "$BASELINE_RESULT_ROOT/pids/md_${tag}.pid") 2>/dev/null || true
 }
-# launch_new_flower_md flower_yoco_seed42 yoco  # 逐 tag 调用
+
+launch_new_flower_md flower_yoco_seed42
+launch_new_flower_md flower_yoco_seed43
+launch_new_flower_md flower_yoco_seed44
+launch_new_flower_md flower_ffa_seed42
+launch_new_flower_md flower_ffa_seed43
+launch_new_flower_md flower_ffa_seed44
+launch_new_flower_md flower_flora_seed42
+launch_new_flower_md flower_flora_seed43
+launch_new_flower_md flower_flora_seed44
+launch_new_flower_md flower_flexlora_seed42
+launch_new_flower_md flower_flexlora_seed43
+launch_new_flower_md flower_flexlora_seed44
+launch_new_flower_md flower_feddat_seed42
+launch_new_flower_md flower_feddat_seed43
+launch_new_flower_md flower_feddat_seed44
+launch_new_flower_md flower_hilora_seed42
+launch_new_flower_md flower_hilora_seed43
+launch_new_flower_md flower_hilora_seed44
+
+[[ "$(find "$NEW_MD_ROOT" -name '*_matched_domain.json' | wc -l)" -eq 18 ]]
+python scripts/Analysis/summarize_matched_domain_eval.py "$NEW_MD_ROOT" | tee "$NEW_MD_ROOT/new_flower_baselines_summary.tsv"
+grep -R 'max_seq_length=256' "$BASELINE_RESULT_ROOT/launcher_logs/test20260725_md_flower_"*.log
+```
+
+### Baseline-1.2-check（合计 72 个 matched-domain JSON）
+
+```bash
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && \
+D1_N=$(find "$ORDER_ROOT/eval_only_baseline_20260725/d1" -name '*_matched_domain.json' 2>/dev/null | wc -l) && \
+FLOWER_EXIST_N=$(find "$ORDER_ROOT/eval_only_baseline_20260725/flowertune_existing" -name '*_matched_domain.json' 2>/dev/null | wc -l) && \
+FLOWER_NEW_N=$(find "$BASELINE_RESULT_ROOT/matched_domain_new_flower" -name '*_matched_domain.json' 2>/dev/null | wc -l) && \
+echo "d1=$D1_N flower_existing=$FLOWER_EXIST_N flower_new=$FLOWER_NEW_N total=$((D1_N + FLOWER_EXIST_N + FLOWER_NEW_N))" && \
+[[ "$D1_N" -eq 36 && "$FLOWER_EXIST_N" -eq 18 && "$FLOWER_NEW_N" -eq 18 ]]
 ```
 
 ---

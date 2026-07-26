@@ -32,6 +32,11 @@ def pubmedqa_lm_eval_override_dir(cache_root: Path) -> Path:
     return cache_root / "lm_eval_task_overrides"
 
 
+def bundled_preprocess_pubmedqa_path() -> Path:
+    """Repo-local helper imported by lm_eval pubmedqa.yaml (!function doc_to_text)."""
+    return Path(__file__).resolve().parent / "lm_eval_task_overrides" / "pubmedqa" / "preprocess_pubmedqa.py"
+
+
 def read_lm_eval_dataset_spec(task_name: str) -> tuple[str, str | None]:
     try:
         import lm_eval
@@ -120,8 +125,10 @@ def assert_pubmedqa_export_exists(cache_root: Path) -> Path:
 
 
 def ensure_pubmedqa_lm_eval_override(cache_root: Path) -> Path:
-    override = pubmedqa_lm_eval_override_dir(cache_root) / "pubmedqa.yaml"
-    if not override.is_file():
+    out_dir = pubmedqa_lm_eval_override_dir(cache_root)
+    override = out_dir / "pubmedqa.yaml"
+    helper = out_dir / "preprocess_pubmedqa.py"
+    if not override.is_file() or not helper.is_file():
         materialize_pubmedqa_lm_eval_yaml(cache_root)
     return override
 
@@ -159,9 +166,26 @@ def _load_dataset(path: str, name: str | None, *, trust_remote_code: bool = Fals
     return load_dataset(path, name, **kwargs)
 
 
+def _resolve_preprocess_pubmedqa_source() -> Path:
+    bundled = bundled_preprocess_pubmedqa_path()
+    if bundled.is_file():
+        return bundled
+    import lm_eval
+
+    installed = Path(lm_eval.__file__).resolve().parent / "tasks" / "pubmedqa" / "preprocess_pubmedqa.py"
+    if installed.is_file():
+        return installed
+    raise SystemExit(
+        "[external-eval][error] preprocess_pubmedqa.py missing.\n"
+        f"Expected bundled helper at: {bundled}\n"
+        f"Or installed lm_eval helper at: {installed}"
+    )
+
+
 def materialize_pubmedqa_lm_eval_yaml(cache_root: Path) -> Path:
     """Patch installed pubmedqa.yaml to load from local save_to_disk export."""
     import lm_eval
+    import shutil
 
     export_dir = assert_pubmedqa_export_exists(cache_root)
     src = Path(lm_eval.__file__).resolve().parent / "tasks" / "pubmedqa" / "pubmedqa.yaml"
@@ -178,7 +202,11 @@ def materialize_pubmedqa_lm_eval_yaml(cache_root: Path) -> Path:
     out_dir.mkdir(parents=True, exist_ok=True)
     out_yaml = out_dir / "pubmedqa.yaml"
     out_yaml.write_text(text, encoding="utf-8")
+    helper_src = _resolve_preprocess_pubmedqa_source()
+    helper_dst = out_dir / "preprocess_pubmedqa.py"
+    shutil.copy2(helper_src, helper_dst)
     print(f"[hf-cache][pubmedqa] lm_eval override -> {out_yaml}", flush=True)
+    print(f"[hf-cache][pubmedqa] helper module -> {helper_dst}", flush=True)
     return out_dir
 
 
