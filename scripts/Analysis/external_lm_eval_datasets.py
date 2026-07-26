@@ -124,18 +124,47 @@ def assert_pubmedqa_export_exists(cache_root: Path) -> Path:
     return export_dir
 
 
+def assert_pubmedqa_export_schema(export_dir: Path) -> None:
+    from datasets import load_from_disk
+
+    ds = load_from_disk(str(export_dir))
+    split_name = "test" if "test" in ds else "train" if "train" in ds else next(iter(ds.keys()))
+    doc = ds[split_name][0]
+    keys = set(doc.keys())
+    has_context = "CONTEXTS" in keys or "context" in keys
+    has_question = "QUESTION" in keys or "question" in keys
+    if not has_context or not has_question:
+        raise SystemExit(
+            "[external-eval][error] PubMedQA export schema unexpected.\n"
+            f"split={split_name} keys={sorted(keys)}\n"
+            "Fix: python scripts/Analysis/prepare_external_lm_eval_hf_cache.py --tasks pubmedqa --purge"
+        )
+
+
+def _sync_pubmedqa_preprocess_helper(out_dir: Path) -> Path:
+    import shutil
+
+    out_dir.mkdir(parents=True, exist_ok=True)
+    helper_src = _resolve_preprocess_pubmedqa_source()
+    helper_dst = out_dir / "preprocess_pubmedqa.py"
+    shutil.copy2(helper_src, helper_dst)
+    return helper_dst
+
+
 def ensure_pubmedqa_lm_eval_override(cache_root: Path) -> Path:
     out_dir = pubmedqa_lm_eval_override_dir(cache_root)
     override = out_dir / "pubmedqa.yaml"
-    helper = out_dir / "preprocess_pubmedqa.py"
-    if not override.is_file() or not helper.is_file():
+    if not override.is_file():
         materialize_pubmedqa_lm_eval_yaml(cache_root)
+    else:
+        _sync_pubmedqa_preprocess_helper(out_dir)
     return override
 
 
 def assert_pubmedqa_export_complete(cache_root: Path) -> Path:
     export_dir = assert_pubmedqa_export_exists(cache_root)
     ensure_pubmedqa_lm_eval_override(cache_root)
+    assert_pubmedqa_export_schema(export_dir)
     return export_dir
 
 
@@ -185,7 +214,6 @@ def _resolve_preprocess_pubmedqa_source() -> Path:
 def materialize_pubmedqa_lm_eval_yaml(cache_root: Path) -> Path:
     """Patch installed pubmedqa.yaml to load from local save_to_disk export."""
     import lm_eval
-    import shutil
 
     export_dir = assert_pubmedqa_export_exists(cache_root)
     src = Path(lm_eval.__file__).resolve().parent / "tasks" / "pubmedqa" / "pubmedqa.yaml"
@@ -202,9 +230,7 @@ def materialize_pubmedqa_lm_eval_yaml(cache_root: Path) -> Path:
     out_dir.mkdir(parents=True, exist_ok=True)
     out_yaml = out_dir / "pubmedqa.yaml"
     out_yaml.write_text(text, encoding="utf-8")
-    helper_src = _resolve_preprocess_pubmedqa_source()
-    helper_dst = out_dir / "preprocess_pubmedqa.py"
-    shutil.copy2(helper_src, helper_dst)
+    helper_dst = _sync_pubmedqa_preprocess_helper(out_dir)
     print(f"[hf-cache][pubmedqa] lm_eval override -> {out_yaml}", flush=True)
     print(f"[hf-cache][pubmedqa] helper module -> {helper_dst}", flush=True)
     return out_dir

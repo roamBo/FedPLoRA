@@ -74,7 +74,7 @@ Stage 7  第三部分：总体验收与 summarize 出表
 3. gb 无 A100_* 前缀；D1 一律 domain_benchmark_35c_dir05
 4. 单卡串行：同 GPU 一次只开一条 nohup；上一条结束再开下一条
 5. personalized_eval 不加 --force_retrain；SFT 正式训练必须 --force_retrain
-6. matched-domain runner：scripts/RunScripts/run_eval_only_matched_domain.sh（非 FedPLoRA-main/...）
+6. matched-domain：`run_eval_only_matched_domain.sh` + `launch_eval_only_matched_domain_one.sh` + `check_eval_only_matched_domain_jobs.sh`；单条 eval 用 launcher，汇总前跑 check
 7. summarize_fedplora_results.py 只接受一个 root 位置参数；多目录用 --output 写到同一 summary，或分别汇总
 8. HF 不可达：rsync 本地 cache 到 data/external_lm_eval_hf_cache/，并 export HF_HUB_OFFLINE=1 HF_DATASETS_OFFLINE=1
 9. 读历史 checkpoint 的 result JSON 在 FED_RESULT_ROOT/order_0709|0711|0712|0715|0723*；本批次新训练写在 ORDER_ROOT 下
@@ -118,7 +118,7 @@ Stage 7  第三部分：总体验收与 summarize 出表
 cd /data/yaominghao/gb/FedPLoRA && git pull
 ```
 
-需含：`run_eval_only_matched_domain.sh`、`fed_train_sft.py`、`eval_personalized.py`、`checkpoint_manifest.py`、`run_external_lm_eval.py`、`prepare_external_lm_eval_hf_cache.py`、`repartition_with_frozen_test.py`、`summarize_matched_domain_eval.py`、`summarize_fedplora_results.py`。
+需含：`run_eval_only_matched_domain.sh`、`launch_eval_only_matched_domain_one.sh`、`check_eval_only_matched_domain_jobs.sh`、`fed_train_sft.py`、`eval_personalized.py`、`checkpoint_manifest.py`、`run_external_lm_eval.py`、`prepare_external_lm_eval_hf_cache.py`、`external_lm_eval_datasets.py`、`repartition_with_frozen_test.py`、`summarize_matched_domain_eval.py`、`summarize_fedplora_results.py`。
 
 ## 0.2 环境变量（每个新 shell 粘贴一次）
 
@@ -166,10 +166,13 @@ cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs
   scripts/Analysis/checkpoint_manifest.py \
   scripts/Analysis/run_external_lm_eval.py \
   scripts/Analysis/prepare_external_lm_eval_hf_cache.py \
+  scripts/Analysis/external_lm_eval_datasets.py \
   scripts/Analysis/summarize_matched_domain_eval.py \
   scripts/DataProcessScripts/repartition_with_frozen_test.py
 bash -n scripts/RunScripts/run_20260713_one_experiment.sh
 bash -n scripts/RunScripts/run_eval_only_matched_domain.sh
+bash -n scripts/RunScripts/launch_eval_only_matched_domain_one.sh
+bash -n scripts/RunScripts/check_eval_only_matched_domain_jobs.sh
 grep -q 'EVAL_MAX_SEQ_LENGTH="${EVAL_MAX_SEQ_LENGTH:-256}"' scripts/RunScripts/run_eval_only_matched_domain.sh
 grep -q -- '--max_seq_length "${EVAL_MAX_SEQ_LENGTH}"' scripts/RunScripts/run_eval_only_matched_domain.sh
 ```
@@ -273,17 +276,51 @@ grep -R 'max_seq_length=256' "$ORDER_ROOT/eval_only_main_20260725/smoke" || grep
 
 # Main-第一部分：主实验——协议一致的核心有效性
 
+> 对应 `order_Main_20260725.md` 第一部分。**本部分不新训 v13a SFT**；只做 matched-domain eval-only 与 external lm-eval。
+
+### 【前置实验结果说明】
+
+| 小节 | 本批是否新训 v13a | 是否需要前置结果 | 前置来源（gb 路径） |
+|---|---|---|---|
+| **Main-1.1** Worst In-Domain | **否**（eval-only） | **需要** | 6 份历史 **正式训练 result JSON + 同节点可读 checkpoint**（见下表） |
+| **Main-1.2** external eval | **否**（adapter export + lm-eval） | **需要** | 3 份 D1 v13a **checkpoint**（export 用）+ `data/external_lm_eval_hf_cache/` 离线 cache |
+
+**Main-1.1 必需的 6 个 source JSON（缺一则停止）：**
+
+| 数据集 | seed | 历史 result JSON 目录（`$FED_RESULT_ROOT/...`） |
+|---|---|---|
+| D1 | 42 | `order_0712/.../NX0_v13a_os_split42_train42` 或 `v13_20260712_nx0_...` |
+| D1 | 43 | `order_0711/.../NX1_v13a_os_split43_train43` |
+| D1 | 44 | `order_0711/.../NX1_v13a_os_split44_train44` |
+| FlowerTune | 42 | `order_0715/flowertune_20260715_core8_seed42/.../N7_ours_flower_v13a` |
+| FlowerTune | 43 | `order_0715/flowertune_20260715_core8_seed43/.../N7_ours_flower_v13a` |
+| FlowerTune | 44 | `order_0715/flowertune_20260715_core8_seed44/.../N7_ours_flower_v13a` |
+
+**Main-1.2 必需的前置：**
+
+- D1 v13a checkpoint ×3（`checkpoint_manifest.py --resolve` 从 `$FED_RESULT_ROOT`、`$MAIN_MODEL_ROOT` 等根解析；通常来自 order_0711/0712 同批训练）。
+- HF 离线 cache：`$HF_CACHE_ROOT` 已通过 `prepare_external_lm_eval_hf_cache.py --verify_only`（含 pubmedqa 的 `preprocess_pubmedqa.py` override）。
+- **不依赖** Main-2.1 / Main-3.3；可与 Main-1.1 并行安排（gb 单卡则串行）。
+
+**不需要的前置：** 0725 批次 `order_0725/main/` 下新训练结果、baseline 结果、Flower 15 fold held-out JSON。
+
+---
+
 ## Main-1.1 【原 1、10】FedPLoRA-OS Worst In-Domain ×3 seeds（D1 + FlowerTune）
 
-在原训练节点 gb 执行；读历史 v13a JSON，写 `order_0725/eval_only_main_20260725/`。
+在原训练节点 gb 执行；读上表 6 个历史 JSON，写 `order_0725/eval_only_main_20260725/`。使用 `launch_eval_only_matched_domain_one.sh` **逐条启动**（gb 单卡：上一条 `check` 通过后再开下一条）。
+
+### Main-1.1 启动（6 条，勿在块内 wait）
 
 ```bash
 set -euo pipefail
 cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}"
 export MD_ROOT="$ORDER_ROOT/eval_only_main_20260725"
 export MD_RUNNER=scripts/RunScripts/run_eval_only_matched_domain.sh
+export MD_LAUNCHER=scripts/RunScripts/launch_eval_only_matched_domain_one.sh
+export MD_STATUS=scripts/RunScripts/check_eval_only_matched_domain_jobs.sh
 export MD_SUMMARIZER=scripts/Analysis/summarize_matched_domain_eval.py
-mkdir -p "$MD_ROOT/d1" "$MD_ROOT/flowertune" "$MD_ROOT/logs" "$MD_ROOT/pids"
+mkdir -p "$MD_ROOT/d1" "$MD_ROOT/flowertune" "$MD_ROOT/logs" "$MD_ROOT/pids" "$MD_ROOT/meta"
 
 find_one_json () {
   local dir="$1"
@@ -299,22 +336,25 @@ FLOWER_OURS_42=$(find_one_json "$FED_RESULT_ROOT/order_0715/flowertune_20260715_
 FLOWER_OURS_43=$(find_one_json "$FED_RESULT_ROOT/order_0715/flowertune_20260715_core8_seed43/result_logs/N7_ours_flower_v13a")
 FLOWER_OURS_44=$(find_one_json "$FED_RESULT_ROOT/order_0715/flowertune_20260715_core8_seed44/result_logs/N7_ours_flower_v13a")
 
-launch_md () {
-  local tag="$1" source_json="$2" output="$3"
-  nohup env CUDA_VISIBLE_DEVICES="${GPU_ID:-0}" EVAL_MAX_BATCHES=0 EVAL_MAX_SEQ_LENGTH=256 \
-    EVAL_BATCH_SIZE=2 EVAL_TORCH_DTYPE=bfloat16 MATCHED_DOMAIN_OUTPUT_ROOT="$output" \
-    bash "$MD_RUNNER" "$source_json" > "$MD_ROOT/logs/${tag}.log" 2>&1 &
-  echo $! > "$MD_ROOT/pids/${tag}.pid"
-  wait $(cat "$MD_ROOT/pids/${tag}.pid") 2>/dev/null || true
-}
+# gb 单卡：一次只 launch 一条；每条 launch 后等 MD_STATUS 显示 running=0 再开下一条
+MD_ROOT="$MD_ROOT" bash "$MD_LAUNCHER" d1_ours_seed42 "$D1_OURS_42" "$MD_ROOT/d1" "${GPU_ID:-0}"
+# 等 d1_ours_seed42 完成后再执行下一行……
+MD_ROOT="$MD_ROOT" bash "$MD_LAUNCHER" d1_ours_seed43 "$D1_OURS_43" "$MD_ROOT/d1" "${GPU_ID:-0}"
+MD_ROOT="$MD_ROOT" bash "$MD_LAUNCHER" d1_ours_seed44 "$D1_OURS_44" "$MD_ROOT/d1" "${GPU_ID:-0}"
+MD_ROOT="$MD_ROOT" bash "$MD_LAUNCHER" flower_ours_seed42 "$FLOWER_OURS_42" "$MD_ROOT/flowertune" "${GPU_ID:-0}"
+MD_ROOT="$MD_ROOT" bash "$MD_LAUNCHER" flower_ours_seed43 "$FLOWER_OURS_43" "$MD_ROOT/flowertune" "${GPU_ID:-0}"
+MD_ROOT="$MD_ROOT" bash "$MD_LAUNCHER" flower_ours_seed44 "$FLOWER_OURS_44" "$MD_ROOT/flowertune" "${GPU_ID:-0}"
+```
 
-launch_md d1_ours_seed42 "$D1_OURS_42" "$MD_ROOT/d1"
-launch_md d1_ours_seed43 "$D1_OURS_43" "$MD_ROOT/d1"
-launch_md d1_ours_seed44 "$D1_OURS_44" "$MD_ROOT/d1"
-launch_md flower_ours_seed42 "$FLOWER_OURS_42" "$MD_ROOT/flowertune"
-launch_md flower_ours_seed43 "$FLOWER_OURS_43" "$MD_ROOT/flowertune"
-launch_md flower_ours_seed44 "$FLOWER_OURS_44" "$MD_ROOT/flowertune"
+随时查看状态（不阻塞）：
 
+```bash
+bash "$MD_STATUS" "$MD_ROOT"
+```
+
+### Main-1.1 汇总（仅当 `running=0 failed=0` 后执行）
+
+```bash
 [[ "$(find "$MD_ROOT/d1" -name '*_matched_domain.json' | wc -l)" -eq 3 ]]
 [[ "$(find "$MD_ROOT/flowertune" -name '*_matched_domain.json' | wc -l)" -eq 3 ]]
 python "$MD_SUMMARIZER" "$MD_ROOT/d1" | tee "$MD_ROOT/d1_ours_summary.tsv"
@@ -322,9 +362,13 @@ python "$MD_SUMMARIZER" "$MD_ROOT/flowertune" | tee "$MD_ROOT/flower_ours_summar
 grep -R 'max_seq_length=256' "$MD_ROOT/logs"
 ```
 
+论文使用 `in_domain_domain_test_token_accuracy` 与 `in_domain_domain_test_worst_token_accuracy`；不得回填旧 2048 输出。
+
 ---
 
 ## Main-1.2 【原 9】external eval：FedPLoRA-OS ×3 seeds（gb 离线 cache）
+
+**前置：** 见上文 Main-1.2 表；三份 `adapter_export_manifest.json` 齐全后再跑正式 lm-eval。
 
 ### Main-1.2-E0 任务与 cache 门禁
 
@@ -340,44 +384,64 @@ for TASK in mmlu pubmedqa mbpp; do
 done
 ```
 
-### Main-1.2-E1 adapter export（读 gb 上 v13a checkpoint）
+若 pubmedqa 报 `preprocess_pubmedqa` 或 `CONTEXTS`/`context` 字段错误：先 `git pull` 同步 `external_lm_eval_datasets.py` 与 `lm_eval_task_overrides/pubmedqa/preprocess_pubmedqa.py`，再重跑 `--tasks pubmedqa --verify_only`。
+
+### Main-1.2-E1 adapter export（串行三 seed，读 gb 历史 v13a checkpoint）
 
 ```bash
 cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && \
 export CKPT_SEARCH_ROOTS="$MAIN_MODEL_ROOT $FED_RESULT_ROOT $MAIN_RESULT_ROOT"
+python scripts/Analysis/checkpoint_manifest.py --roots $CKPT_SEARCH_ROOTS \
+  --output "$MAIN_RESULT_ROOT/analysis/checkpoint_manifest_external.json"
+
 export_ours_adapter () {
   local seed="$1"
   local ckpt
   ckpt=$(python scripts/Analysis/checkpoint_manifest.py --roots $CKPT_SEARCH_ROOTS --resolve \
     --agg_type fedplora_v13a_os --seed "$seed" --model_contains SmolLM2-135M \
     --benchmark_contains "domain_benchmark_35c_dir05/seed_${seed}")
-  CUDA_VISIBLE_DEVICES="${GPU_ID:-0}" python -u tasks/fed_train_sft.py \
+  CUDA_VISIBLE_DEVICES="${GPU_ID:-0}" /usr/bin/time -v python -u tasks/fed_train_sft.py \
     --model "$MODEL_135M" --benchmark_dir "$D1_ROOT/seed_${seed}" --agg_type fedplora_v13a_os --seed "$seed" \
     --eval_only_from_checkpoint "$ckpt" \
     --metrics_output_dir "$MAIN_RESULT_ROOT/external_export/ours_seed${seed}/metrics" \
     --client_state_dir "$MAIN_RESULT_ROOT/external_export/ours_seed${seed}/scratch" \
     --export_eval_adapter_dir "$MAIN_RESULT_ROOT/external_adapters/ours_seed${seed}" \
     --export_eval_adapter_only --eval_max_batches 0 --batch_size 2 --max_seq_length 256 \
-    --torch_dtype bfloat16 --eval_personalization_metrics
+    --torch_dtype bfloat16 --eval_personalization_metrics \
+    > "$MAIN_RESULT_ROOT/launcher_logs/test20260725_export_ours_seed${seed}.log" 2>&1
+  echo "[export][ok] seed=${seed}"
 }
-export_ours_adapter 42; export_ours_adapter 43; export_ours_adapter 44
+export_ours_adapter 42
+export_ours_adapter 43
+export_ours_adapter 44
+for SEED in 42 43 44; do
+  test -f "$MAIN_RESULT_ROOT/external_adapters/ours_seed${SEED}/adapter_export_manifest.json" \
+    || { echo "[export][error] missing manifest seed=${SEED}"; exit 1; }
+done
 ```
 
-### Main-1.2-E2 正式 lm-eval（串行三 seed）
+### Main-1.2-E2 smoke 与正式 lm-eval（串行三 seed；gb 用 `--batch_size 4` 勿用 auto）
 
 ```bash
 cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && \
 export HUGGINGFACE_HUB_CACHE="$HF_CACHE_ROOT/hub" HF_DATASETS_CACHE="$HF_CACHE_ROOT/datasets" HF_HUB_OFFLINE=1 HF_DATASETS_OFFLINE=1
+
+CUDA_VISIBLE_DEVICES="${GPU_ID:-0}" python scripts/Analysis/run_external_lm_eval.py \
+  --adapter_manifest "$MAIN_RESULT_ROOT/external_adapters/ours_seed42/adapter_export_manifest.json" \
+  --tasks pubmedqa:medical --mode both --limit 10 --device cuda:0 --batch_size 4 \
+  --hf_cache_dir "$HF_CACHE_ROOT" --output_dir "$MAIN_RESULT_ROOT/external_smoke/ours_seed42"
+
 for SEED in 42 43 44; do
-  CUDA_VISIBLE_DEVICES="${GPU_ID:-0}" nohup /usr/bin/time -v python scripts/Analysis/run_external_lm_eval.py \
+  CUDA_VISIBLE_DEVICES="${GPU_ID:-0}" /usr/bin/time -v python scripts/Analysis/run_external_lm_eval.py \
     --adapter_manifest "$MAIN_RESULT_ROOT/external_adapters/ours_seed${SEED}/adapter_export_manifest.json" \
-    --tasks mmlu:general,pubmedqa:medical,mbpp:code --mode both --device cuda:0 --batch_size auto \
+    --tasks mmlu:general,pubmedqa:medical,mbpp:code --mode both --device cuda:0 --batch_size 4 \
     --hf_cache_dir "$HF_CACHE_ROOT" --confirm_run_unsafe_code \
     --output_dir "$MAIN_RESULT_ROOT/external_eval/ours_seed${SEED}" \
-    > "$MAIN_RESULT_ROOT/launcher_logs/test20260725_external_ours_seed${SEED}.log" 2>&1 &
-  wait $!
+    > "$MAIN_RESULT_ROOT/launcher_logs/test20260725_external_ours_seed${SEED}.log" 2>&1
 done
 ```
+
+验收：每个 seed 目录下有 `external_eval_summary.json`。MBPP 非隔离环境则删 `mbpp:code` 与 `--confirm_run_unsafe_code`。
 
 ---
 
@@ -483,6 +547,7 @@ for path in paths:
     row = json.loads(path.read_text(encoding="utf-8"))
     audits = (row.get("strict_held_out") or {}).get("route_audits") or {}
     assert required <= set(audits), (path, sorted(audits))
+    assert (row.get("onboarding_accounting") or {}).get("enabled") is True, path
 print("[flower-route][ok]", len(paths))
 PY
 ```
@@ -727,6 +792,19 @@ cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs
 
 # Baseline-第一部分：主实验——主表可比性与任务级外部有效性
 
+### 【前置实验结果说明】
+
+| 小节 | 本批是否新训 | 是否需要前置结果 | 前置来源 |
+|---|---|---|---|
+| **Baseline-1.1** Flower 缺失 baseline | **是**（18 条 SFT） | **部分可选** | YOCO 若 `order_0723_sup/yoco_flower_seed*` 已有 final JSON 可**跳过训练**，matched-domain 仍要补 |
+| **Baseline-1.2-A** 历史 Worst MD | **否**（eval-only） | **需要** | order_0709 D1 baseline ×36 JSON；order_0715 Flower 已有 6 方法 ×3 seed |
+| **Baseline-1.2-B** 新 Flower MD | **否** | **需要** | **Baseline-1.1** 18 条训练产出的 result JSON + checkpoint |
+| **Baseline-1.3** external | **否**（export + lm-eval） | **需要** | Normal/FedALT/HydraLoRA 的 **D1 历史 checkpoint** ×9；HF 离线 cache（同 Main-1.2） |
+
+**不需要的前置：** Main-2.1 Flower held-out JSON（那是 Baseline-2.1 才读）；order_0725/main 新训练结果。
+
+---
+
 ## Baseline-1.1 【原 2】FlowerTune 缺失 baseline
 
 YOCO/FFA/FLoRA/FlexLoRA/FedDAT/HiLoRA ×3 seeds，共 **18 条 GPU**，**串行**（等上一条结束再跑下一条）。  
@@ -860,6 +938,8 @@ done
 
 ## Baseline-1.2 【原 1、10】baseline Worst In-Domain（gb 顺序 runner）
 
+**前置：** D1/Flower **历史 baseline 训练 JSON**（order_0709 / order_0715，见 1.2-A）；新补 Flower baseline 须 **Baseline-1.1 训练完成** 后再跑 1.2-B。
+
 D1 12 baselines ×3 seeds = **36** eval-only；Flower 已有 6 baselines ×3 seeds = **18** eval-only；Baseline-1.1 新补 Flower ×18 eval-only。gb **单卡串行**。
 
 ### Baseline-1.2-A 历史 checkpoint：D1 36 + Flower 已有 18
@@ -869,6 +949,7 @@ set -euo pipefail
 cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}"
 export MD_ROOT="$ORDER_ROOT/eval_only_baseline_20260725"
 export MD_RUNNER=scripts/RunScripts/run_eval_only_matched_domain.sh
+export MD_STATUS=scripts/RunScripts/check_eval_only_matched_domain_jobs.sh
 export MD_SUMMARIZER=scripts/Analysis/summarize_matched_domain_eval.py
 mkdir -p "$MD_ROOT/d1" "$MD_ROOT/flowertune_existing" "$MD_ROOT/logs" "$MD_ROOT/pids"
 
@@ -900,18 +981,31 @@ done
 printf '%s\n' "${D1_RESULTS[@]}" > "$MD_ROOT/d1_source_results.txt"
 printf '%s\n' "${FLOWER_RESULTS[@]}" > "$MD_ROOT/flower_source_results.txt"
 
+# gb 单卡：D1 36 条顺序 runner 一条；完成后再跑 Flower 18 条
 nohup env CUDA_VISIBLE_DEVICES="${GPU_ID:-0}" EVAL_MAX_BATCHES=0 EVAL_MAX_SEQ_LENGTH=256 \
   EVAL_BATCH_SIZE=2 EVAL_TORCH_DTYPE=bfloat16 MATCHED_DOMAIN_OUTPUT_ROOT="$MD_ROOT/d1" \
   bash "$MD_RUNNER" "${D1_RESULTS[@]}" > "$MD_ROOT/logs/d1_baselines.log" 2>&1 &
 echo $! > "$MD_ROOT/pids/d1_baselines.pid"
-wait $(cat "$MD_ROOT/pids/d1_baselines.pid")
+```
 
+等 D1 顺序 runner 结束（`bash "$MD_STATUS" "$MD_ROOT"` 或 `wait $(cat "$MD_ROOT/pids/d1_baselines.pid")`）后再启动 Flower：
+
+```bash
 nohup env CUDA_VISIBLE_DEVICES="${GPU_ID:-0}" EVAL_MAX_BATCHES=0 EVAL_MAX_SEQ_LENGTH=256 \
   EVAL_BATCH_SIZE=2 EVAL_TORCH_DTYPE=bfloat16 MATCHED_DOMAIN_OUTPUT_ROOT="$MD_ROOT/flowertune_existing" \
   bash "$MD_RUNNER" "${FLOWER_RESULTS[@]}" > "$MD_ROOT/logs/flower_existing_baselines.log" 2>&1 &
 echo $! > "$MD_ROOT/pids/flower_existing_baselines.pid"
-wait $(cat "$MD_ROOT/pids/flower_existing_baselines.pid")
+```
 
+查看状态：
+
+```bash
+bash "$MD_STATUS" "$MD_ROOT"
+```
+
+汇总（两批均 `failed=0` 后）：
+
+```bash
 [[ "$(find "$MD_ROOT/d1" -name '*_matched_domain.json' | wc -l)" -eq 36 ]]
 [[ "$(find "$MD_ROOT/flowertune_existing" -name '*_matched_domain.json' | wc -l)" -eq 18 ]]
 python "$MD_SUMMARIZER" "$MD_ROOT/d1" | tee "$MD_ROOT/d1_baselines_summary.tsv"
@@ -921,26 +1015,25 @@ grep -R 'max_seq_length=256' "$MD_ROOT/logs"
 
 ### Baseline-1.2-B 新补 Flower baseline matched-domain ×18（串行）
 
-须 **Baseline-1.1** 训练完成后再跑。每条等前一条结束。
+须 **Baseline-1.1** 训练完成后再跑。使用 `launch_eval_only_matched_domain_one.sh`，gb 单卡逐条 launch + `MD_STATUS` 确认后再开下一条。
 
 ```bash
 set -euo pipefail
 cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}"
 export NEW_MD_ROOT="$BASELINE_RESULT_ROOT/matched_domain_new_flower"
-export MD_RUNNER=scripts/RunScripts/run_eval_only_matched_domain.sh
-mkdir -p "$NEW_MD_ROOT" "$BASELINE_RESULT_ROOT/launcher_logs" "$BASELINE_RESULT_ROOT/pids"
+export MD_LAUNCHER=scripts/RunScripts/launch_eval_only_matched_domain_one.sh
+export MD_STATUS=scripts/RunScripts/check_eval_only_matched_domain_jobs.sh
+mkdir -p "$NEW_MD_ROOT" "$NEW_MD_ROOT/logs" "$NEW_MD_ROOT/pids" "$NEW_MD_ROOT/meta"
 
 launch_new_flower_md () {
   local tag="$1"
   mapfile -t hits < <(find "$BASELINE_RESULT_ROOT/$tag/result_logs/N9_${tag}" -maxdepth 1 -name '*.json' | sort)
   [[ "${#hits[@]}" -eq 1 ]] || { echo "[new-md][error] expected one JSON: $tag, got ${#hits[@]}" >&2; return 2; }
-  nohup env CUDA_VISIBLE_DEVICES="${GPU_ID:-0}" EVAL_MAX_BATCHES=0 EVAL_MAX_SEQ_LENGTH=256 \
-    EVAL_BATCH_SIZE=2 EVAL_TORCH_DTYPE=bfloat16 MATCHED_DOMAIN_OUTPUT_ROOT="$NEW_MD_ROOT" \
-    bash "$MD_RUNNER" "${hits[0]}" > "$BASELINE_RESULT_ROOT/launcher_logs/test20260725_md_${tag}.log" 2>&1 &
-  echo $! > "$BASELINE_RESULT_ROOT/pids/md_${tag}.pid"
-  wait $(cat "$BASELINE_RESULT_ROOT/pids/md_${tag}.pid") 2>/dev/null || true
+  MD_ROOT="$NEW_MD_ROOT" MD_LOG_DIR="$NEW_MD_ROOT/logs" MD_PID_DIR="$NEW_MD_ROOT/pids" MD_META_DIR="$NEW_MD_ROOT/meta" \
+    bash "$MD_LAUNCHER" "md_${tag}" "${hits[0]}" "$NEW_MD_ROOT" "${GPU_ID:-0}"
 }
 
+# 逐条 launch；每条完成后 bash "$MD_STATUS" "$NEW_MD_ROOT" 确认 running=0 再开下一条
 launch_new_flower_md flower_yoco_seed42
 launch_new_flower_md flower_yoco_seed43
 launch_new_flower_md flower_yoco_seed44
@@ -962,7 +1055,7 @@ launch_new_flower_md flower_hilora_seed44
 
 [[ "$(find "$NEW_MD_ROOT" -name '*_matched_domain.json' | wc -l)" -eq 18 ]]
 python scripts/Analysis/summarize_matched_domain_eval.py "$NEW_MD_ROOT" | tee "$NEW_MD_ROOT/new_flower_baselines_summary.tsv"
-grep -R 'max_seq_length=256' "$BASELINE_RESULT_ROOT/launcher_logs/test20260725_md_flower_"*.log
+grep -R 'max_seq_length=256' "$NEW_MD_ROOT/logs"
 ```
 
 ### Baseline-1.2-check（合计 72 个 matched-domain JSON）
@@ -980,7 +1073,81 @@ echo "d1=$D1_N flower_existing=$FLOWER_EXIST_N flower_new=$FLOWER_NEW_N total=$(
 
 ## Baseline-1.3 【原 9】external eval：Normal / FedALT / HydraLoRA ×3 seeds
 
-结构与 Main-1.2 对称，结果根换 `$BASELINE_RESULT_ROOT` / `$BASELINE_MODEL_ROOT`；`export_baseline_adapter` 的 `--agg_type` 分别为 `normal`/`fedalt`/`hydralora`。lm-eval 时 Normal 用 `--mode global`，FedALT/HydraLoRA 用 `--mode both`。须 HF 离线 cache（同 Main-1.2-E0）。
+**前置：** HF 离线 cache（同 Main-1.2-E0）；gb 上 **Normal/FedALT/HydraLoRA 的 D1 历史 checkpoint**（`checkpoint_manifest.py` 解析，通常 order_0709 等）。**不需要** Main external 的 adapter。
+
+### Baseline-1.3-E0 cache 门禁
+
+同 Main-1.2-E0，将 `MAIN_RESULT_ROOT` 换为 `$BASELINE_RESULT_ROOT` 写 analysis 即可；或直接复用已 verify 的 `$HF_CACHE_ROOT`。
+
+### Baseline-1.3-E1 adapter export（串行 9 个；gb 单卡）
+
+```bash
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}"
+export RESULT_ROOT="$BASELINE_RESULT_ROOT" MODEL_ROOT="$BASELINE_MODEL_ROOT"
+export CKPT_SEARCH_ROOTS="$BASELINE_MODEL_ROOT $FED_RESULT_ROOT $BASELINE_RESULT_ROOT"
+
+export_baseline_adapter () {
+  local agg="$1" seed="$2"
+  local ckpt
+  ckpt=$(python scripts/Analysis/checkpoint_manifest.py --roots $CKPT_SEARCH_ROOTS --resolve \
+    --agg_type "$agg" --seed "$seed" --model_contains SmolLM2-135M \
+    --benchmark_contains "domain_benchmark_35c_dir05/seed_${seed}")
+  CUDA_VISIBLE_DEVICES="${GPU_ID:-0}" /usr/bin/time -v python -u tasks/fed_train_sft.py \
+    --model "$MODEL_135M" --benchmark_dir "$D1_ROOT/seed_${seed}" --agg_type "$agg" --seed "$seed" \
+    --eval_only_from_checkpoint "$ckpt" \
+    --metrics_output_dir "$RESULT_ROOT/external_export/${agg}_seed${seed}/metrics" \
+    --client_state_dir "$RESULT_ROOT/external_export/${agg}_seed${seed}/scratch" \
+    --export_eval_adapter_dir "$RESULT_ROOT/external_adapters/${agg}_seed${seed}" \
+    --export_eval_adapter_only --eval_max_batches 0 --batch_size 2 --max_seq_length 256 \
+    --torch_dtype bfloat16 --eval_personalization_metrics \
+    > "$RESULT_ROOT/launcher_logs/test20260725_export_${agg}_seed${seed}.log" 2>&1
+  echo "[export][ok] ${agg} seed=${seed}"
+}
+
+for agg in normal fedalt hydralora; do
+  for seed in 42 43 44; do
+    export_baseline_adapter "$agg" "$seed"
+  done
+done
+```
+
+### Baseline-1.3-E2 smoke 与正式 lm-eval（串行；Normal `--mode global`，FedALT/HydraLoRA `--mode both`）
+
+```bash
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}"
+export RESULT_ROOT="$BASELINE_RESULT_ROOT"
+export HUGGINGFACE_HUB_CACHE="$HF_CACHE_ROOT/hub" HF_DATASETS_CACHE="$HF_CACHE_ROOT/datasets" HF_HUB_OFFLINE=1 HF_DATASETS_OFFLINE=1
+
+CUDA_VISIBLE_DEVICES="${GPU_ID:-0}" python scripts/Analysis/run_external_lm_eval.py \
+  --adapter_manifest "$RESULT_ROOT/external_adapters/fedalt_seed42/adapter_export_manifest.json" \
+  --tasks pubmedqa:medical --mode both --limit 10 --device cuda:0 --batch_size 4 \
+  --hf_cache_dir "$HF_CACHE_ROOT" --output_dir "$RESULT_ROOT/external_smoke/fedalt_seed42"
+
+for seed in 42 43 44; do
+  CUDA_VISIBLE_DEVICES="${GPU_ID:-0}" /usr/bin/time -v python scripts/Analysis/run_external_lm_eval.py \
+    --adapter_manifest "$RESULT_ROOT/external_adapters/normal_seed${seed}/adapter_export_manifest.json" \
+    --tasks mmlu:general,pubmedqa:medical,mbpp:code --mode global --device cuda:0 --batch_size 4 \
+    --hf_cache_dir "$HF_CACHE_ROOT" --confirm_run_unsafe_code \
+    --output_dir "$RESULT_ROOT/external_eval/normal_seed${seed}" \
+    > "$RESULT_ROOT/launcher_logs/test20260725_external_normal_seed${seed}.log" 2>&1
+done
+for seed in 42 43 44; do
+  CUDA_VISIBLE_DEVICES="${GPU_ID:-0}" /usr/bin/time -v python scripts/Analysis/run_external_lm_eval.py \
+    --adapter_manifest "$RESULT_ROOT/external_adapters/fedalt_seed${seed}/adapter_export_manifest.json" \
+    --tasks mmlu:general,pubmedqa:medical,mbpp:code --mode both --device cuda:0 --batch_size 4 \
+    --hf_cache_dir "$HF_CACHE_ROOT" --confirm_run_unsafe_code \
+    --output_dir "$RESULT_ROOT/external_eval/fedalt_seed${seed}" \
+    > "$RESULT_ROOT/launcher_logs/test20260725_external_fedalt_seed${seed}.log" 2>&1
+done
+for seed in 42 43 44; do
+  CUDA_VISIBLE_DEVICES="${GPU_ID:-0}" /usr/bin/time -v python scripts/Analysis/run_external_lm_eval.py \
+    --adapter_manifest "$RESULT_ROOT/external_adapters/hydralora_seed${seed}/adapter_export_manifest.json" \
+    --tasks mmlu:general,pubmedqa:medical,mbpp:code --mode both --device cuda:0 --batch_size 4 \
+    --hf_cache_dir "$HF_CACHE_ROOT" --confirm_run_unsafe_code \
+    --output_dir "$RESULT_ROOT/external_eval/hydralora_seed${seed}" \
+    > "$RESULT_ROOT/launcher_logs/test20260725_external_hydralora_seed${seed}.log" 2>&1
+done
+```
 
 ---
 
@@ -1006,6 +1173,8 @@ for path in paths:
         "path": str(path),
         "expert_pool_match": audits["subspace"]["summary"]["oracle_match_rate"],
         "nearest_client_match": audits["nearest_client_subspace"]["summary"]["oracle_match_rate"],
+        "expert_pool_margin": audits["subspace"]["summary"]["mean_margin"],
+        "nearest_client_margin": audits["nearest_client_subspace"]["summary"]["mean_margin"],
     })
 out = root / "analysis" / "flower_nearest_client_paired_20260725.json"
 out.parent.mkdir(parents=True, exist_ok=True)
@@ -1122,12 +1291,16 @@ python scripts/Analysis/summarize_fedplora_results.py "$FED_RESULT_ROOT/order_07
 
 ## Z4. 执行顺序（与 Stage 0–7 一致，禁止跳阶段）
 
+与新版 `order_Main_20260725.md` / `order_baseline_20260725.md` 对齐（gb 单卡均改为串行）：
+
 ```text
-Stage 0:  第零部分 0.1–0.5 + Main-0 smoke
-Stage 1:  Main-第一部分 主实验（1.1 Worst In-Domain → 1.2 external）
+Stage 0:  第零部分 0.1–0.5 + Main-0 smoke（含 launch/check matched-domain 脚本 bash -n）
+Stage 1:  Main-第一部分 主实验
+          1.1 Worst In-Domain 6 eval-only（读 order_0711/0712/0715 历史 JSON）
+          1.2 external export → smoke → 3-seed formal eval
 Stage 2:  Main-第二部分 正文（2.1 Flower 15 → 2.2-prep → 2.2 70c v13a）
-Stage 3:  Baseline-0 smoke + Baseline-第一部分 主实验（1.1 Flower → 1.2 Worst MD → 1.3 external）
-Stage 4:  Baseline-第二部分 正文（2.1 nearest 0-GPU → 2.2 70c baseline）
+Stage 3:  Baseline-0 smoke + Baseline-第一部分（1.1 Flower 训练 → 1.2 MD → 1.3 external）
+Stage 4:  Baseline-第二部分（2.1 nearest 0-GPU → 2.2 70c baseline）
 Stage 5:  ⛔ Main-第三部分 附录（3.1 common → 3.2 r16 → 3.3 D1 held-out 15）
 Stage 6:  ⛔ Baseline-第三部分 附录（3.1 common → 3.2 r16 → 3.3 d1 audit 0-GPU）
 Stage 7:  第三部分总体验收 Z1–Z2
