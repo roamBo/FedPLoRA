@@ -297,25 +297,7 @@ We attach LoRA to the query, key, value, output, gate, up, and down projections.
 
 The primary personalization metric is **Local** accuracy, the unweighted macro-average of client-local test token accuracy. **Macro** averages token accuracy over domain test sets, and **Worst** is the minimum domain accuracy. These two metrics expose broad-coverage and tail behavior that Local alone can hide. **Comm** is the payload-accounted bidirectional adapter traffic. Cluster NMI and domain labels are used only for post-hoc diagnosis, never for automatic routing or model selection.
 
-### Table 1: One-Shot Personalization and Communication
 
-Accuracy is reported as mean(±standard deviation) over three splits/seeds. Local uses each client's local test partition; In-Dom. evaluates each personalized adapter on the independent test set of its home domain; Macro measures coverage across all domain test sets. Comm is effective upload+download in MiB per client. Bold and underline mark the best and second-best reported means in each dataset block; communication and accuracy are ranked separately. “-” means that no complete three-seed result exists under the finalized FlowerTune-Mixed protocol. \(\dagger\) denotes a protocol-adapted or framework-level implementation. D1/FlowerTune fingerprint prefixes are \(43f0ac1c/86603887\).
-
-| Method | D1 Comm ↓ | D1 Local ↑ | D1 In-Dom. ↑ | D1 Macro ↑ | FlowerTune Comm ↓ | FlowerTune Local ↑ | FlowerTune In-Dom. ↑ | FlowerTune Macro ↑ |
-|---|---:|---:|---:|---:|---:|---:|---:|---:|
-| FedAvg-LoRA | 18.63 | 58.84(±0.43) | 58.82(±0.46) | 58.82(±0.46) | 18.63 | 60.82(±0.10) | 60.57(±0.42) | 60.57(±0.42) |
-| FFA-LoRA | 9.49 | 58.76(±0.46) | 58.71(±0.45) | 58.71(±0.45) | - | - | - | - |
-| FLoRA\(\dagger\) | 18.63 | 58.95(±0.49) | 58.94(±0.42) | 58.94(±0.42) | - | - | - | - |
-| FlexLoRA\(\dagger\) | 18.63 | 59.22(±0.41) | 59.18(±0.49) | **59.18(±0.49)** | - | - | - | - |
-| EcoLoRA | 11.65 | 59.02(±0.45) | 58.93(±0.49) | 58.93(±0.49) | 18.63 | 61.13(±0.59) | 60.87(±0.92) | **60.87(±0.92)** |
-| FedSA-LoRA | **9.14** | 60.13(±0.50) | 60.03(±0.40) | 58.82(±0.42) | **9.14** | 70.80(±0.45) | 70.05(±0.45) | 57.96(±0.58) |
-| FedDAT\(\dagger\) | 18.63 | 58.98(±0.42) | 58.96(±0.48) | 58.96(±0.48) | - | - | - | - |
-| YOCO\(\dagger\) | 18.63 | 58.88(±0.43) | 58.88(±0.45) | 58.88(±0.45) | - | - | - | - |
-| FedALT\(\dagger\) | 18.63 | 60.43(±0.56) | 60.35(±0.32) | 58.82(±0.41) | 18.63 | **71.27(±0.64)** | 70.58(±0.35) | 58.60(±0.47) |
-| HydraLoRA\(\dagger\) | 18.63 | 60.39(±0.32) | 60.28(±0.48) | 58.89(±0.43) | 18.63 | 71.06(±0.61) | 70.84(±0.33) | 58.10(±0.41) |
-| HiLoRA\(\dagger\) | 18.63 | 60.33(±0.36) | 60.20(±0.46) | 58.88(±0.42) | - | - | - | - |
-| FedLEASE\(\dagger\) | 18.63 | 59.77(±0.36) | 59.65(±0.50) | 58.93(±0.45) | 18.63 | 70.63(±0.48) | 70.47(±0.29) | 58.24(±0.46) |
-| **FedPLoRA-OS (Ours)** | 11.81 | **60.54(±0.45)** | **60.40(±0.75)** | 58.92(±0.48) | 11.81 | 71.21(±0.47) | **70.85(±0.36)** | 58.06(±0.40) |
 
 ## Conclusion
 
