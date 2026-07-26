@@ -11,6 +11,7 @@ Must be built with datasets==2.20.0 (see requirements.txt).
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 from pathlib import Path
 
@@ -49,9 +50,29 @@ def main() -> None:
     parser.add_argument("--tasks", default="mmlu,pubmedqa,mbpp")
     parser.add_argument("--purge", action="store_true")
     parser.add_argument("--verify_only", action="store_true")
+    parser.add_argument(
+        "--hf_endpoint",
+        default=os.environ.get("HF_ENDPOINT", ""),
+        help=(
+            "Optional HuggingFace Hub endpoint for online cache preparation, "
+            "e.g. https://hf-mirror.com. Ignored by offline verification."
+        ),
+    )
     args = parser.parse_args()
 
     cache_root = Path(args.cache_root).expanduser().resolve()
+    os.environ["HF_HOME"] = str(cache_root)
+    os.environ["HF_HUB_CACHE"] = str(cache_root / "hub")
+    os.environ["HUGGINGFACE_HUB_CACHE"] = str(cache_root / "hub")
+    os.environ["HF_DATASETS_CACHE"] = str(cache_root / "datasets")
+    if args.verify_only:
+        os.environ["HF_HUB_OFFLINE"] = "1"
+        os.environ["HF_DATASETS_OFFLINE"] = "1"
+        os.environ["TRANSFORMERS_OFFLINE"] = "1"
+        os.environ.pop("HF_ENDPOINT", None)
+    elif args.hf_endpoint:
+        os.environ["HF_ENDPOINT"] = args.hf_endpoint
+
     tasks = [item.strip() for item in args.tasks.split(",") if item.strip()]
     unknown = sorted(set(tasks) - set(ALL_TASKS))
     if unknown:
@@ -60,7 +81,13 @@ def main() -> None:
     _assert_datasets_version()
     import datasets
 
-    print(f"[hf-cache] datasets={datasets.__version__} cache_root={cache_root}", flush=True)
+    endpoint = os.environ.get("HF_ENDPOINT") or "(official/default)"
+    mode = "verify_offline" if args.verify_only else "prepare_online"
+    print(
+        f"[hf-cache] mode={mode} datasets={datasets.__version__} "
+        f"cache_root={cache_root} endpoint={endpoint}",
+        flush=True,
+    )
     for task in tasks:
         if task != "mmlu":
             path, name = read_lm_eval_dataset_spec(task)

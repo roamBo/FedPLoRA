@@ -76,7 +76,7 @@ Stage 7  第三部分：总体验收与 summarize 出表
 5. personalized_eval 不加 --force_retrain；SFT 正式训练必须 --force_retrain
 6. matched-domain：`run_eval_only_matched_domain.sh` + `launch_eval_only_matched_domain_one.sh` + `check_eval_only_matched_domain_jobs.sh`；单条 eval 用 launcher，汇总前跑 check
 7. summarize_fedplora_results.py 只接受一个 root 位置参数；多目录用 --output 写到同一 summary，或分别汇总
-8. HF 不可达：rsync 本地 cache 到 data/external_lm_eval_hf_cache/，并 export HF_HUB_OFFLINE=1 HF_DATASETS_OFFLINE=1
+8. HF 不可达：先 `bash scripts/RunScripts/prepare_external_lm_eval_cache.sh prepare`（默认 hf-mirror.com）；镜像也不可达再 rsync 本地 cache 到 data/external_lm_eval_hf_cache/，正式评测只用离线 cache
 9. 读历史 checkpoint 的 result JSON 在 FED_RESULT_ROOT/order_0709|0711|0712|0715|0723*；本批次新训练写在 ORDER_ROOT 下
 ```
 
@@ -407,6 +407,16 @@ for TASK in mmlu pubmedqa mbpp; do
   grep -Eq "(^|[[:space:]])${TASK}([[:space:]]|$)" "$MAIN_RESULT_ROOT/analysis/lm_eval_tasks.txt" \
     || { echo "[external][error] task not registered: $TASK" >&2; exit 1; }
 done
+```
+
+若 `verify_only` 报无法访问/缓存缺失，先用镜像准备 cache，再重新跑上面的门禁：
+
+```bash
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && \
+export PY="/data/yaominghao/miniconda3/envs/fedplora/bin/python"
+bash scripts/RunScripts/prepare_external_lm_eval_cache.sh probe
+bash scripts/RunScripts/prepare_external_lm_eval_cache.sh prepare mmlu,pubmedqa,mbpp
+bash scripts/RunScripts/prepare_external_lm_eval_cache.sh verify mmlu,pubmedqa,mbpp
 ```
 
 若 pubmedqa 报 `preprocess_pubmedqa` 或 `CONTEXTS`/`context` 字段错误：先 `git pull` 同步 `external_lm_eval_datasets.py` 与 `lm_eval_task_overrides/pubmedqa/preprocess_pubmedqa.py`，再重跑 `--tasks pubmedqa --verify_only`。

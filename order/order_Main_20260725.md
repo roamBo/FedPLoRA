@@ -331,7 +331,16 @@ for TASK in mmlu pubmedqa mbpp; do
 done
 ```
 
-若缓存尚未准备好，在允许联网的准备节点去掉 `--verify_only` 下载一次，再离线复验。当前脚本没有 FiQA 的稳定 task/cache 映射，因此本轮**不伪造 FiQA alias**；只有 `lm_eval ls tasks` 明确给出服务器可复现的 FiQA task 名后才能另加。
+若缓存尚未准备好，优先让合作者 `git pull` 后用统一脚本准备 cache；默认走 `hf-mirror.com`，准备完会自动离线复验：
+
+```bash
+cd "$CODE_DIR"
+bash scripts/RunScripts/prepare_external_lm_eval_cache.sh probe
+bash scripts/RunScripts/prepare_external_lm_eval_cache.sh prepare mmlu,pubmedqa,mbpp
+bash scripts/RunScripts/prepare_external_lm_eval_cache.sh verify mmlu,pubmedqa,mbpp
+```
+
+若镜像也不可达，在任意能联网机器上用同一脚本准备 `data/external_lm_eval_hf_cache/`，再 `rsync` 到服务器同一路径；正式 E2 评测继续使用 `--hf_cache_dir "$HF_CACHE_ROOT"` 离线读取。不要直接改用 ModelScope 版数据集替代 MMLU/PubMedQA/MBPP，否则 lm-eval task YAML、dataset config 与论文可复现口径会变化。当前脚本没有 FiQA 的稳定 task/cache 映射，因此本轮**不伪造 FiQA alias**；只有 `lm_eval ls tasks` 明确给出服务器可复现的 FiQA task 名后才能另加。
 
 ### 1.2.2 解析 checkpoint 并导出三种子部署 adapter
 

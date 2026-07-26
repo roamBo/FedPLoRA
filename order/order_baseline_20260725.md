@@ -360,7 +360,12 @@ launch_new_flower_md flower_hilora_seed44 hilora 44 1
 export CKPT_SEARCH_ROOTS="/data2/minghao/model/trained_models_LW /data2/minghao/result/FedPLoRA"
 export HF_CACHE_ROOT="$CODE_DIR/data/external_lm_eval_hf_cache"
 python scripts/Analysis/prepare_external_lm_eval_hf_cache.py --cache_root "$HF_CACHE_ROOT" \
-  --tasks mmlu,pubmedqa,mbpp --verify_only
+  --tasks mmlu,pubmedqa,mbpp --verify_only || {
+  # verify_only 失败时才准备官方任务 cache。默认使用 hf-mirror.com；准备后会自动离线复验。
+  bash scripts/RunScripts/prepare_external_lm_eval_cache.sh probe
+  bash scripts/RunScripts/prepare_external_lm_eval_cache.sh prepare mmlu,pubmedqa,mbpp
+  bash scripts/RunScripts/prepare_external_lm_eval_cache.sh verify mmlu,pubmedqa,mbpp
+}
 
 export_baseline_adapter_async () {
   local agg="$1" seed="$2" gpu="$3"

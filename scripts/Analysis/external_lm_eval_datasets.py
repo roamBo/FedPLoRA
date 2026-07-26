@@ -316,6 +316,8 @@ def download_task_cache(task: str, cache_root: Path) -> None:
     datasets_cache = cache_root / "datasets"
     datasets_cache.mkdir(parents=True, exist_ok=True)
     os.environ["HF_HOME"] = str(cache_root)
+    os.environ["HF_HUB_CACHE"] = str(cache_root / "hub")
+    os.environ["HUGGINGFACE_HUB_CACHE"] = str(cache_root / "hub")
     os.environ["HF_DATASETS_CACHE"] = str(datasets_cache)
     for key in ("HF_HUB_OFFLINE", "HF_DATASETS_OFFLINE", "TRANSFORMERS_OFFLINE"):
         os.environ.pop(key, None)
