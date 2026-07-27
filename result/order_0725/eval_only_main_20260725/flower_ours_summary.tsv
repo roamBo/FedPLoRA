@@ -1,0 +1,2 @@
+dataset	agg_type	n	seeds	In-Domain↑	Worst In-Domain↑	In-Domain PPL↓	Worst In-Domain PPL↓
+domain_benchmark_flowertune_mixed_20c_dir05	fedplora_v13a_os	3	42,43,44	70.85±0.36	58.85±0.20	3.331±0.029	5.689±0.147

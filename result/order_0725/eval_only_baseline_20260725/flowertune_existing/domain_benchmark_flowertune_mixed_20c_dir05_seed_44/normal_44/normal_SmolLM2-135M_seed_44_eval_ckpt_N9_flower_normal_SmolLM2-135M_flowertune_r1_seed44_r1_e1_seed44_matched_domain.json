@@ -1,0 +1,1141 @@
+{
+  "args": {
+    "model": "/data/yaominghao/gb/models/SmolLM2-135M",
+    "benchmark_dir": "/data/yaominghao/gb/FedPLoRA/data/domain_benchmark_flowertune_mixed_20c_dir05/seed_44",
+    "benchmark_jsonl": "",
+    "build_benchmark": false,
+    "benchmark_output_dir": "data/domain_benchmark",
+    "num_clients_per_domain": 5,
+    "min_samples_per_client": 50,
+    "agg_type": "normal",
+    "rounds": 1,
+    "num_clients": 20,
+    "local_epochs": 1,
+    "lr": 0.0002,
+    "lora_r": 8,
+    "lora_alpha": 16,
+    "lora_dropout": 0.05,
+    "rslora": false,
+    "batch_size": 2,
+    "warmup_ratio": 0.03,
+    "max_seq_length": 256,
+    "seed": 44,
+    "gradient_checkpointing": false,
+    "trust_remote_code": false,
+    "torch_dtype": "bfloat16",
+    "target_modules": "q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj",
+    "client_state_dir": "artifacts_20c/domain_client_states",
+    "save_client_state_to_disk": false,
+    "metrics_output_dir": "/data/yaominghao/gb/result/FedPLoRA/order_0725/eval_only_baseline_20260725/flowertune_existing/domain_benchmark_flowertune_mixed_20c_dir05_seed_44/normal_44",
+    "save_run_checkpoint_dir": "",
+    "skip_post_agg_snapshots": false,
+    "trained_models_root": "",
+    "no_auto_save_run_checkpoint": false,
+    "force_retrain": false,
+    "eval_only_from_checkpoint": "/data/yaominghao/gb/models/trained_models_LW/flowertune_20260715_core8_seed44/N9_flower_normal_SmolLM2-135M_flowertune_r1_seed44",
+    "eval_only_matched_domain": true,
+    "export_eval_adapter_dir": "",
+    "export_eval_adapter_only": false,
+    "gp_align_lambda": 0.01,
+    "gp_prox_lambda": 0.001,
+    "gp_orth_lambda": 0.0001,
+    "gp_consensus_power": 2.0,
+    "gp_agg_momentum": 0.5,
+    "yoco_sparse_lambda": 0.0001,
+    "yoco_pcwa_components": 3,
+    "yoco_aggregate_mode": "conflict",
+    "yoco_conflict_method": "avgm",
+    "yoco_sign_lambda": 0.01,
+    "yoco_eval_use_local_clients": false,
+    "memory_agg_eval_use_local_clients": false,
+    "flora_svd_device": "auto",
+    "oneshot_consensus_power": 2.0,
+    "oneshot_importance_power": 1.0,
+    "oneshot_importance_clip": 5.0,
+    "oneshot_conflict_threshold": 0.35,
+    "oneshot_conflict_blend": 1.0,
+    "oneshot_scale_clip_ratio": 0.0,
+    "oneshot_anchor_lambda": 0.0001,
+    "oneshot_prox_lambda": 0.0,
+    "oneshot_no_keep_init_on_conflict": false,
+    "oneshot_orthogonalize": false,
+    "oneshot_ablation_plain_fedavg": false,
+    "v3_conflict_quantile": 0.8,
+    "v3_gate_temperature": 0.05,
+    "v3_conflict_blend": 1.0,
+    "v3_residual_norm_power": 1.0,
+    "v3_residual_eps": 1e-07,
+    "v3_cluster_mode": "domain_prior",
+    "v3_cluster_lambda_min": 0.2,
+    "v3_cluster_lambda_max": 1.0,
+    "v3_rpca_rank": 1,
+    "v3_sparse_quantile": 0.8,
+    "v3_domain_cluster_map": "",
+    "v6_dcr_mode": "",
+    "v6_dcr_rc_policy": "auto",
+    "v6_dcr_shared_rank": 0,
+    "v6_dcr_min_shared_rank": 1,
+    "v6_dcr_max_shared_rank": 0,
+    "v6_dcr_energy_tau": 0.8,
+    "v6_dcr_conflict_strength": 1.0,
+    "v6_dcr_importance_power": 0.0,
+    "v6_dcr_importance_clip": 5.0,
+    "v7_b_mode": "mean",
+    "expert_cluster_mode": "auto",
+    "expert_cluster_k": 0,
+    "expert_max_clusters": 0,
+    "expert_b_mode": "",
+    "expert_top_m": 0,
+    "expert_router_temperature": 0.2,
+    "expert_freeze_a": false,
+    "v8_a_warmup_rounds": 1,
+    "v8_a_refresh_interval": 5,
+    "v8_cache_shared_a_downlink": true,
+    "v9_mix_lambda": 0.5,
+    "v10_a_correction_alpha": 0.35,
+    "v10_a_anchor_lambda": 0.001,
+    "v10_a_prox_lambda": 0.0005,
+    "v10_b_prox_lambda": 0.0001,
+    "v10_a_sketch_rank": 2,
+    "v10_a_norm_clip_ratio": 1.5,
+    "v11_global_b_mix_mu": 0.4,
+    "v12_mu_start": 0.4,
+    "v12_mu_end": 0.6,
+    "v12_mu_schedule": "linear",
+    "v12_mu_warmup_rounds": 0,
+    "v12_nmi_guard_threshold": 0.75,
+    "v12_nmi_guard_low_mu": 0.4,
+    "v12_nmi_guard_high_mu": 0.55,
+    "hilora_leaf_blend": 0.25,
+    "ecolora_keep_ratio": 0.25,
+    "ecolora_mask_mode": "round_robin",
+    "feddat_teacher_lambda": 0.01,
+    "v5m_keep_ratio": 0.2,
+    "v5m_dare_p": 0.3,
+    "v5m_rank_policy": "fixed",
+    "v5m_rank_cap": 64,
+    "v5m_energy_tau": 0.95,
+    "v5m_knots_normalize": 1,
+    "v5m_basis_energy_tau": 0.9999,
+    "v5m_chunk_rows": 2048,
+    "v5m_device": "auto",
+    "eval_max_batches": 0,
+    "eval_batch_size": 0,
+    "eval_interval": 1,
+    "eval_final_only": false,
+    "train_max_steps_per_client": 0,
+    "max_train_samples_per_client": 0,
+    "dataloader_num_workers": 0,
+    "eval_dataloader_num_workers": 0,
+    "dataloader_pin_memory": true,
+    "dataloader_persistent_workers": false,
+    "attn_implementation": "",
+    "tokenizer_use_fast": true,
+    "eval_personalization_metrics": false,
+    "fedplora_ablation_no_consensus": false,
+    "fedplora_ablation_no_momentum": false,
+    "_benchmark_fingerprint": {
+      "fingerprint_version": 1,
+      "split_dir": "/data/yaominghao/gb/FedPLoRA/data/domain_benchmark_flowertune_mixed_20c_dir05/seed_44",
+      "combined_sha256": "db157075422e9adbadddebdb594378d13eef3e2e0a291058c1295ea7cef39608",
+      "files_sha256": {
+        "clients.json": "d300c2b6bf46b54aeccf646a5a28997463ad6d42fda362cd714a3babc1fe37a2",
+        "domain_stats.json": "a2e289e28717bb2a618ffd38a658943a3754add7b9acffa9d105653b576097e2",
+        "train.jsonl": "cfb4f931d1fed606c0113398f3264413011e4d7f3e5a79263ca9cc8a058eb83c",
+        "val.jsonl": "6d0a82eaed1a18afa1ba3fee7657770b3ae197e564e75abd081051b4ec02eb6c",
+        "test_local.jsonl": "d50f14156d14c9390a3004c9a4d95350dca9e0f62030126668ee8845e186fffa",
+        "test_domain.jsonl": "29f997bc65dbb2e9b7f5e6d8ce7f23fc8eca007d10ec613bddcb3c77dfcdb053",
+        "test_global.jsonl": "29f997bc65dbb2e9b7f5e6d8ce7f23fc8eca007d10ec613bddcb3c77dfcdb053"
+      },
+      "file_sizes": {
+        "clients.json": 2283,
+        "domain_stats.json": 463,
+        "train.jsonl": 7423123,
+        "val.jsonl": 917350,
+        "test_local.jsonl": 902483,
+        "test_domain.jsonl": 1000947,
+        "test_global.jsonl": 1000947
+      },
+      "split_counts": {
+        "train": 11122,
+        "val": 1379,
+        "test_local": 1379,
+        "test_domain": 1541,
+        "test_global": 1541
+      },
+      "clients": {
+        "num_clients": 20,
+        "domain_counts": {
+          "code": 5,
+          "finance": 5,
+          "general": 5,
+          "medical": 5
+        },
+        "total_n_train_manifest": 11122,
+        "total_n_val_manifest": 1379,
+        "total_n_local_test_manifest": 1379,
+        "min_n_train": 178,
+        "median_n_train": 532.0,
+        "max_n_train": 927,
+        "per_client_manifest": {
+          "0": {
+            "domain": "code",
+            "n_train": 312,
+            "n_val": 39,
+            "n_local_test": 39
+          },
+          "1": {
+            "domain": "code",
+            "n_train": 469,
+            "n_val": 58,
+            "n_local_test": 58
+          },
+          "2": {
+            "domain": "code",
+            "n_train": 532,
+            "n_val": 66,
+            "n_local_test": 66
+          },
+          "3": {
+            "domain": "code",
+            "n_train": 755,
+            "n_val": 94,
+            "n_local_test": 94
+          },
+          "4": {
+            "domain": "code",
+            "n_train": 816,
+            "n_val": 101,
+            "n_local_test": 101
+          },
+          "5": {
+            "domain": "finance",
+            "n_train": 574,
+            "n_val": 71,
+            "n_local_test": 71
+          },
+          "6": {
+            "domain": "finance",
+            "n_train": 592,
+            "n_val": 73,
+            "n_local_test": 73
+          },
+          "7": {
+            "domain": "finance",
+            "n_train": 178,
+            "n_val": 22,
+            "n_local_test": 22
+          },
+          "8": {
+            "domain": "finance",
+            "n_train": 631,
+            "n_val": 78,
+            "n_local_test": 78
+          },
+          "9": {
+            "domain": "finance",
+            "n_train": 499,
+            "n_val": 62,
+            "n_local_test": 62
+          },
+          "10": {
+            "domain": "general",
+            "n_train": 773,
+            "n_val": 96,
+            "n_local_test": 96
+          },
+          "11": {
+            "domain": "general",
+            "n_train": 330,
+            "n_val": 41,
+            "n_local_test": 41
+          },
+          "12": {
+            "domain": "general",
+            "n_train": 526,
+            "n_val": 65,
+            "n_local_test": 65
+          },
+          "13": {
+            "domain": "general",
+            "n_train": 754,
+            "n_val": 94,
+            "n_local_test": 94
+          },
+          "14": {
+            "domain": "general",
+            "n_train": 501,
+            "n_val": 62,
+            "n_local_test": 62
+          },
+          "15": {
+            "domain": "medical",
+            "n_train": 840,
+            "n_val": 104,
+            "n_local_test": 104
+          },
+          "16": {
+            "domain": "medical",
+            "n_train": 368,
+            "n_val": 45,
+            "n_local_test": 45
+          },
+          "17": {
+            "domain": "medical",
+            "n_train": 927,
+            "n_val": 115,
+            "n_local_test": 115
+          },
+          "18": {
+            "domain": "medical",
+            "n_train": 512,
+            "n_val": 64,
+            "n_local_test": 64
+          },
+          "19": {
+            "domain": "medical",
+            "n_train": 233,
+            "n_val": 29,
+            "n_local_test": 29
+          }
+        }
+      },
+      "row_counts_by_client": {
+        "train": {
+          "0": 312,
+          "1": 469,
+          "2": 532,
+          "3": 755,
+          "4": 816,
+          "5": 574,
+          "6": 592,
+          "7": 178,
+          "8": 631,
+          "9": 499,
+          "10": 773,
+          "11": 330,
+          "12": 526,
+          "13": 754,
+          "14": 501,
+          "15": 840,
+          "16": 368,
+          "17": 927,
+          "18": 512,
+          "19": 233
+        },
+        "val": {
+          "0": 39,
+          "1": 58,
+          "2": 66,
+          "3": 94,
+          "4": 101,
+          "5": 71,
+          "6": 73,
+          "7": 22,
+          "8": 78,
+          "9": 62,
+          "10": 96,
+          "11": 41,
+          "12": 65,
+          "13": 94,
+          "14": 62,
+          "15": 104,
+          "16": 45,
+          "17": 115,
+          "18": 64,
+          "19": 29
+        },
+        "test_local": {
+          "0": 39,
+          "1": 58,
+          "2": 66,
+          "3": 94,
+          "4": 101,
+          "5": 71,
+          "6": 73,
+          "7": 22,
+          "8": 78,
+          "9": 62,
+          "10": 96,
+          "11": 41,
+          "12": 65,
+          "13": 94,
+          "14": 62,
+          "15": 104,
+          "16": 45,
+          "17": 115,
+          "18": 64,
+          "19": 29
+        },
+        "test_domain": {},
+        "test_global": {}
+      },
+      "row_counts_by_domain": {
+        "train": {
+          "code": 2884,
+          "finance": 2474,
+          "general": 2884,
+          "medical": 2880
+        },
+        "val": {
+          "code": 358,
+          "finance": 306,
+          "general": 358,
+          "medical": 357
+        },
+        "test_local": {
+          "code": 358,
+          "finance": 306,
+          "general": 358,
+          "medical": 357
+        },
+        "test_domain": {
+          "code": 400,
+          "finance": 342,
+          "general": 400,
+          "medical": 399
+        },
+        "test_global": {
+          "code": 400,
+          "finance": 342,
+          "general": 400,
+          "medical": 399
+        }
+      }
+    },
+    "_fedplora_client_domains": {
+      "0": "code",
+      "1": "code",
+      "2": "code",
+      "3": "code",
+      "4": "code",
+      "5": "finance",
+      "6": "finance",
+      "7": "finance",
+      "8": "finance",
+      "9": "finance",
+      "10": "general",
+      "11": "general",
+      "12": "general",
+      "13": "general",
+      "14": "general",
+      "15": "medical",
+      "16": "medical",
+      "17": "medical",
+      "18": "medical",
+      "19": "medical"
+    },
+    "_fedplora_round_client_ids": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19
+    ],
+    "_aggregate_client_sizes": [
+      312,
+      469,
+      532,
+      755,
+      816,
+      574,
+      592,
+      178,
+      631,
+      499,
+      773,
+      330,
+      526,
+      754,
+      501,
+      840,
+      368,
+      927,
+      512,
+      233
+    ]
+  },
+  "benchmark_dir": "/data/yaominghao/gb/FedPLoRA/data/domain_benchmark_flowertune_mixed_20c_dir05/seed_44",
+  "eval_only_from_checkpoint": "/data/yaominghao/gb/models/trained_models_LW/flowertune_20260715_core8_seed44/N9_flower_normal_SmolLM2-135M_flowertune_r1_seed44",
+  "checkpoint_meta": {
+    "run_checkpoint_version": 1,
+    "checkpoint_phase": "final",
+    "saved_after_aggregation_before_eval": false,
+    "bundle_stem": "normal_SmolLM2-135M_domain_benchmark_flowertune_mixed_20c_dir05_seed_44_r1_e1_seed44",
+    "agg_type": "normal",
+    "model": "/data/yaominghao/gb/models/SmolLM2-135M",
+    "benchmark_dir": "/data/yaominghao/gb/FedPLoRA/data/domain_benchmark_flowertune_mixed_20c_dir05/seed_44",
+    "seed": 44,
+    "num_clients": 20,
+    "client_ids": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19
+    ],
+    "disk_sequential_protocol": false,
+    "use_ffa_peft": false,
+    "train_rounds": 1,
+    "train_local_epochs": 1,
+    "lora_r": 8,
+    "lora_alpha": 16,
+    "lora_dropout": 0.05,
+    "rslora": false,
+    "target_modules": "q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj",
+    "torch_dtype": "bfloat16",
+    "trust_remote_code": false,
+    "gradient_checkpointing": true,
+    "metrics_path": "/data/yaominghao/gb/result/FedPLoRA/flowertune_20260715_core8_seed44/result_logs/N9_flower_normal/normal_SmolLM2-135M_seed_44_r1_e1_seed44.json",
+    "benchmark_fingerprint": {
+      "fingerprint_version": 1,
+      "split_dir": "/data/yaominghao/gb/FedPLoRA/data/domain_benchmark_flowertune_mixed_20c_dir05/seed_44",
+      "combined_sha256": "db157075422e9adbadddebdb594378d13eef3e2e0a291058c1295ea7cef39608",
+      "files_sha256": {
+        "clients.json": "d300c2b6bf46b54aeccf646a5a28997463ad6d42fda362cd714a3babc1fe37a2",
+        "domain_stats.json": "a2e289e28717bb2a618ffd38a658943a3754add7b9acffa9d105653b576097e2",
+        "train.jsonl": "cfb4f931d1fed606c0113398f3264413011e4d7f3e5a79263ca9cc8a058eb83c",
+        "val.jsonl": "6d0a82eaed1a18afa1ba3fee7657770b3ae197e564e75abd081051b4ec02eb6c",
+        "test_local.jsonl": "d50f14156d14c9390a3004c9a4d95350dca9e0f62030126668ee8845e186fffa",
+        "test_domain.jsonl": "29f997bc65dbb2e9b7f5e6d8ce7f23fc8eca007d10ec613bddcb3c77dfcdb053",
+        "test_global.jsonl": "29f997bc65dbb2e9b7f5e6d8ce7f23fc8eca007d10ec613bddcb3c77dfcdb053"
+      },
+      "file_sizes": {
+        "clients.json": 2283,
+        "domain_stats.json": 463,
+        "train.jsonl": 7423123,
+        "val.jsonl": 917350,
+        "test_local.jsonl": 902483,
+        "test_domain.jsonl": 1000947,
+        "test_global.jsonl": 1000947
+      },
+      "split_counts": {
+        "train": 11122,
+        "val": 1379,
+        "test_local": 1379,
+        "test_domain": 1541,
+        "test_global": 1541
+      },
+      "clients": {
+        "num_clients": 20,
+        "domain_counts": {
+          "code": 5,
+          "finance": 5,
+          "general": 5,
+          "medical": 5
+        },
+        "total_n_train_manifest": 11122,
+        "total_n_val_manifest": 1379,
+        "total_n_local_test_manifest": 1379,
+        "min_n_train": 178,
+        "median_n_train": 532.0,
+        "max_n_train": 927,
+        "per_client_manifest": {
+          "0": {
+            "domain": "code",
+            "n_train": 312,
+            "n_val": 39,
+            "n_local_test": 39
+          },
+          "1": {
+            "domain": "code",
+            "n_train": 469,
+            "n_val": 58,
+            "n_local_test": 58
+          },
+          "2": {
+            "domain": "code",
+            "n_train": 532,
+            "n_val": 66,
+            "n_local_test": 66
+          },
+          "3": {
+            "domain": "code",
+            "n_train": 755,
+            "n_val": 94,
+            "n_local_test": 94
+          },
+          "4": {
+            "domain": "code",
+            "n_train": 816,
+            "n_val": 101,
+            "n_local_test": 101
+          },
+          "5": {
+            "domain": "finance",
+            "n_train": 574,
+            "n_val": 71,
+            "n_local_test": 71
+          },
+          "6": {
+            "domain": "finance",
+            "n_train": 592,
+            "n_val": 73,
+            "n_local_test": 73
+          },
+          "7": {
+            "domain": "finance",
+            "n_train": 178,
+            "n_val": 22,
+            "n_local_test": 22
+          },
+          "8": {
+            "domain": "finance",
+            "n_train": 631,
+            "n_val": 78,
+            "n_local_test": 78
+          },
+          "9": {
+            "domain": "finance",
+            "n_train": 499,
+            "n_val": 62,
+            "n_local_test": 62
+          },
+          "10": {
+            "domain": "general",
+            "n_train": 773,
+            "n_val": 96,
+            "n_local_test": 96
+          },
+          "11": {
+            "domain": "general",
+            "n_train": 330,
+            "n_val": 41,
+            "n_local_test": 41
+          },
+          "12": {
+            "domain": "general",
+            "n_train": 526,
+            "n_val": 65,
+            "n_local_test": 65
+          },
+          "13": {
+            "domain": "general",
+            "n_train": 754,
+            "n_val": 94,
+            "n_local_test": 94
+          },
+          "14": {
+            "domain": "general",
+            "n_train": 501,
+            "n_val": 62,
+            "n_local_test": 62
+          },
+          "15": {
+            "domain": "medical",
+            "n_train": 840,
+            "n_val": 104,
+            "n_local_test": 104
+          },
+          "16": {
+            "domain": "medical",
+            "n_train": 368,
+            "n_val": 45,
+            "n_local_test": 45
+          },
+          "17": {
+            "domain": "medical",
+            "n_train": 927,
+            "n_val": 115,
+            "n_local_test": 115
+          },
+          "18": {
+            "domain": "medical",
+            "n_train": 512,
+            "n_val": 64,
+            "n_local_test": 64
+          },
+          "19": {
+            "domain": "medical",
+            "n_train": 233,
+            "n_val": 29,
+            "n_local_test": 29
+          }
+        }
+      },
+      "row_counts_by_client": {
+        "train": {
+          "0": 312,
+          "1": 469,
+          "2": 532,
+          "3": 755,
+          "4": 816,
+          "5": 574,
+          "6": 592,
+          "7": 178,
+          "8": 631,
+          "9": 499,
+          "10": 773,
+          "11": 330,
+          "12": 526,
+          "13": 754,
+          "14": 501,
+          "15": 840,
+          "16": 368,
+          "17": 927,
+          "18": 512,
+          "19": 233
+        },
+        "val": {
+          "0": 39,
+          "1": 58,
+          "2": 66,
+          "3": 94,
+          "4": 101,
+          "5": 71,
+          "6": 73,
+          "7": 22,
+          "8": 78,
+          "9": 62,
+          "10": 96,
+          "11": 41,
+          "12": 65,
+          "13": 94,
+          "14": 62,
+          "15": 104,
+          "16": 45,
+          "17": 115,
+          "18": 64,
+          "19": 29
+        },
+        "test_local": {
+          "0": 39,
+          "1": 58,
+          "2": 66,
+          "3": 94,
+          "4": 101,
+          "5": 71,
+          "6": 73,
+          "7": 22,
+          "8": 78,
+          "9": 62,
+          "10": 96,
+          "11": 41,
+          "12": 65,
+          "13": 94,
+          "14": 62,
+          "15": 104,
+          "16": 45,
+          "17": 115,
+          "18": 64,
+          "19": 29
+        },
+        "test_domain": {},
+        "test_global": {}
+      },
+      "row_counts_by_domain": {
+        "train": {
+          "code": 2884,
+          "finance": 2474,
+          "general": 2884,
+          "medical": 2880
+        },
+        "val": {
+          "code": 358,
+          "finance": 306,
+          "general": 358,
+          "medical": 357
+        },
+        "test_local": {
+          "code": 358,
+          "finance": 306,
+          "general": 358,
+          "medical": 357
+        },
+        "test_domain": {
+          "code": 400,
+          "finance": 342,
+          "general": 400,
+          "medical": 399
+        },
+        "test_global": {
+          "code": 400,
+          "finance": 342,
+          "general": 400,
+          "medical": 399
+        }
+      }
+    },
+    "effective_hparams": {
+      "agg_type": "normal",
+      "rounds": 1,
+      "local_epochs": 1,
+      "lr": 0.0002,
+      "seed": 44,
+      "lora_r": 8,
+      "lora_alpha": 16,
+      "lora_dropout": 0.05,
+      "target_modules": "q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj",
+      "global_b_mix_mu": 0.0,
+      "global_b_mix_mu_note": "inactive_for_this_agg"
+    },
+    "memory_agg_client_payload": "trainable_only"
+  },
+  "benchmark_fingerprint": {
+    "fingerprint_version": 1,
+    "split_dir": "/data/yaominghao/gb/FedPLoRA/data/domain_benchmark_flowertune_mixed_20c_dir05/seed_44",
+    "combined_sha256": "db157075422e9adbadddebdb594378d13eef3e2e0a291058c1295ea7cef39608",
+    "files_sha256": {
+      "clients.json": "d300c2b6bf46b54aeccf646a5a28997463ad6d42fda362cd714a3babc1fe37a2",
+      "domain_stats.json": "a2e289e28717bb2a618ffd38a658943a3754add7b9acffa9d105653b576097e2",
+      "train.jsonl": "cfb4f931d1fed606c0113398f3264413011e4d7f3e5a79263ca9cc8a058eb83c",
+      "val.jsonl": "6d0a82eaed1a18afa1ba3fee7657770b3ae197e564e75abd081051b4ec02eb6c",
+      "test_local.jsonl": "d50f14156d14c9390a3004c9a4d95350dca9e0f62030126668ee8845e186fffa",
+      "test_domain.jsonl": "29f997bc65dbb2e9b7f5e6d8ce7f23fc8eca007d10ec613bddcb3c77dfcdb053",
+      "test_global.jsonl": "29f997bc65dbb2e9b7f5e6d8ce7f23fc8eca007d10ec613bddcb3c77dfcdb053"
+    },
+    "file_sizes": {
+      "clients.json": 2283,
+      "domain_stats.json": 463,
+      "train.jsonl": 7423123,
+      "val.jsonl": 917350,
+      "test_local.jsonl": 902483,
+      "test_domain.jsonl": 1000947,
+      "test_global.jsonl": 1000947
+    },
+    "split_counts": {
+      "train": 11122,
+      "val": 1379,
+      "test_local": 1379,
+      "test_domain": 1541,
+      "test_global": 1541
+    },
+    "clients": {
+      "num_clients": 20,
+      "domain_counts": {
+        "code": 5,
+        "finance": 5,
+        "general": 5,
+        "medical": 5
+      },
+      "total_n_train_manifest": 11122,
+      "total_n_val_manifest": 1379,
+      "total_n_local_test_manifest": 1379,
+      "min_n_train": 178,
+      "median_n_train": 532.0,
+      "max_n_train": 927,
+      "per_client_manifest": {
+        "0": {
+          "domain": "code",
+          "n_train": 312,
+          "n_val": 39,
+          "n_local_test": 39
+        },
+        "1": {
+          "domain": "code",
+          "n_train": 469,
+          "n_val": 58,
+          "n_local_test": 58
+        },
+        "2": {
+          "domain": "code",
+          "n_train": 532,
+          "n_val": 66,
+          "n_local_test": 66
+        },
+        "3": {
+          "domain": "code",
+          "n_train": 755,
+          "n_val": 94,
+          "n_local_test": 94
+        },
+        "4": {
+          "domain": "code",
+          "n_train": 816,
+          "n_val": 101,
+          "n_local_test": 101
+        },
+        "5": {
+          "domain": "finance",
+          "n_train": 574,
+          "n_val": 71,
+          "n_local_test": 71
+        },
+        "6": {
+          "domain": "finance",
+          "n_train": 592,
+          "n_val": 73,
+          "n_local_test": 73
+        },
+        "7": {
+          "domain": "finance",
+          "n_train": 178,
+          "n_val": 22,
+          "n_local_test": 22
+        },
+        "8": {
+          "domain": "finance",
+          "n_train": 631,
+          "n_val": 78,
+          "n_local_test": 78
+        },
+        "9": {
+          "domain": "finance",
+          "n_train": 499,
+          "n_val": 62,
+          "n_local_test": 62
+        },
+        "10": {
+          "domain": "general",
+          "n_train": 773,
+          "n_val": 96,
+          "n_local_test": 96
+        },
+        "11": {
+          "domain": "general",
+          "n_train": 330,
+          "n_val": 41,
+          "n_local_test": 41
+        },
+        "12": {
+          "domain": "general",
+          "n_train": 526,
+          "n_val": 65,
+          "n_local_test": 65
+        },
+        "13": {
+          "domain": "general",
+          "n_train": 754,
+          "n_val": 94,
+          "n_local_test": 94
+        },
+        "14": {
+          "domain": "general",
+          "n_train": 501,
+          "n_val": 62,
+          "n_local_test": 62
+        },
+        "15": {
+          "domain": "medical",
+          "n_train": 840,
+          "n_val": 104,
+          "n_local_test": 104
+        },
+        "16": {
+          "domain": "medical",
+          "n_train": 368,
+          "n_val": 45,
+          "n_local_test": 45
+        },
+        "17": {
+          "domain": "medical",
+          "n_train": 927,
+          "n_val": 115,
+          "n_local_test": 115
+        },
+        "18": {
+          "domain": "medical",
+          "n_train": 512,
+          "n_val": 64,
+          "n_local_test": 64
+        },
+        "19": {
+          "domain": "medical",
+          "n_train": 233,
+          "n_val": 29,
+          "n_local_test": 29
+        }
+      }
+    },
+    "row_counts_by_client": {
+      "train": {
+        "0": 312,
+        "1": 469,
+        "2": 532,
+        "3": 755,
+        "4": 816,
+        "5": 574,
+        "6": 592,
+        "7": 178,
+        "8": 631,
+        "9": 499,
+        "10": 773,
+        "11": 330,
+        "12": 526,
+        "13": 754,
+        "14": 501,
+        "15": 840,
+        "16": 368,
+        "17": 927,
+        "18": 512,
+        "19": 233
+      },
+      "val": {
+        "0": 39,
+        "1": 58,
+        "2": 66,
+        "3": 94,
+        "4": 101,
+        "5": 71,
+        "6": 73,
+        "7": 22,
+        "8": 78,
+        "9": 62,
+        "10": 96,
+        "11": 41,
+        "12": 65,
+        "13": 94,
+        "14": 62,
+        "15": 104,
+        "16": 45,
+        "17": 115,
+        "18": 64,
+        "19": 29
+      },
+      "test_local": {
+        "0": 39,
+        "1": 58,
+        "2": 66,
+        "3": 94,
+        "4": 101,
+        "5": 71,
+        "6": 73,
+        "7": 22,
+        "8": 78,
+        "9": 62,
+        "10": 96,
+        "11": 41,
+        "12": 65,
+        "13": 94,
+        "14": 62,
+        "15": 104,
+        "16": 45,
+        "17": 115,
+        "18": 64,
+        "19": 29
+      },
+      "test_domain": {},
+      "test_global": {}
+    },
+    "row_counts_by_domain": {
+      "train": {
+        "code": 2884,
+        "finance": 2474,
+        "general": 2884,
+        "medical": 2880
+      },
+      "val": {
+        "code": 358,
+        "finance": 306,
+        "general": 358,
+        "medical": 357
+      },
+      "test_local": {
+        "code": 358,
+        "finance": 306,
+        "general": 358,
+        "medical": 357
+      },
+      "test_domain": {
+        "code": 400,
+        "finance": 342,
+        "general": 400,
+        "medical": 399
+      },
+      "test_global": {
+        "code": 400,
+        "finance": 342,
+        "general": 400,
+        "medical": 399
+      }
+    }
+  },
+  "effective_hparams": {
+    "agg_type": "normal",
+    "rounds": 1,
+    "local_epochs": 1,
+    "lr": 0.0002,
+    "seed": 44,
+    "lora_r": 8,
+    "lora_alpha": 16,
+    "lora_dropout": 0.05,
+    "target_modules": "q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj",
+    "global_b_mix_mu": 0.0,
+    "global_b_mix_mu_note": "inactive_for_this_agg"
+  },
+  "recommended_primary_metrics": [
+    "in_domain_domain_test_macro_token_accuracy",
+    "in_domain_domain_test_worst_token_accuracy",
+    "in_domain_domain_test_macro_perplexity",
+    "in_domain_domain_test_worst_perplexity"
+  ],
+  "matched_domain_eval_definition": "Each client adapter is evaluated only on the independent domain-test split of its home domain; Worst In-Domain is the minimum home-domain mean token accuracy across domains.",
+  "communication": {
+    "agg_type": "normal",
+    "down_bytes_per_client": 9768960,
+    "up_bytes_per_client": 9768960,
+    "effective_down_bytes_per_client": 9768960,
+    "effective_up_bytes_per_client": 9768960,
+    "downlink_policy": "raw",
+    "v8_a_refresh_rounds": 0,
+    "v8_a_refresh_fraction": 0.0
+  },
+  "rounds": [
+    {
+      "round": 1,
+      "eval_note": "eval_only_matched_domain_from_checkpoint (no training)",
+      "in_domain_domain_test_macro_token_accuracy": 0.6010172826829275,
+      "in_domain_domain_test_macro_perplexity": 15.098623590272547,
+      "in_domain_domain_test_macro_loss": 2.005084195119486,
+      "in_domain_domain_test_metrics": {
+        "code": {
+          "loss": 1.018062531426549,
+          "token_accuracy": 0.7517873510540788,
+          "perplexity": 2.767826987888909,
+          "num_clients": 5
+        },
+        "finance": {
+          "loss": 3.8676319338424863,
+          "token_accuracy": 0.4100119189511323,
+          "perplexity": 47.828989656939136,
+          "num_clients": 5
+        },
+        "general": {
+          "loss": 1.7762907019257548,
+          "token_accuracy": 0.5780618261455526,
+          "perplexity": 5.907901557332282,
+          "num_clients": 5
+        },
+        "medical": {
+          "loss": 1.3583516132831575,
+          "token_accuracy": 0.6642080345809461,
+          "perplexity": 3.8897761589298576,
+          "num_clients": 5
+        }
+      },
+      "in_domain_domain_test_worst_token_accuracy": 0.4100119189511323,
+      "in_domain_domain_test_worst_perplexity": 47.828989656939136,
+      "in_domain_domain_test_worst_loss": 3.8676319338424863
+    }
+  ]
+}

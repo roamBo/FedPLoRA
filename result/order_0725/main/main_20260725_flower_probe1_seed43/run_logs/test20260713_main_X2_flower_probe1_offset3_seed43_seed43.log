@@ -1,0 +1,30 @@
+[one-exp] kind=personalized_eval method=X2_flower_probe1_offset3_seed43 seed=43 split_seed=43 pid=787346 gpu=0
+[one-exp] log=/data/yaominghao/gb/result/FedPLoRA/order_0725/main/main_20260725_flower_probe1_seed43/run_logs/test20260713_main_X2_flower_probe1_offset3_seed43_seed43.log
+[heldout] strict protocol ON held_out_clients=[3, 8, 13, 18] domains={3:code, 8:finance, 13:general, 18:medical}}
+[eval] eval_on_local=ON: 20 个客户端有本地测试集（0 个缺失将回退域测试）
+Traceback (most recent call last):
+  File "/data/yaominghao/gb/FedPLoRA/scripts/Analysis/eval_personalized.py", line 1191, in <module>
+    main()
+  File "/data/yaominghao/gb/FedPLoRA/scripts/Analysis/eval_personalized.py", line 459, in main
+    _train_one_client(model, loader, args, device)
+  File "/data/yaominghao/gb/FedPLoRA/scripts/Analysis/eval_personalized.py", line 144, in _train_one_client
+    loss = model(**batch).loss
+  File "/data/yaominghao/miniconda3/envs/fedplora/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1736, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/data/yaominghao/miniconda3/envs/fedplora/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1747, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/data/yaominghao/miniconda3/envs/fedplora/lib/python3.10/site-packages/peft/peft_model.py", line 1993, in forward
+    return self.base_model(
+  File "/data/yaominghao/miniconda3/envs/fedplora/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1736, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/data/yaominghao/miniconda3/envs/fedplora/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1747, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/data/yaominghao/miniconda3/envs/fedplora/lib/python3.10/site-packages/peft/tuners/tuners_utils.py", line 330, in forward
+    return self.model.forward(*args, **kwargs)
+  File "/data/yaominghao/miniconda3/envs/fedplora/lib/python3.10/site-packages/transformers/utils/generic.py", line 969, in wrapper
+    output = func(self, *args, **kwargs)
+  File "/data/yaominghao/miniconda3/envs/fedplora/lib/python3.10/site-packages/transformers/models/llama/modeling_llama.py", line 708, in forward
+    loss = self.loss_function(logits=logits, labels=labels, vocab_size=self.config.vocab_size, **kwargs)
+  File "/data/yaominghao/miniconda3/envs/fedplora/lib/python3.10/site-packages/transformers/loss/loss_utils.py", line 52, in ForCausalLMLoss
+    logits = logits.float()
+torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 96.00 MiB. GPU 0 has a total capacity of 79.15 GiB of which 25.56 MiB is free. Process 2918188 has 10.90 GiB memory in use. Process 2796257 has 890.00 MiB memory in use. Process 2308544 has 772.00 MiB memory in use. Process 2313855 has 772.00 MiB memory in use. Process 4015585 has 778.00 MiB memory in use. Process 4113260 has 780.00 MiB memory in use. Process 4116394 has 780.00 MiB memory in use. Process 4123599 has 608.00 MiB memory in use. Process 4123601 has 608.00 MiB memory in use. Process 4123596 has 608.00 MiB memory in use. Process 4123600 has 608.00 MiB memory in use. Process 4123597 has 608.00 MiB memory in use. Process 4123598 has 608.00 MiB memory in use. Process 4127774 has 606.00 MiB memory in use. Process 4127773 has 606.00 MiB memory in use. Process 4127772 has 606.00 MiB memory in use. Process 4132176 has 606.00 MiB memory in use. Process 4132174 has 606.00 MiB memory in use. Process 4132175 has 606.00 MiB memory in use. Process 4135454 has 772.00 MiB memory in use. Process 4161569 has 606.00 MiB memory in use. Process 4161566 has 606.00 MiB memory in use. Process 4161570 has 606.00 MiB memory in use. Process 4161568 has 606.00 MiB memory in use. Process 4161565 has 606.00 MiB memory in use. Process 4161567 has 606.00 MiB memory in use. Process 24407 has 606.00 MiB memory in use. Process 24406 has 606.00 MiB memory in use. Process 38107 has 968.00 MiB memory in use. Process 419658 has 3.69 GiB memory in use. Process 485779 has 3.02 GiB memory in use. Process 649896 has 3.68 GiB memory in use. Process 693799 has 2.94 GiB memory in use. Process 693893 has 2.94 GiB memory in use. Process 693347 has 2.94 GiB memory in use. Process 693602 has 2.94 GiB memory in use. Process 693680 has 2.94 GiB memory in use. Process 693392 has 2.94 GiB memory in use. Process 744568 has 606.00 MiB memory in use. Process 746969 has 606.00 MiB memory in use. Process 747794 has 606.00 MiB memory in use. Process 752146 has 606.00 MiB memory in use. Process 752845 has 606.00 MiB memory in use. Process 753714 has 606.00 MiB memory in use. Process 787255 has 1.75 GiB memory in use. Process 787298 has 1.75 GiB memory in use. Process 787290 has 710.00 MiB memory in use. Process 787275 has 1.75 GiB memory in use. Process 787285 has 710.00 MiB memory in use. Process 787338 has 1.75 GiB memory in use. Process 787261 has 1.75 GiB memory in use. Process 787344 has 1.75 GiB memory in use. Process 787759 has 1.75 GiB memory in use. Process 787270 has 658.00 MiB memory in use. Including non-PyTorch memory, this process has 1.34 GiB memory in use. Process 787340 has 710.00 MiB memory in use. Process 787297 has 552.00 MiB memory in use. Process 787341 has 628.00 MiB memory in use. Process 787280 has 682.00 MiB memory in use. Of the allocated memory 854.64 MiB is allocated by PyTorch, and 11.36 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)

@@ -1,0 +1,7 @@
+tag=flower_ours_seed42
+source_json=/data/yaominghao/gb/result/FedPLoRA/order_0715/flowertune_20260715_core8_seed42/result_logs/N7_ours_flower_v13a/fedplora_v13a_os_SmolLM2-135M_seed_42_r1_e1_seed42.json
+output_dir=/data/yaominghao/gb/result/FedPLoRA/order_0725/eval_only_main_20260725/flowertune
+gpu=0
+runner=scripts/RunScripts/run_eval_only_matched_domain.sh
+log=/data/yaominghao/gb/result/FedPLoRA/order_0725/eval_only_main_20260725/logs/flower_ours_seed42.log
+launched_at=2026-07-26T19:48:05+0800

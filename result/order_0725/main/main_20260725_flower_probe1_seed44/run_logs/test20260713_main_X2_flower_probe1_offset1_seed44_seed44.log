@@ -1,0 +1,25 @@
+[one-exp] kind=personalized_eval method=X2_flower_probe1_offset1_seed44 seed=44 split_seed=44 pid=787341 gpu=0
+[one-exp] log=/data/yaominghao/gb/result/FedPLoRA/order_0725/main/main_20260725_flower_probe1_seed44/run_logs/test20260713_main_X2_flower_probe1_offset1_seed44_seed44.log
+[heldout] strict protocol ON held_out_clients=[1, 6, 11, 16] domains={1:code, 6:finance, 11:general, 16:medical}}
+[eval] eval_on_local=ON: 20 个客户端有本地测试集（0 个缺失将回退域测试）
+Traceback (most recent call last):
+  File "/data/yaominghao/gb/FedPLoRA/scripts/Analysis/eval_personalized.py", line 1191, in <module>
+    main()
+  File "/data/yaominghao/gb/FedPLoRA/scripts/Analysis/eval_personalized.py", line 459, in main
+    _train_one_client(model, loader, args, device)
+  File "/data/yaominghao/gb/FedPLoRA/scripts/Analysis/eval_personalized.py", line 131, in _train_one_client
+    model.to(device)
+  File "/data/yaominghao/miniconda3/envs/fedplora/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1340, in to
+    return self._apply(convert)
+  File "/data/yaominghao/miniconda3/envs/fedplora/lib/python3.10/site-packages/torch/nn/modules/module.py", line 900, in _apply
+    module._apply(fn)
+  File "/data/yaominghao/miniconda3/envs/fedplora/lib/python3.10/site-packages/torch/nn/modules/module.py", line 900, in _apply
+    module._apply(fn)
+  File "/data/yaominghao/miniconda3/envs/fedplora/lib/python3.10/site-packages/torch/nn/modules/module.py", line 900, in _apply
+    module._apply(fn)
+  [Previous line repeated 6 more times]
+  File "/data/yaominghao/miniconda3/envs/fedplora/lib/python3.10/site-packages/torch/nn/modules/module.py", line 927, in _apply
+    param_applied = fn(param)
+  File "/data/yaominghao/miniconda3/envs/fedplora/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1326, in convert
+    return t.to(
+torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 2.00 MiB. GPU 0 has a total capacity of 79.15 GiB of which 3.56 MiB is free. Process 2918188 has 10.90 GiB memory in use. Process 2796257 has 890.00 MiB memory in use. Process 2308544 has 772.00 MiB memory in use. Process 2313855 has 772.00 MiB memory in use. Process 4015585 has 778.00 MiB memory in use. Process 4113260 has 780.00 MiB memory in use. Process 4116394 has 780.00 MiB memory in use. Process 4123599 has 608.00 MiB memory in use. Process 4123601 has 608.00 MiB memory in use. Process 4123596 has 608.00 MiB memory in use. Process 4123600 has 608.00 MiB memory in use. Process 4123597 has 608.00 MiB memory in use. Process 4123598 has 608.00 MiB memory in use. Process 4127774 has 606.00 MiB memory in use. Process 4127773 has 606.00 MiB memory in use. Process 4127772 has 606.00 MiB memory in use. Process 4132176 has 606.00 MiB memory in use. Process 4132174 has 606.00 MiB memory in use. Process 4132175 has 606.00 MiB memory in use. Process 4135454 has 772.00 MiB memory in use. Process 4161569 has 606.00 MiB memory in use. Process 4161566 has 606.00 MiB memory in use. Process 4161570 has 606.00 MiB memory in use. Process 4161568 has 606.00 MiB memory in use. Process 4161565 has 606.00 MiB memory in use. Process 4161567 has 606.00 MiB memory in use. Process 24407 has 606.00 MiB memory in use. Process 24406 has 606.00 MiB memory in use. Process 38107 has 968.00 MiB memory in use. Process 419658 has 3.69 GiB memory in use. Process 485779 has 3.02 GiB memory in use. Process 649896 has 3.68 GiB memory in use. Process 693799 has 2.94 GiB memory in use. Process 693893 has 2.94 GiB memory in use. Process 693347 has 2.94 GiB memory in use. Process 693602 has 2.94 GiB memory in use. Process 693680 has 2.94 GiB memory in use. Process 693392 has 2.94 GiB memory in use. Process 744568 has 606.00 MiB memory in use. Process 746969 has 606.00 MiB memory in use. Process 747794 has 606.00 MiB memory in use. Process 752146 has 606.00 MiB memory in use. Process 752845 has 606.00 MiB memory in use. Process 753714 has 606.00 MiB memory in use. Process 787255 has 1.75 GiB memory in use. Process 787298 has 1.75 GiB memory in use. Process 787290 has 710.00 MiB memory in use. Process 787275 has 1.75 GiB memory in use. Process 787285 has 710.00 MiB memory in use. Process 787338 has 1.75 GiB memory in use. Process 787261 has 1.75 GiB memory in use. Process 787344 has 1.75 GiB memory in use. Process 787759 has 1.75 GiB memory in use. Process 787270 has 660.00 MiB memory in use. Process 787346 has 1.34 GiB memory in use. Process 787340 has 710.00 MiB memory in use. Process 787297 has 572.00 MiB memory in use. Including non-PyTorch memory, this process has 628.00 MiB memory in use. Process 787280 has 682.00 MiB memory in use. Of the allocated memory 195.20 MiB is allocated by PyTorch, and 18.80 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)
