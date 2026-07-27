@@ -1,0 +1,67 @@
+[one-exp] kind=personalized_eval method=X2_flower_probe1_offset4_seed44 seed=44 split_seed=44 pid=787759 gpu=0
+[one-exp] log=/data/yaominghao/gb/result/FedPLoRA/order_0725/main/main_20260725_flower_probe1_seed44/run_logs/test20260713_main_X2_flower_probe1_offset4_seed44_seed44.log
+[heldout] strict protocol ON held_out_clients=[4, 9, 14, 19] domains={4:code, 9:finance, 14:general, 19:medical}}
+[eval] eval_on_local=ON: 20 个客户端有本地测试集（0 个缺失将回退域测试）
+[cap] 0 (code) [1/16]
+[cap] 1 (code) [2/16]
+[cap] 2 (code) [3/16]
+[cap] 3 (code) [4/16]
+[cap] 5 (finance) [5/16]
+[cap] 6 (finance) [6/16]
+[cap] 7 (finance) [7/16]
+[cap] 8 (finance) [8/16]
+[cap] 10 (general) [9/16]
+[cap] 11 (general) [10/16]
+[cap] 12 (general) [11/16]
+[cap] 13 (general) [12/16]
+[cap] 15 (medical) [13/16]
+[cap] 16 (medical) [14/16]
+[cap] 17 (medical) [15/16]
+[cap] 18 (medical) [16/16]
+[heldout-fewshot] cid=4 cap=1
+[heldout-fewshot] cid=9 cap=1
+[heldout-fewshot] cid=14 cap=1
+[heldout-fewshot] cid=19 cap=1
+[heldout-route] geom_route_domain_by_client={4: 'code', 9: 'finance', 14: 'general', 19: 'medical'}
+[heldout-route] metric=flat_b_cosine match_rate=1.0 routes={4: 'code', 9: 'finance', 14: 'general', 19: 'medical'}
+[heldout-route] metric=subspace match_rate=1.0 routes={4: 'code', 9: 'finance', 14: 'general', 19: 'medical'}
+[heldout-route] metric=relative_l2 match_rate=0.5 routes={4: 'code', 9: 'finance', 14: 'code', 19: 'code'}
+[heldout-route] metric=delta_w_cosine match_rate=1.0 routes={4: 'code', 9: 'finance', 14: 'general', 19: 'medical'}
+[heldout-route] metric=nearest_client_subspace match_rate=1.0 routes={4: 'code', 9: 'finance', 14: 'general', 19: 'medical'}
+[heldout-route] metric=random match_rate=0.25 routes={4: 'code', 9: 'general', 14: 'medical', 19: 'general'}
+[heldout-route] metric=oracle match_rate=1.0 routes={4: 'code', 9: 'finance', 14: 'general', 19: 'medical'}
+[scheme base   ] per-domain macro_acc=0.5178 worst=0.1932
+[scheme global ] per-domain macro_acc=0.6306 worst=0.5625
+[scheme coldstart] per-domain macro_acc=0.6878 worst=0.5925
+[scheme coldstart_geom] per-domain macro_acc=0.6878 worst=0.5925
+[scheme local_fewshot1] per-domain macro_acc=0.5179 worst=0.1932
+[scheme v11c_coldstart] per-domain macro_acc=0.6786 worst=0.5879
+[scheme coldstart_route_flat_b_cosine] per-domain macro_acc=0.6878 worst=0.5925
+[scheme coldstart_route_subspace] per-domain macro_acc=0.6878 worst=0.5925
+[scheme coldstart_route_relative_l2] per-domain macro_acc=0.6757 worst=0.5802
+[scheme coldstart_route_delta_w_cosine] per-domain macro_acc=0.6878 worst=0.5925
+[scheme coldstart_route_nearest_client_subspace] per-domain macro_acc=0.6878 worst=0.5925
+[scheme coldstart_route_random] per-domain macro_acc=0.5670 worst=0.3011
+[scheme coldstart_route_oracle] per-domain macro_acc=0.6878 worst=0.5925
+
+========= per-domain 个性化评测 (token acc) =========
+scheme     macro   worst    code   fina   gene   medi
+base      0.5178  0.1932   0.707  0.193  0.566  0.605
+global    0.6306  0.5625   0.736  0.562  0.584  0.639
+coldstart  0.6878  0.5925   0.747  0.750  0.592  0.661
+coldstart_geom  0.6878  0.5925   0.747  0.750  0.592  0.661
+local_fewshot1  0.5179  0.1932   0.707  0.193  0.567  0.604
+v11c_coldstart  0.6786  0.5879   0.743  0.727  0.588  0.657
+coldstart_route_flat_b_cosine  0.6878  0.5925   0.747  0.750  0.592  0.661
+coldstart_route_subspace  0.6878  0.5925   0.747  0.750  0.592  0.661
+coldstart_route_relative_l2  0.6757  0.5802   0.747  0.750  0.580  0.625
+coldstart_route_delta_w_cosine  0.6878  0.5925   0.747  0.750  0.592  0.661
+coldstart_route_nearest_client_subspace  0.6878  0.5925   0.747  0.750  0.592  0.661
+coldstart_route_random  0.5670  0.3011   0.747  0.301  0.580  0.640
+coldstart_route_oracle  0.6878  0.5925   0.747  0.750  0.592  0.661
+----------------------------------------------------
+[判读] coldstart − base(无适配): macro +0.1700
+  -> 同域池化 B 让新客户端零样本获得显著域能力（local 做不到），这是联邦的真实价值点。
+[判读] v11c_coldstart − base(无适配): macro +0.1608 (μ=0.40)
+
+[eval] 已保存: /data/yaominghao/gb/result/FedPLoRA/order_0725/main/main_20260725_flower_probe1_seed44/result_logs/X2_flower_probe1_offset4_seed44_seed44.json

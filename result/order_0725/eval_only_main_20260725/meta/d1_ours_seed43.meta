@@ -1,0 +1,7 @@
+tag=d1_ours_seed43
+source_json=/data/yaominghao/gb/result/FedPLoRA/order_0711/v13_20260711_nx1_35c_dir05_r1_finaleval_seed43/result_logs/NX1_v13a_os_split43_train43/fedplora_v13a_os_SmolLM2-135M_seed_43_r1_e1_seed43.json
+output_dir=/data/yaominghao/gb/result/FedPLoRA/order_0725/eval_only_main_20260725/d1
+gpu=0
+runner=scripts/RunScripts/run_eval_only_matched_domain.sh
+log=/data/yaominghao/gb/result/FedPLoRA/order_0725/eval_only_main_20260725/logs/d1_ours_seed43.log
+launched_at=2026-07-26T19:48:05+0800
