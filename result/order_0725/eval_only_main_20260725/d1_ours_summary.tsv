@@ -1,0 +1,2 @@
+dataset	agg_type	n	seeds	In-Domain↑	Worst In-Domain↑	In-Domain PPL↓	Worst In-Domain PPL↓
+domain_benchmark_35c_dir05	fedplora_v13a_os	3	42,43,44	60.40±0.75	47.57±0.87	5.941±0.145	9.669±0.143

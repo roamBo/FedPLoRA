@@ -1,0 +1,7 @@
+tag=d1_ours_seed42
+source_json=/data/yaominghao/gb/result/FedPLoRA/order_0712/v13_20260712_nx0_35c_dir05_r1_finaleval_seed42/result_logs/NX0_v13a_os_split42_train42/fedplora_v13a_os_SmolLM2-135M_seed_42_r1_e1_seed42.json
+output_dir=/data/yaominghao/gb/result/FedPLoRA/order_0725/eval_only_main_20260725/d1
+gpu=0
+runner=scripts/RunScripts/run_eval_only_matched_domain.sh
+log=/data/yaominghao/gb/result/FedPLoRA/order_0725/eval_only_main_20260725/logs/d1_ours_seed42.log
+launched_at=2026-07-26T19:48:05+0800
