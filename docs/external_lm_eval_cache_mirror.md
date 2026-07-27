@@ -23,6 +23,20 @@ bash scripts/RunScripts/prepare_external_lm_eval_cache.sh prepare mmlu,pubmedqa,
 bash scripts/RunScripts/prepare_external_lm_eval_cache.sh verify mmlu,pubmedqa,mbpp
 ```
 
+During `verify`, messages like:
+
+```text
+Using the latest cached version of the dataset since ... couldn't be found on the Hugging Face Hub (offline mode is enabled).
+```
+
+are expected. They mean the script is intentionally not using the network and
+has fallen back to the local cache. Treat the check as successful only when the
+last line contains:
+
+```text
+[hf-cache][ok] offline cache ready
+```
+
 The default `prepare` endpoint is:
 
 ```bash

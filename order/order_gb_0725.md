@@ -419,6 +419,8 @@ bash scripts/RunScripts/prepare_external_lm_eval_cache.sh prepare mmlu,pubmedqa,
 bash scripts/RunScripts/prepare_external_lm_eval_cache.sh verify mmlu,pubmedqa,mbpp
 ```
 
+`verify` 时出现 `couldn't be found on the Hugging Face Hub (offline mode is enabled)` 是正常离线提示，不是失败；只要最后出现 `[hf-cache][ok] offline cache ready` 就说明 cache 可用。
+
 若 pubmedqa 报 `preprocess_pubmedqa` 或 `CONTEXTS`/`context` 字段错误：先 `git pull` 同步 `external_lm_eval_datasets.py` 与 `lm_eval_task_overrides/pubmedqa/preprocess_pubmedqa.py`，再重跑 `--tasks pubmedqa --verify_only`。
 
 ### Main-1.2-E1 adapter export（串行三 seed，读 gb 历史 v13a checkpoint）

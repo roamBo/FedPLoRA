@@ -340,6 +340,8 @@ bash scripts/RunScripts/prepare_external_lm_eval_cache.sh prepare mmlu,pubmedqa,
 bash scripts/RunScripts/prepare_external_lm_eval_cache.sh verify mmlu,pubmedqa,mbpp
 ```
 
+`verify` 时出现 `couldn't be found on the Hugging Face Hub (offline mode is enabled)` 是正常离线提示，不是失败；只要最后出现 `[hf-cache][ok] offline cache ready` 就说明 cache 可用。
+
 若镜像也不可达，在任意能联网机器上用同一脚本准备 `data/external_lm_eval_hf_cache/`，再 `rsync` 到服务器同一路径；正式 E2 评测继续使用 `--hf_cache_dir "$HF_CACHE_ROOT"` 离线读取。不要直接改用 ModelScope 版数据集替代 MMLU/PubMedQA/MBPP，否则 lm-eval task YAML、dataset config 与论文可复现口径会变化。当前脚本没有 FiQA 的稳定 task/cache 映射，因此本轮**不伪造 FiQA alias**；只有 `lm_eval ls tasks` 明确给出服务器可复现的 FiQA task 名后才能另加。
 
 ### 1.2.2 解析 checkpoint 并导出三种子部署 adapter

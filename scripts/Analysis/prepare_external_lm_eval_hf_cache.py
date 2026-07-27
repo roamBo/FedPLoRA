@@ -88,6 +88,14 @@ def main() -> None:
         f"cache_root={cache_root} endpoint={endpoint}",
         flush=True,
     )
+    if args.verify_only:
+        print(
+            "[hf-cache][note] In offline verification, datasets may print "
+            "\"couldn't be found on the Hugging Face Hub (offline mode is enabled)\" "
+            "before using the local cache. This is expected; success is "
+            "reported as '[hf-cache][ok] offline cache ready'.",
+            flush=True,
+        )
     for task in tasks:
         if task != "mmlu":
             path, name = read_lm_eval_dataset_spec(task)
