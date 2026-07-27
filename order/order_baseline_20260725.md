@@ -289,7 +289,36 @@ MD_LOG_DIR="$MD_ROOT/logs" MD_PID_DIR="$MD_ROOT/pids" \
 
 ### 1.2.2 A100 节点：新补 Flower baseline 的 matched-domain
 
-必须先完成 1.1 的训练。每个新结果 JSON 单独启动。这里采用**双层 detach**：外层 `nohup` 保证命令行立即返回，内层 `launch_eval_only_matched_domain_one.sh` 再为真正的 eval 写 `md_*.pid` / `md_*.log`。
+必须先完成 1.1 的训练。**推荐只使用下面的后台队列脚本**：命令行会立即返回，队列脚本自己在 `GPU_ID` 指定的单卡上串行跑 18 个 matched-domain eval，并分别写 `md_*.pid` / `md_*.log`。这样不会占住 SSH/tmux，也不会一次性起 18 个 GPU 进程。
+
+> 注意：本节是 baseline 1.2 matched-domain eval-only，**不涉及** `mmlu` / `pubmedqa` / `mbpp`。如果看到 `[external][error] task not registered: mmlu`，说明执行到了 1.3 external eval 的门禁块，和 baseline 1.2 无关；先跳过 1.3，继续本节即可。
+
+推荐启动命令：
+
+```bash
+cd /data/yaominghao/gb/FedPLoRA
+export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}"
+export CODE_DIR=/data/yaominghao/gb/FedPLoRA
+export BASELINE_RESULT_ROOT="${RESULT_ROOT:-/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline}"
+export GPU_ID="${GPU_ID:-0}"
+
+bash scripts/RunScripts/queue_new_flower_matched_domain_gb.sh launch
+```
+
+查看状态，不阻塞：
+
+```bash
+bash scripts/RunScripts/queue_new_flower_matched_domain_gb.sh status
+tail -80 "$BASELINE_RESULT_ROOT/matched_domain_new_flower/queue/new_flower_matched_domain_queue.log"
+```
+
+完成后汇总：
+
+```bash
+bash scripts/RunScripts/queue_new_flower_matched_domain_gb.sh summarize
+```
+
+下面保留手工三波命令作为备用方案。gb 单卡或 SSH 不稳定时不要用备用方案，直接用上面的 queue 脚本。
 
 ```bash
 export NEW_MD_ROOT="$RESULT_ROOT/matched_domain_new_flower"
