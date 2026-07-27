@@ -190,6 +190,9 @@ def _load_dataset(path: str, name: str | None, *, trust_remote_code: bool = Fals
     from datasets import load_dataset
 
     kwargs = {"trust_remote_code": trust_remote_code}
+    cache_dir = os.environ.get("HF_DATASETS_CACHE")
+    if cache_dir:
+        kwargs["cache_dir"] = cache_dir
     if name is None:
         return load_dataset(path, **kwargs)
     return load_dataset(path, name, **kwargs)
@@ -305,8 +308,20 @@ def preflight_offline_tasks(task_names: list[str], env: dict[str, str], cache_ro
             f"load_dataset({path!r}, {name!r})",
             flush=True,
         )
-        with temporary_environ(env):
-            _load_dataset(path, name, trust_remote_code=False)
+        try:
+            with temporary_environ(env):
+                _load_dataset(path, name, trust_remote_code=False)
+        except Exception as exc:
+            raise SystemExit(
+                "[external-eval][error] offline cache preflight failed "
+                f"for task={task!r} dataset={path!r} config={name!r}.\n"
+                f"cache_root={cache_root}\n"
+                "This is a cache problem, not a GPU-training problem. Fix once with:\n"
+                "  bash scripts/RunScripts/prepare_external_lm_eval_cache.sh verify "
+                f"{task} || PURGE=1 bash scripts/RunScripts/prepare_external_lm_eval_cache.sh prepare {task}\n"
+                "Then rerun:\n"
+                "  bash scripts/RunScripts/prepare_external_lm_eval_cache.sh verify mmlu,pubmedqa,mbpp"
+            ) from exc
         print(f"[external-eval][preflight][ok] {task}", flush=True)
 
 

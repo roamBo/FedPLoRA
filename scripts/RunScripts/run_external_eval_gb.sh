@@ -34,20 +34,25 @@ test -x "$PY" || test -f "$PY" || die "missing python: $PY"
 
 verify_cache() {
   export HF_HOME="$CACHE_ROOT"
+  export HF_HUB_CACHE="$CACHE_ROOT/hub"
+  export HUGGINGFACE_HUB_CACHE="$CACHE_ROOT/hub"
   export HF_DATASETS_CACHE="$CACHE_ROOT/datasets"
   export HF_HUB_OFFLINE=1 HF_DATASETS_OFFLINE=1 TRANSFORMERS_OFFLINE=1
   unset HF_ENDPOINT
-  "$PY" "${CODE_DIR}/scripts/Analysis/prepare_external_lm_eval_hf_cache.py" --verify_only
+  "$PY" "${CODE_DIR}/scripts/Analysis/prepare_external_lm_eval_hf_cache.py" \
+    --cache_root "$CACHE_ROOT" --tasks mmlu,pubmedqa,mbpp --verify_only
 }
 
 prepare_cache() {
   local tasks="${1:-mmlu,pubmedqa,mbpp}"
   export HF_HOME="$CACHE_ROOT"
+  export HF_HUB_CACHE="$CACHE_ROOT/hub"
+  export HUGGINGFACE_HUB_CACHE="$CACHE_ROOT/hub"
   export HF_DATASETS_CACHE="$CACHE_ROOT/datasets"
   export HF_ENDPOINT="${HF_ENDPOINT:-https://hf-mirror.com}"
   unset HF_HUB_OFFLINE HF_DATASETS_OFFLINE TRANSFORMERS_OFFLINE
   "$PY" "${CODE_DIR}/scripts/Analysis/prepare_external_lm_eval_hf_cache.py" \
-    --tasks "$tasks" --purge
+    --cache_root "$CACHE_ROOT" --tasks "$tasks" --purge --hf_endpoint "$HF_ENDPOINT"
   verify_cache
 }
 
@@ -71,6 +76,7 @@ run_eval() {
     --mode "$mode" \
     --device cuda:0 \
     --batch_size "$BATCH_SIZE" \
+    --hf_cache_dir "$CACHE_ROOT" \
     --confirm_run_unsafe_code \
     --output_dir "$outdir" \
     $extra \

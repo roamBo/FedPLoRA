@@ -52,6 +52,8 @@ Stage 7  第三部分：总体验收与 summarize 出表
 | Main 2.2 / Baseline 2.2 | `D1_70C_ROOT` repartition + cmp（Main 2.2-prep） |
 | Main/Baseline external | HF 离线 cache verify_only 通过 |
 
+**并行澄清：** Baseline 第一部分（1.1 训练、1.2 matched-domain、1.3 external）不需要等 Main 第一部分训练结束；它只依赖自己的 baseline checkpoint/result JSON 与 HF 离线 cache。Baseline 第二部分中，只有 `Baseline-2.1` 必须等 `Main-2.1` 的 15 个 Flower JSON；`Baseline-2.2` 只依赖 70c 数据准备，不依赖 Main-1.2 external。
+
 ## 【路径对照（minghao A100 → gb）】
 
 | 项 | order_*_20260725.md | order_gb_0725.md |
@@ -1050,49 +1052,29 @@ python "$MD_SUMMARIZER" "$MD_ROOT/flowertune_existing" | tee "$MD_ROOT/flower_ex
 grep -R 'max_seq_length=256' "$MD_ROOT/logs"
 ```
 
-### Baseline-1.2-B 新补 Flower baseline matched-domain ×18（串行）
+### Baseline-1.2-B 新补 Flower baseline matched-domain ×18（后台队列串行）
 
-须 **Baseline-1.1** 训练完成后再跑。使用 `launch_eval_only_matched_domain_one.sh`，gb 单卡逐条 launch + `MD_STATUS` 确认后再开下一条。
+须 **Baseline-1.1** 训练完成后再跑。不要再手粘 18 行 `launch_new_flower_md`；gb 单卡会瞬间起 18 个后台 eval，容易拖死 SSH/session。现在统一使用后台队列脚本：命令行立即返回，队列内部在 `GPU_ID` 上串行跑 18 条。
 
 ```bash
-set -euo pipefail
 cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}"
-export NEW_MD_ROOT="$BASELINE_RESULT_ROOT/matched_domain_new_flower"
-export MD_LAUNCHER=scripts/RunScripts/launch_eval_only_matched_domain_one.sh
-export MD_STATUS=scripts/RunScripts/check_eval_only_matched_domain_jobs.sh
-mkdir -p "$NEW_MD_ROOT" "$NEW_MD_ROOT/logs" "$NEW_MD_ROOT/pids" "$NEW_MD_ROOT/meta"
+export GPU_ID="${GPU_ID:-0}"
+bash scripts/RunScripts/queue_new_flower_matched_domain_gb.sh launch
+```
 
-launch_new_flower_md () {
-  local tag="$1"
-  mapfile -t hits < <(find "$BASELINE_RESULT_ROOT/$tag/result_logs/N9_${tag}" -maxdepth 1 -name '*.json' | sort)
-  [[ "${#hits[@]}" -eq 1 ]] || { echo "[new-md][error] expected one JSON: $tag, got ${#hits[@]}" >&2; return 2; }
-  MD_ROOT="$NEW_MD_ROOT" MD_LOG_DIR="$NEW_MD_ROOT/logs" MD_PID_DIR="$NEW_MD_ROOT/pids" MD_META_DIR="$NEW_MD_ROOT/meta" \
-    bash "$MD_LAUNCHER" "md_${tag}" "${hits[0]}" "$NEW_MD_ROOT" "${GPU_ID:-0}"
-}
+查看队列状态（不阻塞）：
 
-# 逐条 launch；每条完成后 bash "$MD_STATUS" "$NEW_MD_ROOT" 确认 running=0 再开下一条
-launch_new_flower_md flower_yoco_seed42
-launch_new_flower_md flower_yoco_seed43
-launch_new_flower_md flower_yoco_seed44
-launch_new_flower_md flower_ffa_seed42
-launch_new_flower_md flower_ffa_seed43
-launch_new_flower_md flower_ffa_seed44
-launch_new_flower_md flower_flora_seed42
-launch_new_flower_md flower_flora_seed43
-launch_new_flower_md flower_flora_seed44
-launch_new_flower_md flower_flexlora_seed42
-launch_new_flower_md flower_flexlora_seed43
-launch_new_flower_md flower_flexlora_seed44
-launch_new_flower_md flower_feddat_seed42
-launch_new_flower_md flower_feddat_seed43
-launch_new_flower_md flower_feddat_seed44
-launch_new_flower_md flower_hilora_seed42
-launch_new_flower_md flower_hilora_seed43
-launch_new_flower_md flower_hilora_seed44
+```bash
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}"
+bash scripts/RunScripts/queue_new_flower_matched_domain_gb.sh status
+```
 
-[[ "$(find "$NEW_MD_ROOT" -name '*_matched_domain.json' | wc -l)" -eq 18 ]]
-python scripts/Analysis/summarize_matched_domain_eval.py "$NEW_MD_ROOT" | tee "$NEW_MD_ROOT/new_flower_baselines_summary.tsv"
-grep -R 'max_seq_length=256' "$NEW_MD_ROOT/logs"
+完成后汇总：
+
+```bash
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}"
+bash scripts/RunScripts/queue_new_flower_matched_domain_gb.sh summarize
+[[ "$(find "$BASELINE_RESULT_ROOT/matched_domain_new_flower" -name '*_matched_domain.json' | wc -l)" -eq 18 ]]
 ```
 
 ### Baseline-1.2-check（合计 72 个 matched-domain JSON）
@@ -1114,7 +1096,15 @@ echo "d1=$D1_N flower_existing=$FLOWER_EXIST_N flower_new=$FLOWER_NEW_N total=$(
 
 ### Baseline-1.3-E0 cache 门禁
 
-同 Main-1.2-E0，将 `MAIN_RESULT_ROOT` 换为 `$BASELINE_RESULT_ROOT` 写 analysis 即可；或直接复用已 verify 的 `$HF_CACHE_ROOT`。
+同 Main-1.2-E0，将 `MAIN_RESULT_ROOT` 换为 `$BASELINE_RESULT_ROOT` 写 analysis 即可；或直接复用已 verify 的 `$HF_CACHE_ROOT`。正式 external eval **不应依赖实时 HF 连接**；若 MBPP/MMLU/PubMedQA 报 `Couldn't reach ... on the Hub`，先修 cache，不要直接重跑 GPU eval：
+
+```bash
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && \
+export PY="/data/yaominghao/miniconda3/envs/fedplora/bin/python"
+bash scripts/RunScripts/prepare_external_lm_eval_cache.sh verify mmlu,pubmedqa,mbpp || \
+  PURGE=1 bash scripts/RunScripts/prepare_external_lm_eval_cache.sh prepare mmlu,pubmedqa,mbpp
+bash scripts/RunScripts/prepare_external_lm_eval_cache.sh verify mmlu,pubmedqa,mbpp
+```
 
 ### Baseline-1.3-E1 adapter export（串行 9 个；gb 单卡）
 
