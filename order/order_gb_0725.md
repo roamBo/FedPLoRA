@@ -408,11 +408,8 @@ export HUGGINGFACE_HUB_CACHE="$HF_CACHE_ROOT/hub" HF_DATASETS_CACHE="$HF_CACHE_R
 HF_HUB_OFFLINE=1 HF_DATASETS_OFFLINE=1
 python -m pip show lm_eval >/dev/null 2>&1 || python -m pip install 'lm_eval[hf]>=0.4.8,<0.5'
 python scripts/Analysis/prepare_external_lm_eval_hf_cache.py --cache_root "$HF_CACHE_ROOT" --tasks mmlu,pubmedqa,mbpp --verify_only
-python -m lm_eval ls tasks > "$MAIN_RESULT_ROOT/analysis/lm_eval_tasks.txt"
-for TASK in mmlu pubmedqa mbpp; do
-  grep -Eq "(^|[[:space:]])${TASK}([[:space:]]|$)" "$MAIN_RESULT_ROOT/analysis/lm_eval_tasks.txt" \
-    || { echo "[external][error] task not registered: $TASK" >&2; exit 1; }
-done
+echo "[external][ok] offline cache verified for mmlu,pubmedqa,mbpp"
+echo "[external][note] skip 'lm_eval ls tasks' grep: this lm-eval version may not list repo-local overrides/aliases."
 ```
 
 若 `verify_only` 报无法访问/缓存缺失，先用镜像准备 cache，再重新跑上面的门禁：
@@ -429,7 +426,9 @@ bash scripts/RunScripts/prepare_external_lm_eval_cache.sh verify mmlu,pubmedqa,m
 
 若 pubmedqa 报 `preprocess_pubmedqa` 或 `CONTEXTS`/`context` 字段错误：先 `git pull` 同步 `external_lm_eval_datasets.py` 与 `lm_eval_task_overrides/pubmedqa/preprocess_pubmedqa.py`，再重跑 `--tasks pubmedqa --verify_only`。
 
-不要直接改用 ModelScope 版数据集替代 MMLU/PubMedQA/MBPP，否则 lm-eval task YAML 与论文可复现口径会变化。当前脚本没有 FiQA 的稳定 task/cache 映射，**不伪造 FiQA alias**；只有 `lm_eval ls tasks` 明确给出可复现 FiQA task 名后才能另加。
+不要直接改用 ModelScope 版数据集替代 MMLU/PubMedQA/MBPP，否则 lm-eval task YAML 与论文可复现口径会变化。当前脚本没有 FiQA 的稳定 task/cache 映射，**不伪造 FiQA alias**；只有服务器版本先通过 cache verify 与 smoke 后才能另加。
+
+注意：不要再执行旧版 `python -m lm_eval ls tasks | grep mmlu/pubmedqa/mbpp` 门禁。该命令只反映 lm-eval 内置 task 表，可能不包含本仓库动态生成的 PubMedQA override，也可能不暴露兼容 alias；只要本节 `verify_only` 末尾出现 `[hf-cache][ok] offline cache ready`，就进入下一步 adapter export / smoke。
 
 ### Main-1.2-E1 adapter export（串行三 seed，读 gb 历史 v13a checkpoint）
 
@@ -1099,11 +1098,7 @@ grep -R 'max_seq_length=256' "$MD_ROOT/logs"
 
 ### Baseline-1.2-B 新补 Flower baseline matched-domain ×18（后台队列串行）
 
-<<<<<<< HEAD
 须 **Baseline-1.1** 训练完成后再跑。不要再手粘 18 行 `launch_new_flower_md`；gb 单卡会瞬间起 18 个后台 eval，容易拖死 SSH/session。现在统一使用后台队列脚本：命令行立即返回，队列内部在 `GPU_ID` 上串行跑 18 条。
-=======
-须 **Baseline-1.1** 训练完成后再跑。与 A100 版 1.2.2 相同：每个新 result JSON 单独 eval；gb 单卡用 `launch_eval_only_matched_domain_one.sh` **逐条** launch，`MD_STATUS` 显示 `running=0 failed=0 unknown=0` 再开下一条（A100 多卡可用双层 `nohup` + 分波 GPU）。
->>>>>>> cc0beb764de2964957ba3aa6e82c580d2261794f
 
 ```bash
 cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}"
@@ -1111,43 +1106,12 @@ export GPU_ID="${GPU_ID:-0}"
 bash scripts/RunScripts/queue_new_flower_matched_domain_gb.sh launch
 ```
 
-<<<<<<< HEAD
 查看队列状态（不阻塞）：
 
 ```bash
 cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}"
 bash scripts/RunScripts/queue_new_flower_matched_domain_gb.sh status
 ```
-=======
-launch_new_flower_md () {
-  local tag="$1" agg="$2"
-  local method="N9_${tag}_${agg}"
-  mapfile -t hits < <(find "$BASELINE_RESULT_ROOT/$tag/result_logs/$method" -maxdepth 1 -name '*.json' | sort)
-  [[ "${#hits[@]}" -eq 1 ]] || { echo "[new-md][error] expected one JSON: $tag ($method), got ${#hits[@]}" >&2; return 2; }
-  MD_ROOT="$NEW_MD_ROOT" MD_LOG_DIR="$NEW_MD_ROOT/logs" MD_PID_DIR="$NEW_MD_ROOT/pids" MD_META_DIR="$NEW_MD_ROOT/meta" \
-    bash "$MD_LAUNCHER" "md_${tag}" "${hits[0]}" "$NEW_MD_ROOT" "${GPU_ID:-0}"
-}
-
-# 逐条 launch；每条完成后 bash "$MD_STATUS" "$NEW_MD_ROOT" 确认 running=0 再开下一条
-launch_new_flower_md flower_yoco_seed42 yoco
-launch_new_flower_md flower_yoco_seed43 yoco
-launch_new_flower_md flower_yoco_seed44 yoco
-launch_new_flower_md flower_ffa_seed42 ffa
-launch_new_flower_md flower_ffa_seed43 ffa
-launch_new_flower_md flower_ffa_seed44 ffa
-launch_new_flower_md flower_flora_seed42 flora
-launch_new_flower_md flower_flora_seed43 flora
-launch_new_flower_md flower_flora_seed44 flora
-launch_new_flower_md flower_flexlora_seed42 flexlora
-launch_new_flower_md flower_flexlora_seed43 flexlora
-launch_new_flower_md flower_flexlora_seed44 flexlora
-launch_new_flower_md flower_feddat_seed42 feddat
-launch_new_flower_md flower_feddat_seed43 feddat
-launch_new_flower_md flower_feddat_seed44 feddat
-launch_new_flower_md flower_hilora_seed42 hilora
-launch_new_flower_md flower_hilora_seed43 hilora
-launch_new_flower_md flower_hilora_seed44 hilora
->>>>>>> cc0beb764de2964957ba3aa6e82c580d2261794f
 
 完成后汇总：
 
@@ -1178,7 +1142,6 @@ echo "d1=$D1_N flower_existing=$FLOWER_EXIST_N flower_new=$FLOWER_NEW_N total=$(
 
 ### Baseline-1.3-E0 cache 门禁
 
-<<<<<<< HEAD
 同 Main-1.2-E0，将 `MAIN_RESULT_ROOT` 换为 `$BASELINE_RESULT_ROOT` 写 analysis 即可；或直接复用已 verify 的 `$HF_CACHE_ROOT`。正式 external eval **不应依赖实时 HF 连接**；若 MBPP/MMLU/PubMedQA 报 `Couldn't reach ... on the Hub`，先修 cache，不要直接重跑 GPU eval：
 
 ```bash
@@ -1188,9 +1151,8 @@ bash scripts/RunScripts/prepare_external_lm_eval_cache.sh verify mmlu,pubmedqa,m
   PURGE=1 bash scripts/RunScripts/prepare_external_lm_eval_cache.sh prepare mmlu,pubmedqa,mbpp
 bash scripts/RunScripts/prepare_external_lm_eval_cache.sh verify mmlu,pubmedqa,mbpp
 ```
-=======
-同 Main-1.2-E0（含 `lm_eval` 安装、`verify_only` 与 `prepare_external_lm_eval_cache.sh` 回退）；将 analysis 写到 `$BASELINE_RESULT_ROOT/analysis` 即可，或直接复用已 verify 的 `$HF_CACHE_ROOT`。
->>>>>>> cc0beb764de2964957ba3aa6e82c580d2261794f
+
+不要再执行旧版 `python -m lm_eval ls tasks | grep mmlu/pubmedqa/mbpp` 门禁；cache verify 通过后进入 adapter export / smoke。
 
 ### Baseline-1.3-E1 adapter export（串行 9 个；gb 单卡）
 

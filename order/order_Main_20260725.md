@@ -324,11 +324,8 @@ python -m pip show lm_eval >/dev/null 2>&1 || python -m pip install 'lm_eval[hf]
 export HF_CACHE_ROOT="$CODE_DIR/data/external_lm_eval_hf_cache"
 python scripts/Analysis/prepare_external_lm_eval_hf_cache.py \
   --cache_root "$HF_CACHE_ROOT" --tasks mmlu,pubmedqa,mbpp --verify_only
-python -m lm_eval ls tasks > "$RESULT_ROOT/analysis/lm_eval_tasks.txt"
-for TASK in mmlu pubmedqa mbpp; do
-  grep -Eq "(^|[[:space:]])${TASK}([[:space:]]|$)" "$RESULT_ROOT/analysis/lm_eval_tasks.txt" \
-    || { echo "[external][error] task not registered: $TASK" >&2; exit 1; }
-done
+echo "[external][ok] offline cache verified for mmlu,pubmedqa,mbpp"
+echo "[external][note] skip 'lm_eval ls tasks' grep: this lm-eval version may not list repo-local overrides/aliases."
 ```
 
 若缓存尚未准备好，优先让合作者 `git pull` 后用统一脚本准备 cache；默认走 `hf-mirror.com`，准备完会自动离线复验：
@@ -342,7 +339,9 @@ bash scripts/RunScripts/prepare_external_lm_eval_cache.sh verify mmlu,pubmedqa,m
 
 `verify` 时出现 `couldn't be found on the Hugging Face Hub (offline mode is enabled)` 是正常离线提示，不是失败；只要最后出现 `[hf-cache][ok] offline cache ready` 就说明 cache 可用。
 
-若镜像也不可达，在任意能联网机器上用同一脚本准备 `data/external_lm_eval_hf_cache/`，再 `rsync` 到服务器同一路径；正式 E2 评测继续使用 `--hf_cache_dir "$HF_CACHE_ROOT"` 离线读取。不要直接改用 ModelScope 版数据集替代 MMLU/PubMedQA/MBPP，否则 lm-eval task YAML、dataset config 与论文可复现口径会变化。当前脚本没有 FiQA 的稳定 task/cache 映射，因此本轮**不伪造 FiQA alias**；只有 `lm_eval ls tasks` 明确给出服务器可复现的 FiQA task 名后才能另加。
+若镜像也不可达，在任意能联网机器上用同一脚本准备 `data/external_lm_eval_hf_cache/`，再 `rsync` 到服务器同一路径；正式 E2 评测继续使用 `--hf_cache_dir "$HF_CACHE_ROOT"` 离线读取。不要直接改用 ModelScope 版数据集替代 MMLU/PubMedQA/MBPP，否则 lm-eval task YAML、dataset config 与论文可复现口径会变化。当前脚本没有 FiQA 的稳定 task/cache 映射，因此本轮**不伪造 FiQA alias**；只有服务器版本先通过 cache verify 与 smoke 后才能另加。
+
+注意：不要再执行旧版 `python -m lm_eval ls tasks | grep mmlu/pubmedqa/mbpp` 门禁。该命令只反映 lm-eval 内置 task 表，可能不包含本仓库动态生成的 PubMedQA override，也可能不暴露兼容 alias；只要本节 `verify_only` 末尾出现 `[hf-cache][ok] offline cache ready`，就进入下一步 adapter export / smoke。
 
 ### 1.2.2 解析 checkpoint 并导出三种子部署 adapter
 
