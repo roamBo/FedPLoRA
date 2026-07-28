@@ -119,6 +119,39 @@ def _reset_adapters(model, A0):
     model.load_state_dict(sd)
 
 
+def _reset_adapters_independent(model, args, client_id, stream=0):
+    """
+    M0 ablation reset: each client starts from an independent LoRA-A draw
+    instead of the shared A0 coordinate system.  LoRA-B remains zero, matching
+    PEFT/FedPLoRA initialization.
+    """
+    seed = (
+        int(getattr(args, "seed", 42) or 42) * 1000003
+        + int(client_id) * 9176
+        + int(stream) * 1299721
+    ) % (2**31 - 1)
+    cpu_rng = torch.random.get_rng_state()
+    cuda_rng = torch.cuda.get_rng_state_all() if torch.cuda.is_available() else None
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
+    init_fedplora_adapters(model)
+    torch.random.set_rng_state(cpu_rng)
+    if cuda_rng is not None:
+        torch.cuda.set_rng_state_all(cuda_rng)
+
+
+def _reset_client_adapters(model, A0, args, client_id, stream=0):
+    mode = str(getattr(args, "client_init_mode", "shared") or "shared").strip().lower()
+    if mode == "shared":
+        _reset_adapters(model, A0)
+        return
+    if mode == "independent":
+        _reset_adapters_independent(model, args, client_id, stream=stream)
+        return
+    raise ValueError(f"unknown client_init_mode={mode!r}; use shared or independent")
+
+
 def _install(model, state):
     sd = model.state_dict()
     for k, v in state.items():
@@ -366,6 +399,27 @@ def main():
         "Empty preserves the legacy coldstart_geom-only behavior.",
     )
     ap.add_argument(
+        "--client_init_mode",
+        type=str,
+        default="shared",
+        choices=["shared", "independent"],
+        help="M0 ablation. shared resets every client to the same LoRA-A initialization; "
+        "independent gives each client a deterministic independent LoRA-A draw.",
+    )
+    ap.add_argument(
+        "--held_out_soft_route_metrics",
+        type=str,
+        default="",
+        help="M1 ablation. Comma-separated metrics whose top-2 route scores are deployed "
+        "as a soft weighted mixture of domain B experts, e.g. subspace.",
+    )
+    ap.add_argument(
+        "--held_out_soft_route_temperature",
+        type=float,
+        default=0.1,
+        help="Temperature for M1 top-2 soft routing over route scores.",
+    )
+    ap.add_argument(
         "--onboarding_accounting",
         action="store_true",
         help="Record probe training/router wall time and exact tensor payload bytes.",
@@ -455,7 +509,7 @@ def main():
     # never contribute to A_global, B_global, or domain B pools.
     A_by, B_by = {}, {}
     for n, (cid, loader) in enumerate(train_pairs):
-        _reset_adapters(model, A0)
+        _reset_client_adapters(model, A0, args, cid, stream=0)
         _train_one_client(model, loader, args, device)
         sd = model.state_dict()
         A_by[cid] = {k: sd[k].detach().cpu().clone() for k in a_keys}
@@ -532,6 +586,33 @@ def main():
                 ).detach().cpu()
         return out
 
+    def _soft_route_b(metric, cid):
+        """M1 ablation: top-2 soft mixture over domain B experts."""
+        audit = route_audits.get(metric, {})
+        entries = (audit.get("top2_by_client") or {}).get(int(cid), [])
+        entries = [e for e in entries if str(e.get("domain", "")) in B_per_domain]
+        if not entries:
+            routed_domain = (audit.get("route_domain_by_client") or {}).get(int(cid))
+            return B_per_domain.get(routed_domain, B_global)
+        scores = np.array([float(e.get("score", 0.0)) for e in entries], dtype=np.float64)
+        tau = max(float(getattr(args, "held_out_soft_route_temperature", 0.1) or 0.1), 1e-6)
+        scores = scores - float(scores.max())
+        weights = np.exp(scores / tau)
+        weights = weights / max(float(weights.sum()), 1e-12)
+        out = {}
+        for bk in b_keys:
+            acc = None
+            for weight, entry in zip(weights.tolist(), entries):
+                dom = str(entry.get("domain", ""))
+                b_state = B_per_domain.get(dom, {})
+                if bk not in b_state:
+                    continue
+                part = float(weight) * b_state[bk].float()
+                acc = part if acc is None else acc + part
+            if acc is not None:
+                out[bk] = acc.detach().cpu()
+        return out if out else B_global
+
     def _zero_B_state(cid=None):
         out = {}
         for bk in b_keys:
@@ -560,7 +641,7 @@ def main():
                 rows = train_rows_by_client.get(int(cid), [])
                 if not rows:
                     continue
-                _reset_adapters(model, A0)
+                _reset_client_adapters(model, A0, args, cid, stream=int(cap))
                 loader = _make_train_loader_for_rows(
                     rows,
                     tok,
@@ -598,7 +679,7 @@ def main():
             rows = train_rows_by_client.get(int(cid), [])
             if not rows:
                 continue
-            _reset_adapters(model, A0)
+            _reset_client_adapters(model, A0, args, cid, stream=1000 + route_probe_cap)
             loader = _make_train_loader_for_rows(
                 rows,
                 tok,
@@ -674,7 +755,20 @@ def main():
         for item in str(getattr(args, "held_out_route_metrics", "") or "").split(",")
         if item.strip()
     ]
-    unknown_route_metrics = sorted(set(requested_route_metrics) - supported_route_metrics)
+    requested_soft_route_metrics = [
+        item.strip()
+        for item in str(getattr(args, "held_out_soft_route_metrics", "") or "").split(",")
+        if item.strip()
+    ]
+    # Soft routing reuses the same route score table.  If the user only asks
+    # for soft-subspace, compute the subspace audit as an implementation detail.
+    for metric in requested_soft_route_metrics:
+        if metric not in requested_route_metrics:
+            requested_route_metrics.append(metric)
+    unknown_route_metrics = sorted(
+        (set(requested_route_metrics) | set(requested_soft_route_metrics))
+        - supported_route_metrics
+    )
     if unknown_route_metrics:
         raise ValueError(
             f"unsupported held_out_route_metrics={unknown_route_metrics}; "
@@ -780,6 +874,12 @@ def main():
             flush=True,
         )
 
+    for metric in requested_soft_route_metrics:
+        if metric in route_audits:
+            scheme_name = f"coldstart_route_soft2_{metric}"
+            if scheme_name not in schemes:
+                schemes.append(scheme_name)
+
     protocol_tag = "personalized_eval"
     if held_out_set:
         eval_scope = "all" if bool(getattr(args, "held_out_eval_all", False)) else "heldout"
@@ -788,6 +888,7 @@ def main():
             f"strict_heldout:{objective}:policy={getattr(args, 'held_out_policy', 'first')}"
             f":offset={int(getattr(args, 'held_out_offset', 0) or 0)}"
             f":scope={eval_scope}:route_probe={int(getattr(args, 'held_out_route_probe_samples', 0) or 0)}"
+            f":client_init={getattr(args, 'client_init_mode', 'shared')}"
         )
     geom_route_summary = {
         "num_routed": int(len(geom_route_domain_by_client)),
@@ -839,6 +940,9 @@ def main():
         if scheme == "coldstart_geom":
             routed_domain = geom_route_domain_by_client.get(int(cid), d)
             return {**A_global, **B_per_domain.get(routed_domain, {})}
+        if scheme.startswith("coldstart_route_soft2_"):
+            metric = scheme.replace("coldstart_route_soft2_", "", 1)
+            return {**A_global, **_soft_route_b(metric, cid)}
         if scheme.startswith("coldstart_route_"):
             metric = scheme.replace("coldstart_route_", "", 1)
             audit = route_audits.get(metric, {})
@@ -989,7 +1093,20 @@ def main():
                 results[scheme]["geom_route_oracle_match_rate"] = float(
                     np.mean([bool(v) for v in geom_route_oracle_match_by_client.values()])
                 )
-        if scheme.startswith("coldstart_route_"):
+        if scheme.startswith("coldstart_route_soft2_"):
+            metric = scheme.replace("coldstart_route_soft2_", "", 1)
+            audit = route_audits.get(metric, {})
+            results[scheme]["route_metric"] = metric
+            results[scheme]["route_mixing"] = {
+                "mode": "soft_top2",
+                "temperature": float(getattr(args, "held_out_soft_route_temperature", 0.1) or 0.1),
+            }
+            results[scheme]["route_audit"] = {
+                key: ({str(k): v for k, v in sorted(value.items())}
+                      if isinstance(value, dict) and key != "summary" else value)
+                for key, value in audit.items()
+            }
+        elif scheme.startswith("coldstart_route_"):
             metric = scheme.replace("coldstart_route_", "", 1)
             audit = route_audits.get(metric, {})
             results[scheme]["route_metric"] = metric
@@ -1086,6 +1203,8 @@ def main():
                           "held_out_policy", "held_out_offset",
                           "held_out_eval_all", "few_shot_caps",
                           "held_out_route_probe_samples", "held_out_route_metrics",
+                          "client_init_mode", "held_out_soft_route_metrics",
+                          "held_out_soft_route_temperature",
                           "onboarding_accounting"]},
               "benchmark_fingerprint": benchmark_fingerprint,
               "eval_objective": ("per_client_local_test" if bool(getattr(args, "eval_on_local", False))

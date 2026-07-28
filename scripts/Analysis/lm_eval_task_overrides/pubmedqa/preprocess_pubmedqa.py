@@ -4,6 +4,14 @@ def _context_text(doc) -> str:
     elif "context" in doc:
         ctx = doc["context"]
     else:
+        if {"_data_files", "_fingerprint", "_split"} <= set(doc.keys()):
+            raise KeyError(
+                "pubmedqa received dataset metadata instead of an example. "
+                "This usually means a stale lm-eval override points dataset_path "
+                "to a HuggingFace save_to_disk directory. Regenerate the cache "
+                "override with: python scripts/Analysis/prepare_external_lm_eval_hf_cache.py "
+                "--tasks pubmedqa --verify_only"
+            )
         raise KeyError(f"pubmedqa doc missing context field; keys={sorted(doc.keys())}")
     if isinstance(ctx, str):
         return ctx

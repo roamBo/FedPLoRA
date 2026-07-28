@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
+import json
 import os
-import re
 from contextlib import contextmanager
 from pathlib import Path
 
@@ -26,6 +26,10 @@ def cache_slug(name: str) -> str:
 
 def pubmedqa_export_dir(cache_root: Path) -> Path:
     return cache_root / "export" / "pubmedqa_bigbio"
+
+
+def pubmedqa_jsonl_export_dir(cache_root: Path) -> Path:
+    return cache_root / "export" / "pubmedqa_lm_eval_jsonl"
 
 
 def pubmedqa_lm_eval_override_dir(cache_root: Path) -> Path:
@@ -152,13 +156,13 @@ def _sync_pubmedqa_preprocess_helper(out_dir: Path) -> Path:
 
 
 def ensure_pubmedqa_lm_eval_override(cache_root: Path) -> Path:
-    out_dir = pubmedqa_lm_eval_override_dir(cache_root)
-    override = out_dir / "pubmedqa.yaml"
-    if not override.is_file():
-        materialize_pubmedqa_lm_eval_yaml(cache_root)
-    else:
-        _sync_pubmedqa_preprocess_helper(out_dir)
-    return override
+    # Always regenerate.  Older versions wrote ``dataset_path`` directly to a
+    # HuggingFace ``save_to_disk`` directory; lm-eval calls load_dataset(), not
+    # load_from_disk(), so that stale YAML makes docs look like dataset metadata
+    # rows (keys such as _data_files/_fingerprint) and PubMedQA crashes before
+    # evaluation.  Regeneration is cheap and keeps existing cache installs safe.
+    out_dir = materialize_pubmedqa_lm_eval_yaml(cache_root)
+    return out_dir / "pubmedqa.yaml"
 
 
 def assert_pubmedqa_export_complete(cache_root: Path) -> Path:
@@ -214,27 +218,111 @@ def _resolve_preprocess_pubmedqa_source() -> Path:
     )
 
 
-def materialize_pubmedqa_lm_eval_yaml(cache_root: Path) -> Path:
-    """Patch installed pubmedqa.yaml to load from local save_to_disk export."""
-    import lm_eval
+def _pubmedqa_context(doc: dict) -> object:
+    if "CONTEXTS" in doc:
+        return doc["CONTEXTS"]
+    if "context" in doc:
+        return doc["context"]
+    raise KeyError(f"pubmedqa doc missing context field; keys={sorted(doc.keys())}")
+
+
+def _pubmedqa_question(doc: dict) -> object:
+    if "QUESTION" in doc:
+        return doc["QUESTION"]
+    if "question" in doc:
+        return doc["question"]
+    raise KeyError(f"pubmedqa doc missing question field; keys={sorted(doc.keys())}")
+
+
+def _pubmedqa_final_decision(doc: dict) -> str:
+    for key in ("final_decision", "FINAL_DECISION", "answer", "label"):
+        value = doc.get(key)
+        if value is None:
+            continue
+        value = str(value).strip().lower()
+        if value in {"yes", "no", "maybe"}:
+            return value
+    raise KeyError(f"pubmedqa doc missing final_decision field; keys={sorted(doc.keys())}")
+
+
+def export_pubmedqa_lm_eval_jsonl(cache_root: Path) -> dict[str, Path]:
+    """Convert the offline BigBio save_to_disk export into JSONL for lm-eval.
+
+    lm-eval task YAMLs are loaded through datasets.load_dataset().  A
+    save_to_disk directory must be read with datasets.load_from_disk(), so we
+    materialize split JSONL files and point lm-eval at the standard json loader.
+    """
+    from datasets import load_from_disk
 
     export_dir = assert_pubmedqa_export_exists(cache_root)
-    src = Path(lm_eval.__file__).resolve().parent / "tasks" / "pubmedqa" / "pubmedqa.yaml"
-    text = src.read_text(encoding="utf-8")
-    text = re.sub(
-        r"^dataset_path:.*$",
-        f"dataset_path: {export_dir.resolve().as_posix()}",
-        text,
-        count=1,
-        flags=re.MULTILINE,
+    ds = load_from_disk(str(export_dir))
+    out_dir = pubmedqa_jsonl_export_dir(cache_root)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    data_files: dict[str, Path] = {}
+    for split in ds.keys():
+        path = out_dir / f"{split}.jsonl"
+        with path.open("w", encoding="utf-8") as handle:
+            for row in ds[split]:
+                doc = dict(row)
+                doc["CONTEXTS"] = _pubmedqa_context(doc)
+                doc["QUESTION"] = _pubmedqa_question(doc)
+                doc["final_decision"] = _pubmedqa_final_decision(doc)
+                handle.write(json.dumps(doc, ensure_ascii=False) + "\n")
+        data_files[str(split)] = path
+    if not data_files:
+        raise SystemExit(f"[external-eval][error] PubMedQA export has no splits: {export_dir}")
+    return data_files
+
+
+def materialize_pubmedqa_lm_eval_yaml(cache_root: Path) -> Path:
+    """Write a PubMedQA override that uses local JSONL files offline."""
+    data_files = export_pubmedqa_lm_eval_jsonl(cache_root)
+    preferred_splits = {
+        "training_split": "train",
+        "validation_split": "validation",
+        "test_split": "test",
+    }
+    available = set(data_files)
+    split_lines = []
+    for field, split in preferred_splits.items():
+        if split in available:
+            split_lines.append(f"{field}: {split}")
+    if "test" not in available:
+        fallback = "validation" if "validation" in available else sorted(available)[0]
+        split_lines.append(f"test_split: {fallback}")
+    data_file_lines = [
+        f"    {split}: {path.resolve().as_posix()}"
+        for split, path in sorted(data_files.items())
+    ]
+    text = "\n".join(
+        [
+            "task: pubmedqa",
+            "dataset_path: json",
+            "dataset_name: null",
+            "dataset_kwargs:",
+            "  data_files:",
+            *data_file_lines,
+            "output_type: multiple_choice",
+            *split_lines,
+            "doc_to_text: !function preprocess_pubmedqa.doc_to_text",
+            "doc_to_target: final_decision",
+            'doc_to_choice: ["yes", "no", "maybe"]',
+            "metric_list:",
+            "  - metric: acc",
+            "    aggregation: mean",
+            "    higher_is_better: true",
+            "metadata:",
+            "  version: 1.0",
+            "",
+        ]
     )
-    text = re.sub(r"^dataset_name:.*\n", "", text, count=1, flags=re.MULTILINE)
     out_dir = pubmedqa_lm_eval_override_dir(cache_root)
     out_dir.mkdir(parents=True, exist_ok=True)
     out_yaml = out_dir / "pubmedqa.yaml"
     out_yaml.write_text(text, encoding="utf-8")
     helper_dst = _sync_pubmedqa_preprocess_helper(out_dir)
     print(f"[hf-cache][pubmedqa] lm_eval override -> {out_yaml}", flush=True)
+    print(f"[hf-cache][pubmedqa] jsonl export -> {pubmedqa_jsonl_export_dir(cache_root)}", flush=True)
     print(f"[hf-cache][pubmedqa] helper module -> {helper_dst}", flush=True)
     return out_dir
 
@@ -293,13 +381,31 @@ def preflight_offline_tasks(task_names: list[str], env: dict[str, str], cache_ro
 
         if task == "pubmedqa":
             export_dir = assert_pubmedqa_export_complete(cache_root)
+            jsonl_files = export_pubmedqa_lm_eval_jsonl(cache_root)
             print(
                 f"[external-eval][preflight] pubmedqa local export -> {export_dir}",
                 flush=True,
             )
             with temporary_environ(env):
                 ds = load_from_disk(str(export_dir))
-            print(f"[external-eval][preflight][ok] pubmedqa splits={list(ds.keys())}", flush=True)
+                json_ds = load_dataset(
+                    "json",
+                    data_files={
+                        split: path.resolve().as_posix()
+                        for split, path in sorted(jsonl_files.items())
+                    },
+                    trust_remote_code=False,
+                )
+            split_name = "test" if "test" in json_ds else next(iter(json_ds.keys()))
+            doc = json_ds[split_name][0]
+            _pubmedqa_context(doc)
+            _pubmedqa_question(doc)
+            _pubmedqa_final_decision(doc)
+            print(
+                f"[external-eval][preflight][ok] pubmedqa splits={list(ds.keys())} "
+                f"json_splits={list(json_ds.keys())}",
+                flush=True,
+            )
             continue
 
         path, name = read_lm_eval_dataset_spec(task)
@@ -377,6 +483,7 @@ def purge_task_cache(task: str, cache_root: Path) -> None:
         targets.append(dataset_cache_dir(cache_root, PUBMEDQA_HUB_PATH))
         targets.append(cache_root / "hub" / "datasets--bigbio--pubmed_qa")
         targets.append(pubmedqa_export_dir(cache_root))
+        targets.append(pubmedqa_jsonl_export_dir(cache_root))
         targets.append(pubmedqa_lm_eval_override_dir(cache_root))
     else:
         path, _name = read_lm_eval_dataset_spec(task)
