@@ -3,7 +3,7 @@
 ######### order_Main_20260725 + order_baseline_20260725 的 gb 单卡适配-20260725 #########
 
 > 由 `order/order_Main_20260725.md` 与 `order/order_baseline_20260725.md` 合并适配 gb。章节与正式协议保持原文；仅换路径、conda、GPU，并写入 gb 已知坑。  
-> **主方法训练/checkpoint** → `order_0725/main/`；**baseline 训练** → `order_0725/baseline/`；**matched-domain eval-only** → `order_0725/eval_only_*`。  
+> **主方法训练/checkpoint** → `order_0725/main/`；**baseline 训练** → `order_0725/baseline/`；**matched-domain eval-only** → `order_0725/eval_only_`*。  
 > 与 `order_gb_0723new.md` / `order_0723_sup` 重叠的 YOCO-Flower、7.2-A common-test、70c、r16 等：**若 sup 已产出 final JSON，本节标注「跳过」**，不要重复 `--force_retrain`。
 
 ## 先看：运行顺序总览（严格先后）
@@ -44,28 +44,32 @@ Stage 7  第三部分：总体验收与 summarize 出表
 
 **硬依赖：**
 
-| 后续阶段 | 必须先完成 |
-|---|---|
-| Baseline 2.1 | Main 2.1 共 15 个 flower JSON |
-| Baseline 3.3 | Main 3.3 共 15 个 d1 held-out JSON |
-| Main 3.1 | `DIR05_COMMON_ROOT` repartition + cmp（或 order_0723 7.2-A 已做过） |
-| Main 2.2 / Baseline 2.2 | `D1_70C_ROOT` repartition + cmp（Main 2.2-prep） |
-| Main/Baseline external | HF 离线 cache verify_only 通过 |
 
-**并行澄清：** Baseline 第一部分（1.1 训练、1.2 matched-domain、1.3 external）不需要等 Main 第一部分训练结束；它只依赖自己的 baseline checkpoint/result JSON 与 HF 离线 cache。Baseline 第二部分中，只有 `Baseline-2.1` 必须等 `Main-2.1` 的 15 个 Flower JSON；`Baseline-2.2` 只依赖 70c 数据准备，不依赖 Main-1.2 external。
+| 后续阶段                    | 必须先完成                                                         |
+| ----------------------- | ------------------------------------------------------------- |
+| Baseline 2.1            | Main 2.1 共 15 个 flower JSON                                   |
+| Baseline 3.3            | Main 3.3 共 15 个 d1 held-out JSON                              |
+| Main 3.1                | `DIR05_COMMON_ROOT` repartition + cmp（或 order_0723 7.2-A 已做过） |
+| Main 2.2 / Baseline 2.2 | `D1_70C_ROOT` repartition + cmp（Main 2.2-prep）                |
+| Main/Baseline external  | HF 离线 cache verify_only 通过                                    |
+
+
+**并行澄清：** Baseline 第一部分（1.1 训练、1.2 matched-domain、1.3 external）不需要等 Main 第一部分训练结束；它只依赖自己的 baseline checkpoint/result JSON 与 HF 离线 cache。Baseline-1.3 E1/E2 内部亦并行 nohup 启动（单卡会抢 GPU）。Baseline 第二部分中，只有 `Baseline-2.1` 必须等 `Main-2.1` 的 15 个 Flower JSON；`Baseline-2.2` 只依赖 70c 数据准备，不依赖 Main-1.2 external。
 
 ## 【路径对照（minghao A100 → gb）】
 
-| 项 | order_*_20260725.md | order_gb_0725.md |
-|---|---|---|
-| conda | `FedRepo2` | `fedplora` |
-| 代码 | `/data2/minghao/code/FedPLoRA-main` | `/data/yaominghao/gb/FedPLoRA` |
-| 模型 | `/data2/minghao/model/` | `/data/yaominghao/gb/models/` |
-| 主方法结果 | `.../order_main_20260725/` | `.../order_0725/main/` |
-| baseline 结果 | `.../order_baseline_20260725/` | `.../order_0725/baseline/` |
-| D1 数据 | `A100_domain_benchmark_35c_dir05` | `domain_benchmark_35c_dir05` |
-| 70c 数据 | `A100_domain_benchmark_70c_dir05_frozen_test` | `domain_benchmark_70c_dir05_frozen_test` |
-| GPU | 多卡 0–7 | **单卡串行**；`export GPU_ID=0` 或 `1` |
+
+| 项           | order_*_20260725.md                           | order_gb_0725.md                         |
+| ----------- | --------------------------------------------- | ---------------------------------------- |
+| conda       | `FedRepo2`                                    | `fedplora`                               |
+| 代码          | `/data2/minghao/code/FedPLoRA-main`           | `/data/yaominghao/gb/FedPLoRA`           |
+| 模型          | `/data2/minghao/model/`                       | `/data/yaominghao/gb/models/`            |
+| 主方法结果       | `.../order_main_20260725/`                    | `.../order_0725/main/`                   |
+| baseline 结果 | `.../order_baseline_20260725/`                | `.../order_0725/baseline/`               |
+| D1 数据       | `A100_domain_benchmark_35c_dir05`             | `domain_benchmark_35c_dir05`             |
+| 70c 数据      | `A100_domain_benchmark_70c_dir05_frozen_test` | `domain_benchmark_70c_dir05_frozen_test` |
+| GPU         | 多卡 0–7                                        | **单卡串行**；`export GPU_ID=0` 或 `1`         |
+
 
 ## 【gb 防坑（必须遵守）】
 
@@ -82,33 +86,37 @@ Stage 7  第三部分：总体验收与 summarize 出表
 9. 读历史 checkpoint 的 result JSON 在 FED_RESULT_ROOT/order_0709|0711|0712|0715|0723*；本批次新训练写在 ORDER_ROOT 下
 ```
 
-| 部分 | 作业 | 数量 | gb 章节 |
-|---|---|---:|---|
-| Main 主实验 | Worst In-Domain eval-only | 6 | Main-1.1 |
-| Main 主实验 | external eval MMLU/PubMedQA/MBPP | 3 launcher | Main-1.2 |
-| Main 正文 | FlowerTune 1-example + routing | 15 | Main-2.1 |
-| Main 正文 | 70-client FedPLoRA-OS | 3 | Main-2.2 |
-| Main **附录** | common-test α=0.5 v13a | 3 | Main-3.1 ⛔ |
-| Main **附录** | LoRA r=16 v13a | 3 | Main-3.2 ⛔ |
-| Main **附录** | D1 strict held-out | 15 | Main-3.3 ⛔ |
-| Baseline 主实验 | Flower 缺失 baseline | 18 | Baseline-1.1 |
-| Baseline 主实验 | Worst In-Domain baseline | 54 eval-only | Baseline-1.2 |
-| Baseline 主实验 | external baseline | 9 launcher | Baseline-1.3 |
-| Baseline 正文 | nearest-client 汇总 | 0 GPU | Baseline-2.1 |
-| Baseline 正文 | 70c Normal/FedALT | 6 | Baseline-2.2 |
-| Baseline **附录** | common-test α=0.5 baseline | 9 | Baseline-3.1 ⛔ |
-| Baseline **附录** | r=16 baseline | 6 | Baseline-3.2 ⛔ |
-| Baseline **附录** | D1 nearest-client 审计 | 0 GPU | Baseline-3.3 ⛔ |
+
+| 部分              | 作业                               | 数量           | gb 章节          |
+| --------------- | -------------------------------- | ------------ | -------------- |
+| Main 主实验        | Worst In-Domain eval-only        | 6            | Main-1.1       |
+| Main 主实验        | external eval MMLU/PubMedQA/MBPP | 3 launcher   | Main-1.2       |
+| Main 正文         | FlowerTune 1-example + routing   | 15           | Main-2.1       |
+| Main 正文         | 70-client FedPLoRA-OS            | 3            | Main-2.2       |
+| Main **附录**     | common-test α=0.5 v13a           | 3            | Main-3.1 ⛔     |
+| Main **附录**     | LoRA r=16 v13a                   | 3            | Main-3.2 ⛔     |
+| Main **附录**     | D1 strict held-out               | 15           | Main-3.3 ⛔     |
+| Baseline 主实验    | Flower 缺失 baseline               | 18           | Baseline-1.1   |
+| Baseline 主实验    | Worst In-Domain baseline         | 54 eval-only | Baseline-1.2   |
+| Baseline 主实验    | external baseline                | 9 launcher   | Baseline-1.3   |
+| Baseline 正文     | nearest-client 汇总                | 0 GPU        | Baseline-2.1   |
+| Baseline 正文     | 70c Normal/FedALT                | 6            | Baseline-2.2   |
+| Baseline **附录** | common-test α=0.5 baseline       | 9            | Baseline-3.1 ⛔ |
+| Baseline **附录** | r=16 baseline                    | 6            | Baseline-3.2 ⛔ |
+| Baseline **附录** | D1 nearest-client 审计             | 0 GPU        | Baseline-3.3 ⛔ |
+
 
 ## 【与 order_0723_sup 去重】
 
-| 0725 缺口 | gb 上可能已在 sup 完成 | 本文件处理 |
-|---|---|---|
-| Flower YOCO ×3 | `order_0723_sup/yoco_flower_seed*` | 已完成则跳过 B-YOCO；matched-domain 仍要补 |
-| common-test α=0.5 ×6 | `order_0723` 第七部分 7.2-A | v13a/normal/fedsa/fedalt 已完成则跳过 M5/B-common |
-| 70c ×9 | `order_0723_sup/70c_*` | 已完成则跳过 M4/B-70c |
-| r16 ×9 | `order_0723_sup/r16_*` | 已完成则跳过 M6/B-r16 |
-| Flower 1-shot offset1–4 | `order_0723` G1–G12 | 0725 的 15 fold 含 offset0；offset0 若 0723 已有可只补缺项 |
+
+| 0725 缺口                 | gb 上可能已在 sup 完成                    | 本文件处理                                           |
+| ----------------------- | ---------------------------------- | ----------------------------------------------- |
+| Flower YOCO ×3          | `order_0723_sup/yoco_flower_seed*` | 已完成则跳过 B-YOCO；matched-domain 仍要补                |
+| common-test α=0.5 ×6    | `order_0723` 第七部分 7.2-A            | v13a/normal/fedsa/fedalt 已完成则跳过 M5/B-common     |
+| 70c ×9                  | `order_0723_sup/70c_*`             | 已完成则跳过 M4/B-70c                                 |
+| r16 ×9                  | `order_0723_sup/r16_*`             | 已完成则跳过 M6/B-r16                                 |
+| Flower 1-shot offset1–4 | `order_0723` G1–G12                | 0725 的 15 fold 含 offset0；offset0 若 0723 已有可只补缺项 |
+
 
 ---
 
@@ -132,8 +140,9 @@ export FED_RESULT_ROOT=/data/yaominghao/gb/result/FedPLoRA
 export ORDER_ROOT=/data/yaominghao/gb/result/FedPLoRA/order_0725
 export MAIN_RESULT_ROOT="$ORDER_ROOT/main"
 export BASELINE_RESULT_ROOT="$ORDER_ROOT/baseline"
-export MAIN_MODEL_ROOT=/data/yaominghao/gb/models/trained_models_LW/order_0725/main
-export BASELINE_MODEL_ROOT=/data/yaominghao/gb/models/trained_models_LW/order_0725/baseline
+export TRAINED_MODEL_LW_ROOT=/data/yaominghao/gb/models/trained_models_LW
+export MAIN_MODEL_ROOT="$TRAINED_MODEL_LW_ROOT/order_0725/main"
+export BASELINE_MODEL_ROOT="$TRAINED_MODEL_LW_ROOT/order_0725/baseline"
 export MODEL_135M=/data/yaominghao/gb/models/SmolLM2-135M
 export D1_ROOT="$CODE_DIR/data/domain_benchmark_35c_dir05"
 export FLOWER_ROOT="$CODE_DIR/data/domain_benchmark_flowertune_mixed_20c_dir05"
@@ -235,13 +244,13 @@ for SEED in 42 43 44; do
 done
 ```
 
-论文回填只接受 D1/FlowerTune 正式 fingerprint 族；历史记录中的前缀分别为 **`43f0ac1c`**（D1）与 **`86603887`**（FlowerTune）。若本机计算得到不同前缀，必须先核对 fingerprint 工具版本与 split 文件，**不能**通过修改表注掩盖差异。
+论文回填只接受 D1/FlowerTune 正式 fingerprint 族；历史记录中的前缀分别为 `43f0ac1c`（D1）与 `86603887`（FlowerTune）。若本机计算得到不同前缀，必须先核对 fingerprint 工具版本与 split 文件，**不能**通过修改表注掩盖差异。
 
 ---
 
 ## 0.7 主方法 SFT 说明（对应 A100 版 0.4 `launch_main_sft`）
 
-gb 单卡不定义 `launch_main_sft` 函数；**0.4 的 `COMMON_SFT_ARGS` / `LORA_R8_ARGS` / `LORA_R16_ARGS` 即等价 launcher**。  
+gb 单卡不定义 `launch_main_sft` 函数；**0.4 的** `COMMON_SFT_ARGS` **/** `LORA_R8_ARGS` **/** `LORA_R16_ARGS` **即等价 launcher**。  
 凡 Main-2.2、Main-3.1、Main-3.2 等新训 v13a SFT，使用各节完整 `python tasks/fed_train_sft.py ... "${COMMON_SFT_ARGS[@]}" ...` 命令（见正文/附录章节），无需额外复制 A100 的 shell 函数。
 
 ---
@@ -306,27 +315,31 @@ grep -R 'max_seq_length=256' "$ORDER_ROOT/eval_only_main_20260725/smoke" || grep
 
 ### 【前置实验结果说明】
 
-| 小节 | 本批是否新训 v13a | 是否需要前置结果 | 前置来源（gb 路径） |
-|---|---|---|---|
-| **Main-1.1** Worst In-Domain | **否**（eval-only） | **需要** | 6 份历史 **正式训练 result JSON + 同节点可读 checkpoint**（见下表） |
-| **Main-1.2** external eval | **否**（adapter export + lm-eval） | **需要** | 3 份 D1 v13a **checkpoint**（export 用）+ `data/external_lm_eval_hf_cache/` 离线 cache |
+
+| 小节                           | 本批是否新训 v13a                     | 是否需要前置结果 | 前置来源（gb 路径）                                                                      |
+| ---------------------------- | ------------------------------- | -------- | -------------------------------------------------------------------------------- |
+| **Main-1.1** Worst In-Domain | **否**（eval-only）                | **需要**   | 6 份历史 **正式训练 result JSON + 同节点可读 checkpoint**（见下表）                               |
+| **Main-1.2** external eval   | **否**（adapter export + lm-eval） | **需要**   | 3 份 D1 v13a **checkpoint**（export 用）+ `data/external_lm_eval_hf_cache/` 离线 cache |
+
 
 **Main-1.1 必需的 6 个 source JSON（缺一则停止）：**
 
-| 数据集 | seed | 历史 result JSON 目录（`$FED_RESULT_ROOT/...`） |
-|---|---|---|
-| D1 | 42 | `v13_20260712_nx0_.../NX0_v13a_os_split42_train42`（或 `order_0712/...`） |
-| D1 | 43 | `v13_20260711_nx1_.../NX1_v13a_os_split43_train43`（或 `order_0711/...`） |
-| D1 | 44 | `v13_20260711_nx1_.../NX1_v13a_os_split44_train44`（或 `order_0711/...`） |
-| FlowerTune | 42 | `order_0715/flowertune_20260715_core8_seed42/.../N7_ours_flower_v13a` |
-| FlowerTune | 43 | `order_0715/flowertune_20260715_core8_seed43/.../N7_ours_flower_v13a` |
-| FlowerTune | 44 | `order_0715/flowertune_20260715_core8_seed44/.../N7_ours_flower_v13a` |
+
+| 数据集        | seed | 历史 result JSON 目录（`$FED_RESULT_ROOT/...`）                              |
+| ---------- | ---- | ---------------------------------------------------------------------- |
+| D1         | 42   | `v13_20260712_nx0_.../NX0_v13a_os_split42_train42`（或 `order_0712/...`） |
+| D1         | 43   | `v13_20260711_nx1_.../NX1_v13a_os_split43_train43`（或 `order_0711/...`） |
+| D1         | 44   | `v13_20260711_nx1_.../NX1_v13a_os_split44_train44`（或 `order_0711/...`） |
+| FlowerTune | 42   | `order_0715/flowertune_20260715_core8_seed42/.../N7_ours_flower_v13a`  |
+| FlowerTune | 43   | `order_0715/flowertune_20260715_core8_seed43/.../N7_ours_flower_v13a`  |
+| FlowerTune | 44   | `order_0715/flowertune_20260715_core8_seed44/.../N7_ours_flower_v13a`  |
+
 
 **Main-1.2 必需的前置：**
 
-- D1 v13a checkpoint ×3（`checkpoint_manifest.py --resolve` 从 `$FED_RESULT_ROOT`、`$MAIN_MODEL_ROOT` 等根解析；通常来自 order_0711/0712 同批训练）。
+- D1 v13a checkpoint ×3（优先从 order_0711/0712 的 **result JSON** 经 `--from_result_json` 解析；checkpoint 实体在 `$TRAINED_MODEL_LW_ROOT/v13_`*，不在 `order_0725/main` 下）。
 - HF 离线 cache：`$HF_CACHE_ROOT` 已通过 `prepare_external_lm_eval_hf_cache.py --verify_only`（含 pubmedqa 的 `preprocess_pubmedqa.py` override）。
-- **不依赖** Main-2.1 / Main-3.3；可与 Main-1.1 并行安排（gb 单卡则串行）。
+- **不依赖** Main-2.1 / Main-3.3；可与 Main-1.1 并行安排；E1/E2 内部三 seed 亦并行 nohup 启动（单卡会抢 GPU）。
 
 **不需要的前置：** 0725 批次 `order_0725/main/` 下新训练结果、baseline 结果、Flower 15 fold held-out JSON。
 
@@ -336,7 +349,7 @@ grep -R 'max_seq_length=256' "$ORDER_ROOT/eval_only_main_20260725/smoke" || grep
 
 **为何放主实验：** In-Domain 衡量平均匹配领域效果，Worst In-Domain 衡量最弱领域是否仍可靠。它不能与 broad-domain Worst 混用。
 
-在原训练节点 gb 执行；读上表 6 个历史 JSON，写 `order_0725/eval_only_main_20260725/`。使用 `launch_eval_only_matched_domain_one.sh` **逐条启动**（gb 单卡：上一条 `check` 通过后再开下一条）。上面六条只负责启动，**勿在启动块内 `wait`**；日志与 pid 在 `$MD_ROOT/logs`、`$MD_ROOT/pids`。
+在原训练节点 gb 执行；读上表 6 个历史 JSON，写 `order_0725/eval_only_main_20260725/`。使用 `launch_eval_only_matched_domain_one.sh` **逐条启动**（gb 单卡：上一条 `check` 通过后再开下一条）。上面六条只负责启动，**勿在启动块内** `wait`；日志与 pid 在 `$MD_ROOT/logs`、`$MD_ROOT/pids`。
 
 ### Main-1.1 启动（6 条，勿在块内 wait）
 
@@ -430,21 +443,49 @@ bash scripts/RunScripts/prepare_external_lm_eval_cache.sh verify mmlu,pubmedqa,m
 
 注意：不要再执行旧版 `python -m lm_eval ls tasks | grep mmlu/pubmedqa/mbpp` 门禁。该命令只反映 lm-eval 内置 task 表，可能不包含本仓库动态生成的 PubMedQA override，也可能不暴露兼容 alias；只要本节 `verify_only` 末尾出现 `[hf-cache][ok] offline cache ready`，就进入下一步 adapter export / smoke。
 
-### Main-1.2-E1 adapter export（串行三 seed，读 gb 历史 v13a checkpoint）
+### Main-1.2-E1 adapter export（并行三 seed，后台 nohup；读 gb 历史 v13a checkpoint）
+
+三条 export **同时后台启动**，命令行立即返回；单卡默认均用 `GPU_ID=0`（多卡可把各 seed 的 `CUDA_VISIBLE_DEVICES` 改为 0/1/2）。
 
 ```bash
 cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && \
-export CKPT_SEARCH_ROOTS="$MAIN_MODEL_ROOT $FED_RESULT_ROOT $MAIN_RESULT_ROOT"
+export CKPT_SEARCH_ROOTS="$TRAINED_MODEL_LW_ROOT $MAIN_MODEL_ROOT $FED_RESULT_ROOT $MAIN_RESULT_ROOT"
 python scripts/Analysis/checkpoint_manifest.py --roots $CKPT_SEARCH_ROOTS \
   --output "$MAIN_RESULT_ROOT/analysis/checkpoint_manifest_external.json"
 
-export_ours_adapter () {
-  local seed="$1"
-  local ckpt
-  ckpt=$(python scripts/Analysis/checkpoint_manifest.py --roots $CKPT_SEARCH_ROOTS --resolve \
+find_one_json () {
+  local dir="$1"
+  mapfile -t hits < <(find "$dir" -maxdepth 1 -type f -name '*.json' 2>/dev/null | sort)
+  [[ "${#hits[@]}" -eq 1 ]] || { echo "[source][error] expected one JSON: $dir, got ${#hits[@]}" >&2; return 2; }
+  printf '%s\n' "${hits[0]}"
+}
+
+resolve_v13a_ckpt () {
+  local seed="$1" result_json=""
+  case "$seed" in
+    42) result_json=$(find_one_json "$FED_RESULT_ROOT/order_0712/v13_20260712_nx0_35c_dir05_r1_finaleval_seed42/result_logs/NX0_v13a_os_split42_train42" 2>/dev/null \
+          || find_one_json "$FED_RESULT_ROOT/v13_20260712_nx0_35c_dir05_r1_finaleval_seed42/result_logs/NX0_v13a_os_split42_train42") ;;
+    43) result_json=$(find_one_json "$FED_RESULT_ROOT/order_0711/v13_20260711_nx1_35c_dir05_r1_finaleval_seed43/result_logs/NX1_v13a_os_split43_train43" 2>/dev/null \
+          || find_one_json "$FED_RESULT_ROOT/v13_20260711_nx1_35c_dir05_r1_finaleval_seed43/result_logs/NX1_v13a_os_split43_train43") ;;
+    44) result_json=$(find_one_json "$FED_RESULT_ROOT/order_0711/v13_20260711_nx1_35c_dir05_r1_finaleval_seed44/result_logs/NX1_v13a_os_split44_train44" 2>/dev/null \
+          || find_one_json "$FED_RESULT_ROOT/v13_20260711_nx1_35c_dir05_r1_finaleval_seed44/result_logs/NX1_v13a_os_split44_train44") ;;
+  esac
+  if [[ -n "$result_json" && -f "$result_json" ]]; then
+    python scripts/Analysis/checkpoint_manifest.py --from_result_json "$result_json"
+    return
+  fi
+  python scripts/Analysis/checkpoint_manifest.py --roots $CKPT_SEARCH_ROOTS --resolve \
     --agg_type fedplora_v13a_os --seed "$seed" --model_contains SmolLM2-135M \
-    --benchmark_contains "domain_benchmark_35c_dir05/seed_${seed}")
-  CUDA_VISIBLE_DEVICES="${GPU_ID:-0}" /usr/bin/time -v python -u tasks/fed_train_sft.py \
+    --benchmark_contains "domain_benchmark_35c_dir05/seed_${seed}"
+}
+
+export_ours_adapter_async () {
+  local seed="$1" gpu="${2:-${GPU_ID:-0}}"
+  local ckpt
+  ckpt=$(resolve_v13a_ckpt "$seed") || { echo "[export][error] resolve failed seed=${seed}" >&2; return 1; }
+  [[ -n "$ckpt" && -f "$ckpt/run_checkpoint_meta.json" ]] \
+    || { echo "[export][error] invalid ckpt seed=${seed}: ${ckpt:-empty}" >&2; return 1; }
+  nohup env CUDA_VISIBLE_DEVICES="$gpu" /usr/bin/time -v python -u tasks/fed_train_sft.py \
     --model "$MODEL_135M" --benchmark_dir "$D1_ROOT/seed_${seed}" --agg_type fedplora_v13a_os --seed "$seed" \
     --eval_only_from_checkpoint "$ckpt" \
     --metrics_output_dir "$MAIN_RESULT_ROOT/external_export/ours_seed${seed}/metrics" \
@@ -452,22 +493,43 @@ export_ours_adapter () {
     --export_eval_adapter_dir "$MAIN_RESULT_ROOT/external_adapters/ours_seed${seed}" \
     --export_eval_adapter_only --eval_max_batches 0 --batch_size 2 --max_seq_length 256 \
     --torch_dtype bfloat16 --eval_personalization_metrics \
-    > "$MAIN_RESULT_ROOT/launcher_logs/test20260725_export_ours_seed${seed}.log" 2>&1
-  echo "[export][ok] seed=${seed}"
+    > "$MAIN_RESULT_ROOT/launcher_logs/test20260725_export_ours_seed${seed}.log" 2>&1 &
+  echo $! > "$MAIN_RESULT_ROOT/pids/export_ours_seed${seed}.pid"
+  echo "[export][launch] seed=${seed} gpu=${gpu} pid=$(cat "$MAIN_RESULT_ROOT/pids/export_ours_seed${seed}.pid")"
 }
-export_ours_adapter 42
-export_ours_adapter 43
-export_ours_adapter 44
+
+export_ours_adapter_async 42 "${GPU_ID:-0}"
+export_ours_adapter_async 43 "${GPU_ID:-0}"
+export_ours_adapter_async 44 "${GPU_ID:-0}"
+```
+
+查看 adapter export 状态（不阻塞）：
+
+```bash
+for p in "$MAIN_RESULT_ROOT"/pids/export_ours_seed*.pid; do
+  pid=$(cat "$p")
+  tag=$(basename "$p" .pid)
+  log="$MAIN_RESULT_ROOT/launcher_logs/test20260725_${tag}.log"
+  if kill -0 "$pid" 2>/dev/null; then
+    echo "[export][running] $tag pid=$pid"
+  elif grep -Eiq 'Traceback|CUDA out of memory|\\[error\\]|Exit status: [1-9]' "$log"; then
+    echo "[export][failed] $tag log=$log"
+  else
+    echo "[export][exited] $tag"
+  fi
+done
 for SEED in 42 43 44; do
   test -f "$MAIN_RESULT_ROOT/external_adapters/ours_seed${SEED}/adapter_export_manifest.json" \
     && echo "[export][ok] seed=${SEED}" \
-    || { echo "[export][error] missing manifest seed=${SEED}"; exit 1; }
+    || echo "[export][pending] seed=${SEED}"
 done
 ```
 
-只有三份 `[export][ok]` 后，才执行 Main-1.2-E2 的 smoke 与正式 external eval。
+只有三份 manifest 都显示 `[export][ok]` 后，才执行 Main-1.2-E2。
 
-### Main-1.2-E2 smoke 与正式 lm-eval（串行三 seed；gb 用 `--batch_size 4` 勿用 auto）
+### Main-1.2-E2 smoke 与正式 lm-eval（并行三 seed 后台 nohup；gb 用 `--batch_size 4` 勿用 auto）
+
+smoke 仍前台跑一条（很快）；正式 eval 三条 **同时 nohup 启动**，命令行不阻塞。
 
 ```bash
 cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && \
@@ -478,13 +540,54 @@ CUDA_VISIBLE_DEVICES="${GPU_ID:-0}" python scripts/Analysis/run_external_lm_eval
   --tasks pubmedqa:medical --mode both --limit 10 --device cuda:0 --batch_size 4 \
   --hf_cache_dir "$HF_CACHE_ROOT" --output_dir "$MAIN_RESULT_ROOT/external_smoke/ours_seed42"
 
+CUDA_VISIBLE_DEVICES="${GPU_ID:-0}" nohup /usr/bin/time -v python scripts/Analysis/run_external_lm_eval.py \
+  --adapter_manifest "$MAIN_RESULT_ROOT/external_adapters/ours_seed42/adapter_export_manifest.json" \
+  --tasks mmlu:general,pubmedqa:medical,mbpp:code --mode both --device cuda:0 --batch_size 4 \
+  --hf_cache_dir "$HF_CACHE_ROOT" --confirm_run_unsafe_code \
+  --output_dir "$MAIN_RESULT_ROOT/external_eval/ours_seed42" \
+  > "$MAIN_RESULT_ROOT/launcher_logs/test20260725_external_ours_seed42.log" 2>&1 &
+echo $! > "$MAIN_RESULT_ROOT/pids/external_ours_seed42.pid"
+
+CUDA_VISIBLE_DEVICES="${GPU_ID:-0}" nohup /usr/bin/time -v python scripts/Analysis/run_external_lm_eval.py \
+  --adapter_manifest "$MAIN_RESULT_ROOT/external_adapters/ours_seed43/adapter_export_manifest.json" \
+  --tasks mmlu:general,pubmedqa:medical,mbpp:code --mode both --device cuda:0 --batch_size 4 \
+  --hf_cache_dir "$HF_CACHE_ROOT" --confirm_run_unsafe_code \
+  --output_dir "$MAIN_RESULT_ROOT/external_eval/ours_seed43" \
+  > "$MAIN_RESULT_ROOT/launcher_logs/test20260725_external_ours_seed43.log" 2>&1 &
+echo $! > "$MAIN_RESULT_ROOT/pids/external_ours_seed43.pid"
+
+CUDA_VISIBLE_DEVICES="${GPU_ID:-0}" nohup /usr/bin/time -v python scripts/Analysis/run_external_lm_eval.py \
+  --adapter_manifest "$MAIN_RESULT_ROOT/external_adapters/ours_seed44/adapter_export_manifest.json" \
+  --tasks mmlu:general,pubmedqa:medical,mbpp:code --mode both --device cuda:0 --batch_size 4 \
+  --hf_cache_dir "$HF_CACHE_ROOT" --confirm_run_unsafe_code \
+  --output_dir "$MAIN_RESULT_ROOT/external_eval/ours_seed44" \
+  > "$MAIN_RESULT_ROOT/launcher_logs/test20260725_external_ours_seed44.log" 2>&1 &
+echo $! > "$MAIN_RESULT_ROOT/pids/external_ours_seed44.pid"
+
+echo "[external][launch] seed42 pid=$(cat "$MAIN_RESULT_ROOT/pids/external_ours_seed42.pid")"
+echo "[external][launch] seed43 pid=$(cat "$MAIN_RESULT_ROOT/pids/external_ours_seed43.pid")"
+echo "[external][launch] seed44 pid=$(cat "$MAIN_RESULT_ROOT/pids/external_ours_seed44.pid")"
+```
+
+查看 external eval 状态（不阻塞）：
+
+```bash
+for p in "$MAIN_RESULT_ROOT"/pids/external_ours_seed*.pid; do
+  pid=$(cat "$p")
+  tag=$(basename "$p" .pid)
+  log="$MAIN_RESULT_ROOT/launcher_logs/test20260725_${tag}.log"
+  if kill -0 "$pid" 2>/dev/null; then
+    echo "[external][running] $tag pid=$pid"
+  elif grep -Eiq 'Traceback|CUDA out of memory|\\[error\\]|Exit status: [1-9]' "$log"; then
+    echo "[external][failed] $tag log=$log"
+  else
+    echo "[external][exited] $tag"
+  fi
+done
 for SEED in 42 43 44; do
-  CUDA_VISIBLE_DEVICES="${GPU_ID:-0}" /usr/bin/time -v python scripts/Analysis/run_external_lm_eval.py \
-    --adapter_manifest "$MAIN_RESULT_ROOT/external_adapters/ours_seed${SEED}/adapter_export_manifest.json" \
-    --tasks mmlu:general,pubmedqa:medical,mbpp:code --mode both --device cuda:0 --batch_size 4 \
-    --hf_cache_dir "$HF_CACHE_ROOT" --confirm_run_unsafe_code \
-    --output_dir "$MAIN_RESULT_ROOT/external_eval/ours_seed${SEED}" \
-    > "$MAIN_RESULT_ROOT/launcher_logs/test20260725_external_ours_seed${SEED}.log" 2>&1
+  test -f "$MAIN_RESULT_ROOT/external_eval/ours_seed${SEED}/external_eval_summary.json" \
+    && echo "[external][ok] seed=${SEED}" \
+    || echo "[external][pending] seed=${SEED}"
 done
 ```
 
@@ -616,7 +719,7 @@ done
 ## Main-2.2 【原 6】70-client FedPLoRA-OS ×3 seeds
 
 若 `$FED_RESULT_ROOT/order_0723_sup/70c_v13a_seed42/result_logs` 已有 final JSON，**跳过**。  
-须先完成 **Main-2.2-prep** 与 **0.4 `COMMON_SFT_ARGS`/`LORA_R8_ARGS`**；三条 **串行**（等上一条结束再跑下一条）。
+须先完成 **Main-2.2-prep** 与 **0.4** `COMMON_SFT_ARGS`**/**`LORA_R8_ARGS`；三条 **串行**（等上一条结束再跑下一条）。
 
 ### Main-2.2 seed42
 
@@ -708,98 +811,43 @@ done
 
 ## Main-3.1 【原 5】common-test α=0.5 FedPLoRA-OS ×3
 
-若 `order_0723` 7.2-A 已有 v13a final JSON，**跳过**。
+若 `order_0723` 7.2-A 已有 v13a final JSON，**跳过**。三条 **同时 nohup 启动**，命令行立即返回（单卡默认均 `GPU_ID=0`，多卡可改 `CUDA_VISIBLE_DEVICES`）。
 
 ```bash
 cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-0}" nohup /usr/bin/time -v python -u tasks/fed_train_sft.py --model "$MODEL_135M" --benchmark_dir "$DIR05_COMMON_ROOT/seed_42" --num_clients 35 --agg_type fedplora_v13a_os "${COMMON_SFT_ARGS[@]}" "${LORA_R8_ARGS[@]}" --client_state_dir "$MAIN_RESULT_ROOT/common_a05_v13a_seed42/result_files/client_states/N7_common_a05_v13a_seed42" --metrics_output_dir "$MAIN_RESULT_ROOT/common_a05_v13a_seed42/result_logs/N7_common_a05_v13a_seed42" --save_run_checkpoint_dir "$MAIN_MODEL_ROOT/common_a05_v13a_seed42/N7_common_a05_v13a_seed42" --trained_models_root "$MAIN_MODEL_ROOT/common_a05_v13a_seed42" --eval_max_batches 0 --seed 42 --force_retrain > "$MAIN_RESULT_ROOT/launcher_logs/test20260725_main_common_a05_v13a_seed42.log" 2>&1 &
-# seed43/44 同上
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-0}" nohup /usr/bin/time -v python -u tasks/fed_train_sft.py --model "$MODEL_135M" --benchmark_dir "$DIR05_COMMON_ROOT/seed_43" --num_clients 35 --agg_type fedplora_v13a_os "${COMMON_SFT_ARGS[@]}" "${LORA_R8_ARGS[@]}" --client_state_dir "$MAIN_RESULT_ROOT/common_a05_v13a_seed43/result_files/client_states/N7_common_a05_v13a_seed43" --metrics_output_dir "$MAIN_RESULT_ROOT/common_a05_v13a_seed43/result_logs/N7_common_a05_v13a_seed43" --save_run_checkpoint_dir "$MAIN_MODEL_ROOT/common_a05_v13a_seed43/N7_common_a05_v13a_seed43" --trained_models_root "$MAIN_MODEL_ROOT/common_a05_v13a_seed43" --eval_max_batches 0 --seed 43 --force_retrain > "$MAIN_RESULT_ROOT/launcher_logs/test20260725_main_common_a05_v13a_seed43.log" 2>&1 &
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-0}" nohup /usr/bin/time -v python -u tasks/fed_train_sft.py --model "$MODEL_135M" --benchmark_dir "$DIR05_COMMON_ROOT/seed_44" --num_clients 35 --agg_type fedplora_v13a_os "${COMMON_SFT_ARGS[@]}" "${LORA_R8_ARGS[@]}" --client_state_dir "$MAIN_RESULT_ROOT/common_a05_v13a_seed44/result_files/client_states/N7_common_a05_v13a_seed44" --metrics_output_dir "$MAIN_RESULT_ROOT/common_a05_v13a_seed44/result_logs/N7_common_a05_v13a_seed44" --save_run_checkpoint_dir "$MAIN_MODEL_ROOT/common_a05_v13a_seed44/N7_common_a05_v13a_seed44" --trained_models_root "$MAIN_MODEL_ROOT/common_a05_v13a_seed44" --eval_max_batches 0 --seed 44 --force_retrain > "$MAIN_RESULT_ROOT/launcher_logs/test20260725_main_common_a05_v13a_seed44.log" 2>&1 &
 ```
 
 ## Main-3.2 【原 7】LoRA r=16 FedPLoRA-OS ×3
 
-若 `order_0723_sup/r16_v13a_seed*` 已有 final JSON，**跳过**。
+若 `order_0723_sup/r16_v13a_seed*` 已有 final JSON，**跳过**。三条 **同时 nohup 启动**，命令行立即返回。
 
 ```bash
 cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-0}" nohup /usr/bin/time -v python -u tasks/fed_train_sft.py --model "$MODEL_135M" --benchmark_dir "$D1_ROOT/seed_42" --num_clients 35 --agg_type fedplora_v13a_os "${COMMON_SFT_ARGS[@]}" "${LORA_R16_ARGS[@]}" --client_state_dir "$MAIN_RESULT_ROOT/r16_v13a_seed42/result_files/client_states/N7_r16_v13a_seed42" --metrics_output_dir "$MAIN_RESULT_ROOT/r16_v13a_seed42/result_logs/N7_r16_v13a_seed42" --save_run_checkpoint_dir "$MAIN_MODEL_ROOT/r16_v13a_seed42/N7_r16_v13a_seed42" --trained_models_root "$MAIN_MODEL_ROOT/r16_v13a_seed42" --eval_max_batches 0 --seed 42 --force_retrain > "$MAIN_RESULT_ROOT/launcher_logs/test20260725_main_r16_v13a_seed42.log" 2>&1 &
-# seed43/44 同上
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-0}" nohup /usr/bin/time -v python -u tasks/fed_train_sft.py --model "$MODEL_135M" --benchmark_dir "$D1_ROOT/seed_43" --num_clients 35 --agg_type fedplora_v13a_os "${COMMON_SFT_ARGS[@]}" "${LORA_R16_ARGS[@]}" --client_state_dir "$MAIN_RESULT_ROOT/r16_v13a_seed43/result_files/client_states/N7_r16_v13a_seed43" --metrics_output_dir "$MAIN_RESULT_ROOT/r16_v13a_seed43/result_logs/N7_r16_v13a_seed43" --save_run_checkpoint_dir "$MAIN_MODEL_ROOT/r16_v13a_seed43/N7_r16_v13a_seed43" --trained_models_root "$MAIN_MODEL_ROOT/r16_v13a_seed43" --eval_max_batches 0 --seed 43 --force_retrain > "$MAIN_RESULT_ROOT/launcher_logs/test20260725_main_r16_v13a_seed43.log" 2>&1 &
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-0}" nohup /usr/bin/time -v python -u tasks/fed_train_sft.py --model "$MODEL_135M" --benchmark_dir "$D1_ROOT/seed_44" --num_clients 35 --agg_type fedplora_v13a_os "${COMMON_SFT_ARGS[@]}" "${LORA_R16_ARGS[@]}" --client_state_dir "$MAIN_RESULT_ROOT/r16_v13a_seed44/result_files/client_states/N7_r16_v13a_seed44" --metrics_output_dir "$MAIN_RESULT_ROOT/r16_v13a_seed44/result_logs/N7_r16_v13a_seed44" --save_run_checkpoint_dir "$MAIN_MODEL_ROOT/r16_v13a_seed44/N7_r16_v13a_seed44" --trained_models_root "$MAIN_MODEL_ROOT/r16_v13a_seed44" --eval_max_batches 0 --seed 44 --force_retrain > "$MAIN_RESULT_ROOT/launcher_logs/test20260725_main_r16_v13a_seed44.log" 2>&1 &
 ```
 
-## Main-3.3 【原 8】D1 strict held-out 五折×三 seed（15 条 GPU，串行）
+## Main-3.3 【原 8】D1 strict held-out 五折×三 seed（15 条 GPU，并行 nohup）
 
-probe headline = 10 examples；`few_shot_caps 1,5,10`。每条等前一条结束再跑。
+probe headline = 10 examples；`few_shot_caps 1,5,10`。15 条 **同时 nohup 启动**，命令行立即返回；单卡默认均 `GPU_ID=0`（多卡可分配 0–14）。
 
 ```bash
-# offset0 seed42
 cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && RESULT_ROOT="$MAIN_RESULT_ROOT" MODEL_ROOT="$MAIN_MODEL_ROOT" MODEL_PATH="$MODEL_135M" BENCHMARK_DIR_MAIN="$D1_ROOT/seed_42" EXPECTED_NUM_CLIENTS=35 RUN_TAG_DATASET=gb35c_dir05 MAX_SEQ_LENGTH=256 PIPELINE_EVAL_MAX_BATCHES=0 nohup /usr/bin/time -v bash scripts/RunScripts/run_20260713_one_experiment.sh --kind personalized_eval --method X2_d1_heldout_offset0_seed42 --seed 42 --split-seed 42 --run-id-prefix main_20260725_d1_heldout --gpu "${GPU_ID:-0}" -- --held_out_clients auto_one_per_domain --held_out_policy offset --held_out_offset 0 --few_shot_caps 1,5,10 --held_out_route_probe_samples 10 --held_out_route_metrics flat_b_cosine,subspace,relative_l2,delta_w_cosine,nearest_client_subspace,random,oracle --onboarding_accounting --schemes base,global,coldstart,coldstart_geom --select_candidates global,coldstart,coldstart_geom > "$MAIN_RESULT_ROOT/launcher_logs/test20260725_d1_heldout_offset0_seed42.launch.log" 2>&1 &
-```
-
-```bash
-# offset0 seed43
 cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && RESULT_ROOT="$MAIN_RESULT_ROOT" MODEL_ROOT="$MAIN_MODEL_ROOT" MODEL_PATH="$MODEL_135M" BENCHMARK_DIR_MAIN="$D1_ROOT/seed_42" EXPECTED_NUM_CLIENTS=35 RUN_TAG_DATASET=gb35c_dir05 MAX_SEQ_LENGTH=256 PIPELINE_EVAL_MAX_BATCHES=0 nohup /usr/bin/time -v bash scripts/RunScripts/run_20260713_one_experiment.sh --kind personalized_eval --method X2_d1_heldout_offset0_seed43 --seed 43 --split-seed 43 --run-id-prefix main_20260725_d1_heldout --gpu "${GPU_ID:-0}" -- --held_out_clients auto_one_per_domain --held_out_policy offset --held_out_offset 0 --few_shot_caps 1,5,10 --held_out_route_probe_samples 10 --held_out_route_metrics flat_b_cosine,subspace,relative_l2,delta_w_cosine,nearest_client_subspace,random,oracle --onboarding_accounting --schemes base,global,coldstart,coldstart_geom --select_candidates global,coldstart,coldstart_geom > "$MAIN_RESULT_ROOT/launcher_logs/test20260725_d1_heldout_offset0_seed43.launch.log" 2>&1 &
-```
-
-```bash
-# offset0 seed44
 cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && RESULT_ROOT="$MAIN_RESULT_ROOT" MODEL_ROOT="$MAIN_MODEL_ROOT" MODEL_PATH="$MODEL_135M" BENCHMARK_DIR_MAIN="$D1_ROOT/seed_42" EXPECTED_NUM_CLIENTS=35 RUN_TAG_DATASET=gb35c_dir05 MAX_SEQ_LENGTH=256 PIPELINE_EVAL_MAX_BATCHES=0 nohup /usr/bin/time -v bash scripts/RunScripts/run_20260713_one_experiment.sh --kind personalized_eval --method X2_d1_heldout_offset0_seed44 --seed 44 --split-seed 44 --run-id-prefix main_20260725_d1_heldout --gpu "${GPU_ID:-0}" -- --held_out_clients auto_one_per_domain --held_out_policy offset --held_out_offset 0 --few_shot_caps 1,5,10 --held_out_route_probe_samples 10 --held_out_route_metrics flat_b_cosine,subspace,relative_l2,delta_w_cosine,nearest_client_subspace,random,oracle --onboarding_accounting --schemes base,global,coldstart,coldstart_geom --select_candidates global,coldstart,coldstart_geom > "$MAIN_RESULT_ROOT/launcher_logs/test20260725_d1_heldout_offset0_seed44.launch.log" 2>&1 &
-```
-
-```bash
-# offset1 seed42
 cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && RESULT_ROOT="$MAIN_RESULT_ROOT" MODEL_ROOT="$MAIN_MODEL_ROOT" MODEL_PATH="$MODEL_135M" BENCHMARK_DIR_MAIN="$D1_ROOT/seed_42" EXPECTED_NUM_CLIENTS=35 RUN_TAG_DATASET=gb35c_dir05 MAX_SEQ_LENGTH=256 PIPELINE_EVAL_MAX_BATCHES=0 nohup /usr/bin/time -v bash scripts/RunScripts/run_20260713_one_experiment.sh --kind personalized_eval --method X2_d1_heldout_offset1_seed42 --seed 42 --split-seed 42 --run-id-prefix main_20260725_d1_heldout --gpu "${GPU_ID:-0}" -- --held_out_clients auto_one_per_domain --held_out_policy offset --held_out_offset 1 --few_shot_caps 1,5,10 --held_out_route_probe_samples 10 --held_out_route_metrics flat_b_cosine,subspace,relative_l2,delta_w_cosine,nearest_client_subspace,random,oracle --onboarding_accounting --schemes base,global,coldstart,coldstart_geom --select_candidates global,coldstart,coldstart_geom > "$MAIN_RESULT_ROOT/launcher_logs/test20260725_d1_heldout_offset1_seed42.launch.log" 2>&1 &
-```
-
-```bash
-# offset1 seed43
 cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && RESULT_ROOT="$MAIN_RESULT_ROOT" MODEL_ROOT="$MAIN_MODEL_ROOT" MODEL_PATH="$MODEL_135M" BENCHMARK_DIR_MAIN="$D1_ROOT/seed_42" EXPECTED_NUM_CLIENTS=35 RUN_TAG_DATASET=gb35c_dir05 MAX_SEQ_LENGTH=256 PIPELINE_EVAL_MAX_BATCHES=0 nohup /usr/bin/time -v bash scripts/RunScripts/run_20260713_one_experiment.sh --kind personalized_eval --method X2_d1_heldout_offset1_seed43 --seed 43 --split-seed 43 --run-id-prefix main_20260725_d1_heldout --gpu "${GPU_ID:-0}" -- --held_out_clients auto_one_per_domain --held_out_policy offset --held_out_offset 1 --few_shot_caps 1,5,10 --held_out_route_probe_samples 10 --held_out_route_metrics flat_b_cosine,subspace,relative_l2,delta_w_cosine,nearest_client_subspace,random,oracle --onboarding_accounting --schemes base,global,coldstart,coldstart_geom --select_candidates global,coldstart,coldstart_geom > "$MAIN_RESULT_ROOT/launcher_logs/test20260725_d1_heldout_offset1_seed43.launch.log" 2>&1 &
-```
-
-```bash
-# offset1 seed44
 cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && RESULT_ROOT="$MAIN_RESULT_ROOT" MODEL_ROOT="$MAIN_MODEL_ROOT" MODEL_PATH="$MODEL_135M" BENCHMARK_DIR_MAIN="$D1_ROOT/seed_42" EXPECTED_NUM_CLIENTS=35 RUN_TAG_DATASET=gb35c_dir05 MAX_SEQ_LENGTH=256 PIPELINE_EVAL_MAX_BATCHES=0 nohup /usr/bin/time -v bash scripts/RunScripts/run_20260713_one_experiment.sh --kind personalized_eval --method X2_d1_heldout_offset1_seed44 --seed 44 --split-seed 44 --run-id-prefix main_20260725_d1_heldout --gpu "${GPU_ID:-0}" -- --held_out_clients auto_one_per_domain --held_out_policy offset --held_out_offset 1 --few_shot_caps 1,5,10 --held_out_route_probe_samples 10 --held_out_route_metrics flat_b_cosine,subspace,relative_l2,delta_w_cosine,nearest_client_subspace,random,oracle --onboarding_accounting --schemes base,global,coldstart,coldstart_geom --select_candidates global,coldstart,coldstart_geom > "$MAIN_RESULT_ROOT/launcher_logs/test20260725_d1_heldout_offset1_seed44.launch.log" 2>&1 &
-```
-
-```bash
-# offset2 seed42
 cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && RESULT_ROOT="$MAIN_RESULT_ROOT" MODEL_ROOT="$MAIN_MODEL_ROOT" MODEL_PATH="$MODEL_135M" BENCHMARK_DIR_MAIN="$D1_ROOT/seed_42" EXPECTED_NUM_CLIENTS=35 RUN_TAG_DATASET=gb35c_dir05 MAX_SEQ_LENGTH=256 PIPELINE_EVAL_MAX_BATCHES=0 nohup /usr/bin/time -v bash scripts/RunScripts/run_20260713_one_experiment.sh --kind personalized_eval --method X2_d1_heldout_offset2_seed42 --seed 42 --split-seed 42 --run-id-prefix main_20260725_d1_heldout --gpu "${GPU_ID:-0}" -- --held_out_clients auto_one_per_domain --held_out_policy offset --held_out_offset 2 --few_shot_caps 1,5,10 --held_out_route_probe_samples 10 --held_out_route_metrics flat_b_cosine,subspace,relative_l2,delta_w_cosine,nearest_client_subspace,random,oracle --onboarding_accounting --schemes base,global,coldstart,coldstart_geom --select_candidates global,coldstart,coldstart_geom > "$MAIN_RESULT_ROOT/launcher_logs/test20260725_d1_heldout_offset2_seed42.launch.log" 2>&1 &
-```
-
-```bash
-# offset2 seed43
 cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && RESULT_ROOT="$MAIN_RESULT_ROOT" MODEL_ROOT="$MAIN_MODEL_ROOT" MODEL_PATH="$MODEL_135M" BENCHMARK_DIR_MAIN="$D1_ROOT/seed_42" EXPECTED_NUM_CLIENTS=35 RUN_TAG_DATASET=gb35c_dir05 MAX_SEQ_LENGTH=256 PIPELINE_EVAL_MAX_BATCHES=0 nohup /usr/bin/time -v bash scripts/RunScripts/run_20260713_one_experiment.sh --kind personalized_eval --method X2_d1_heldout_offset2_seed43 --seed 43 --split-seed 43 --run-id-prefix main_20260725_d1_heldout --gpu "${GPU_ID:-0}" -- --held_out_clients auto_one_per_domain --held_out_policy offset --held_out_offset 2 --few_shot_caps 1,5,10 --held_out_route_probe_samples 10 --held_out_route_metrics flat_b_cosine,subspace,relative_l2,delta_w_cosine,nearest_client_subspace,random,oracle --onboarding_accounting --schemes base,global,coldstart,coldstart_geom --select_candidates global,coldstart,coldstart_geom > "$MAIN_RESULT_ROOT/launcher_logs/test20260725_d1_heldout_offset2_seed43.launch.log" 2>&1 &
-```
-
-```bash
-# offset2 seed44
 cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && RESULT_ROOT="$MAIN_RESULT_ROOT" MODEL_ROOT="$MAIN_MODEL_ROOT" MODEL_PATH="$MODEL_135M" BENCHMARK_DIR_MAIN="$D1_ROOT/seed_42" EXPECTED_NUM_CLIENTS=35 RUN_TAG_DATASET=gb35c_dir05 MAX_SEQ_LENGTH=256 PIPELINE_EVAL_MAX_BATCHES=0 nohup /usr/bin/time -v bash scripts/RunScripts/run_20260713_one_experiment.sh --kind personalized_eval --method X2_d1_heldout_offset2_seed44 --seed 44 --split-seed 44 --run-id-prefix main_20260725_d1_heldout --gpu "${GPU_ID:-0}" -- --held_out_clients auto_one_per_domain --held_out_policy offset --held_out_offset 2 --few_shot_caps 1,5,10 --held_out_route_probe_samples 10 --held_out_route_metrics flat_b_cosine,subspace,relative_l2,delta_w_cosine,nearest_client_subspace,random,oracle --onboarding_accounting --schemes base,global,coldstart,coldstart_geom --select_candidates global,coldstart,coldstart_geom > "$MAIN_RESULT_ROOT/launcher_logs/test20260725_d1_heldout_offset2_seed44.launch.log" 2>&1 &
-```
-
-```bash
-# offset3 seed42
 cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && RESULT_ROOT="$MAIN_RESULT_ROOT" MODEL_ROOT="$MAIN_MODEL_ROOT" MODEL_PATH="$MODEL_135M" BENCHMARK_DIR_MAIN="$D1_ROOT/seed_42" EXPECTED_NUM_CLIENTS=35 RUN_TAG_DATASET=gb35c_dir05 MAX_SEQ_LENGTH=256 PIPELINE_EVAL_MAX_BATCHES=0 nohup /usr/bin/time -v bash scripts/RunScripts/run_20260713_one_experiment.sh --kind personalized_eval --method X2_d1_heldout_offset3_seed42 --seed 42 --split-seed 42 --run-id-prefix main_20260725_d1_heldout --gpu "${GPU_ID:-0}" -- --held_out_clients auto_one_per_domain --held_out_policy offset --held_out_offset 3 --few_shot_caps 1,5,10 --held_out_route_probe_samples 10 --held_out_route_metrics flat_b_cosine,subspace,relative_l2,delta_w_cosine,nearest_client_subspace,random,oracle --onboarding_accounting --schemes base,global,coldstart,coldstart_geom --select_candidates global,coldstart,coldstart_geom > "$MAIN_RESULT_ROOT/launcher_logs/test20260725_d1_heldout_offset3_seed42.launch.log" 2>&1 &
-```
-
-```bash
-# offset3 seed43
 cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && RESULT_ROOT="$MAIN_RESULT_ROOT" MODEL_ROOT="$MAIN_MODEL_ROOT" MODEL_PATH="$MODEL_135M" BENCHMARK_DIR_MAIN="$D1_ROOT/seed_42" EXPECTED_NUM_CLIENTS=35 RUN_TAG_DATASET=gb35c_dir05 MAX_SEQ_LENGTH=256 PIPELINE_EVAL_MAX_BATCHES=0 nohup /usr/bin/time -v bash scripts/RunScripts/run_20260713_one_experiment.sh --kind personalized_eval --method X2_d1_heldout_offset3_seed43 --seed 43 --split-seed 43 --run-id-prefix main_20260725_d1_heldout --gpu "${GPU_ID:-0}" -- --held_out_clients auto_one_per_domain --held_out_policy offset --held_out_offset 3 --few_shot_caps 1,5,10 --held_out_route_probe_samples 10 --held_out_route_metrics flat_b_cosine,subspace,relative_l2,delta_w_cosine,nearest_client_subspace,random,oracle --onboarding_accounting --schemes base,global,coldstart,coldstart_geom --select_candidates global,coldstart,coldstart_geom > "$MAIN_RESULT_ROOT/launcher_logs/test20260725_d1_heldout_offset3_seed43.launch.log" 2>&1 &
-```
-
-```bash
-# offset3 seed44
 cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && RESULT_ROOT="$MAIN_RESULT_ROOT" MODEL_ROOT="$MAIN_MODEL_ROOT" MODEL_PATH="$MODEL_135M" BENCHMARK_DIR_MAIN="$D1_ROOT/seed_42" EXPECTED_NUM_CLIENTS=35 RUN_TAG_DATASET=gb35c_dir05 MAX_SEQ_LENGTH=256 PIPELINE_EVAL_MAX_BATCHES=0 nohup /usr/bin/time -v bash scripts/RunScripts/run_20260713_one_experiment.sh --kind personalized_eval --method X2_d1_heldout_offset3_seed44 --seed 44 --split-seed 44 --run-id-prefix main_20260725_d1_heldout --gpu "${GPU_ID:-0}" -- --held_out_clients auto_one_per_domain --held_out_policy offset --held_out_offset 3 --few_shot_caps 1,5,10 --held_out_route_probe_samples 10 --held_out_route_metrics flat_b_cosine,subspace,relative_l2,delta_w_cosine,nearest_client_subspace,random,oracle --onboarding_accounting --schemes base,global,coldstart,coldstart_geom --select_candidates global,coldstart,coldstart_geom > "$MAIN_RESULT_ROOT/launcher_logs/test20260725_d1_heldout_offset3_seed44.launch.log" 2>&1 &
-```
-
-```bash
-# offset4 seed42
 cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && RESULT_ROOT="$MAIN_RESULT_ROOT" MODEL_ROOT="$MAIN_MODEL_ROOT" MODEL_PATH="$MODEL_135M" BENCHMARK_DIR_MAIN="$D1_ROOT/seed_42" EXPECTED_NUM_CLIENTS=35 RUN_TAG_DATASET=gb35c_dir05 MAX_SEQ_LENGTH=256 PIPELINE_EVAL_MAX_BATCHES=0 nohup /usr/bin/time -v bash scripts/RunScripts/run_20260713_one_experiment.sh --kind personalized_eval --method X2_d1_heldout_offset4_seed42 --seed 42 --split-seed 42 --run-id-prefix main_20260725_d1_heldout --gpu "${GPU_ID:-0}" -- --held_out_clients auto_one_per_domain --held_out_policy offset --held_out_offset 4 --few_shot_caps 1,5,10 --held_out_route_probe_samples 10 --held_out_route_metrics flat_b_cosine,subspace,relative_l2,delta_w_cosine,nearest_client_subspace,random,oracle --onboarding_accounting --schemes base,global,coldstart,coldstart_geom --select_candidates global,coldstart,coldstart_geom > "$MAIN_RESULT_ROOT/launcher_logs/test20260725_d1_heldout_offset4_seed42.launch.log" 2>&1 &
-```
-
-```bash
-# offset4 seed43
 cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && RESULT_ROOT="$MAIN_RESULT_ROOT" MODEL_ROOT="$MAIN_MODEL_ROOT" MODEL_PATH="$MODEL_135M" BENCHMARK_DIR_MAIN="$D1_ROOT/seed_42" EXPECTED_NUM_CLIENTS=35 RUN_TAG_DATASET=gb35c_dir05 MAX_SEQ_LENGTH=256 PIPELINE_EVAL_MAX_BATCHES=0 nohup /usr/bin/time -v bash scripts/RunScripts/run_20260713_one_experiment.sh --kind personalized_eval --method X2_d1_heldout_offset4_seed43 --seed 43 --split-seed 43 --run-id-prefix main_20260725_d1_heldout --gpu "${GPU_ID:-0}" -- --held_out_clients auto_one_per_domain --held_out_policy offset --held_out_offset 4 --few_shot_caps 1,5,10 --held_out_route_probe_samples 10 --held_out_route_metrics flat_b_cosine,subspace,relative_l2,delta_w_cosine,nearest_client_subspace,random,oracle --onboarding_accounting --schemes base,global,coldstart,coldstart_geom --select_candidates global,coldstart,coldstart_geom > "$MAIN_RESULT_ROOT/launcher_logs/test20260725_d1_heldout_offset4_seed43.launch.log" 2>&1 &
-```
-
-```bash
-# offset4 seed44
 cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && RESULT_ROOT="$MAIN_RESULT_ROOT" MODEL_ROOT="$MAIN_MODEL_ROOT" MODEL_PATH="$MODEL_135M" BENCHMARK_DIR_MAIN="$D1_ROOT/seed_42" EXPECTED_NUM_CLIENTS=35 RUN_TAG_DATASET=gb35c_dir05 MAX_SEQ_LENGTH=256 PIPELINE_EVAL_MAX_BATCHES=0 nohup /usr/bin/time -v bash scripts/RunScripts/run_20260713_one_experiment.sh --kind personalized_eval --method X2_d1_heldout_offset4_seed44 --seed 44 --split-seed 44 --run-id-prefix main_20260725_d1_heldout --gpu "${GPU_ID:-0}" -- --held_out_clients auto_one_per_domain --held_out_policy offset --held_out_offset 4 --few_shot_caps 1,5,10 --held_out_route_probe_samples 10 --held_out_route_metrics flat_b_cosine,subspace,relative_l2,delta_w_cosine,nearest_client_subspace,random,oracle --onboarding_accounting --schemes base,global,coldstart,coldstart_geom --select_candidates global,coldstart,coldstart_geom > "$MAIN_RESULT_ROOT/launcher_logs/test20260725_d1_heldout_offset4_seed44.launch.log" 2>&1 &
 ```
 
@@ -847,20 +895,24 @@ cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs
 
 ### 【作业边界（与 Main 不重复）】
 
-| 缺口 | 本文件负责 | 不在本文件重复 |
-|---|---|---|
-| Worst In-Domain | D1 12 baselines；Flower 既有 6 baselines；新补 Flower baselines | FedPLoRA-OS 6 jobs |
-| FlowerTune `--` | FFA-LoRA、FLoRA、FlexLoRA、FedDAT、YOCO、HiLoRA × 3 seeds | 已有 Normal/Eco/FedSA/FedALT/Hydra/FedLEASE |
-| 外部任务 | Normal、FedALT、HydraLoRA × 3 seeds | FedPLoRA-OS × 3 seeds |
+
+| 缺口              | 本文件负责                                                     | 不在本文件重复                                   |
+| --------------- | --------------------------------------------------------- | ----------------------------------------- |
+| Worst In-Domain | D1 12 baselines；Flower 既有 6 baselines；新补 Flower baselines | FedPLoRA-OS 6 jobs                        |
+| FlowerTune `--` | FFA-LoRA、FLoRA、FlexLoRA、FedDAT、YOCO、HiLoRA × 3 seeds      | 已有 Normal/Eco/FedSA/FedALT/Hydra/FedLEASE |
+| 外部任务            | Normal、FedALT、HydraLoRA × 3 seeds                         | FedPLoRA-OS × 3 seeds                     |
+
 
 ### 【前置实验结果说明】
 
-| 小节 | 本批是否新训 | 是否需要前置结果 | 前置来源 |
-|---|---|---|---|
-| **Baseline-1.1** Flower 缺失 baseline | **是**（18 条 SFT） | **部分可选** | YOCO 若 `order_0723_sup/yoco_flower_seed*` 已有 final JSON 可**跳过训练**，matched-domain 仍要补 |
-| **Baseline-1.2-A** 历史 Worst MD | **否**（eval-only） | **需要** | order_0709 D1 baseline ×36 JSON；order_0715 Flower 已有 6 方法 ×3 seed |
-| **Baseline-1.2-B** 新 Flower MD | **否** | **需要** | **Baseline-1.1** 18 条训练产出的 result JSON + checkpoint |
-| **Baseline-1.3** external | **否**（export + lm-eval） | **需要** | Normal/FedALT/HydraLoRA 的 **D1 历史 checkpoint** ×9；HF 离线 cache（同 Main-1.2） |
+
+| 小节                                  | 本批是否新训                  | 是否需要前置结果 | 前置来源                                                                                                                                  |
+| ----------------------------------- | ----------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| **Baseline-1.1** Flower 缺失 baseline | **是**（18 条 SFT）         | **部分可选** | YOCO 若 `order_0723_sup/yoco_flower_seed`* 已有 final JSON 可**跳过训练**，matched-domain 仍要补                                                  |
+| **Baseline-1.2-A** 历史 Worst MD      | **否**（eval-only）        | **需要**   | order_0709 D1 baseline ×36 JSON；order_0715 Flower 已有 6 方法 ×3 seed                                                                     |
+| **Baseline-1.2-B** 新 Flower MD      | **否**                   | **需要**   | **Baseline-1.1** 18 条训练产出的 result JSON + checkpoint                                                                                   |
+| **Baseline-1.3** external           | **否**（export + lm-eval） | **需要**   | order_0709 D1 **Normal/FedALT/HydraLoRA** checkpoint ×9（优先 `--from_result_json`；实体在 `$TRAINED_MODEL_LW_ROOT`）；HF 离线 cache（同 Main-1.2） |
+
 
 **不需要的前置：** Main-2.1 Flower held-out JSON（那是 Baseline-2.1 才读）；order_0725/main 新训练结果。
 
@@ -870,7 +922,7 @@ cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs
 
 **作用：** 在 fingerprint `86603887` 的正式 FlowerTune-Mixed split 上补齐当前 `--`。YOCO 为 P0；FFA/FLoRA/FlexLoRA/FedDAT/HiLoRA 为 P1，若算力不足，主表仍保留 `--`，绝不能复制历史协议结果。
 
-正式训练 method 目录名为 **`N9_${tag}_${agg}`**（与 A100 版 `launch_baseline_sft` 一致，例如 `N9_flower_yoco_seed42_yoco`）。
+正式训练 method 目录名为 `N9_${tag}_${agg}`（与 A100 版 `launch_baseline_sft` 一致，例如 `N9_flower_yoco_seed42_yoco`）。
 
 YOCO/FFA/FLoRA/FlexLoRA/FedDAT/HiLoRA ×3 seeds，共 **18 条 GPU**，**串行**（等上一条结束再跑下一条）。  
 若 `$FED_RESULT_ROOT/order_0723_sup/yoco_flower_seed42/result_logs` 已有 final JSON，**跳过对应 YOCO 训练**，仅做 Baseline-1.2 matched-domain。
@@ -1098,7 +1150,7 @@ grep -R 'max_seq_length=256' "$MD_ROOT/logs"
 
 ### Baseline-1.2-B 新补 Flower baseline matched-domain ×18
 
-须 **Baseline-1.1** 训练完成（或 YOCO 已在 `order_0723_sup`）后再跑。gb 上 method 目录可能是 **`N9_${tag}_${agg}`**（A100 新训）或 **`N9_${tag}`**（旧 gb 命令）；YOCO 还可能在 **`order_0723_sup/yoco_flower_seed*/`**。launch 前先用诊断块确认每个 tag 能 resolve 到 1 个 JSON。
+须 **Baseline-1.1** 训练完成（或 YOCO 已在 `order_0723_sup`）后再跑。gb 上 method 目录可能是 `N9_${tag}_${agg}`（A100 新训）或 `N9_${tag}`（旧 gb 命令）；YOCO 还可能在 `order_0723_sup/yoco_flower_seed*/`。launch 前先用诊断块确认每个 tag 能 resolve 到 1 个 JSON。
 
 **诊断（缺 JSON 时必跑）：**
 
@@ -1226,7 +1278,9 @@ echo "d1=$D1_N flower_existing=$FLOWER_EXIST_N flower_new=$FLOWER_NEW_N total=$(
 
 **选择理由：** Normal 是共享全局适配器参考；FedALT 在 FlowerTune 上具有很强的 Local；HydraLoRA 是 D1 上最接近主方法的强个性化 baseline。三者与主方法使用相同 task、zero-shot、dtype、batch、adapter export 和解码设置。
 
-**前置：** HF 离线 cache（同 Main-1.2-E0，含 `prepare_external_lm_eval_cache.sh` 回退）；gb 上 **Normal/FedALT/HydraLoRA 的 D1 历史 checkpoint**（`checkpoint_manifest.py` 解析，通常 order_0709 等）。**不需要** Main external 的 adapter。9 份 `adapter_export_manifest.json` 齐全后再跑正式 lm-eval。
+**前置：** HF 离线 cache（同 Main-1.2-E0，含 `prepare_external_lm_eval_cache.sh` 回退）；gb 上 order_0709 D1 **Normal/FedALT/HydraLoRA** 历史 checkpoint ×9（见 E1 的 result JSON 路径；checkpoint 在 `$TRAINED_MODEL_LW_ROOT/os_`*，不在 `order_0725/baseline` 下）。**不需要** Main external 的 adapter。9 份 `adapter_export_manifest.json` 齐全后再跑正式 lm-eval。
+
+**与 Main-1.2 相同的风险：** 若 `CKPT_SEARCH_ROOTS` 不含 `$TRAINED_MODEL_LW_ROOT`，或不用 `--from_result_json`，会 `found 0` 且误启动空 export。
 
 ### Baseline-1.3-E0 cache 门禁
 
@@ -1242,20 +1296,82 @@ bash scripts/RunScripts/prepare_external_lm_eval_cache.sh verify mmlu,pubmedqa,m
 
 不要再执行旧版 `python -m lm_eval ls tasks | grep mmlu/pubmedqa/mbpp` 门禁；cache verify 通过后进入 adapter export / smoke。
 
-### Baseline-1.3-E1 adapter export（串行 9 个；gb 单卡）
+### Baseline-1.3-E1 adapter export（并行 9 个，后台 nohup；读 order_0709 历史 checkpoint）
+
+9 条 export **同时后台启动**，命令行立即返回；单卡默认均用 `GPU_ID=0`（多卡可把各 job 的 `CUDA_VISIBLE_DEVICES` 改为 0–8）。
+
+**E1 前置自检（建议先跑；三条以上** `[ckpt][ok]` **再 launch）：**
+
+```bash
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}"
+export RESULT_ROOT="$BASELINE_RESULT_ROOT"
+export CKPT_SEARCH_ROOTS="$TRAINED_MODEL_LW_ROOT $BASELINE_MODEL_ROOT $FED_RESULT_ROOT $BASELINE_RESULT_ROOT"
+
+baseline_result_json () {
+  local agg="$1" seed="$2" method=""
+  case "$agg" in
+    normal) method=OS1_normal ;;
+    fedalt) method=OS1_fedalt ;;
+    hydralora) method=OS1_hydralora ;;
+    *) echo "[ckpt][error] unknown agg=$agg" >&2; return 2 ;;
+  esac
+  local base="$FED_RESULT_ROOT/os_20260709_baseline_35c_dir05_r1_finaleval_seed${seed}/result_logs"
+  [[ -d "$base" ]] || base="$FED_RESULT_ROOT/order_0709/os_20260709_baseline_35c_dir05_r1_finaleval_seed${seed}/result_logs"
+  mapfile -t hits < <(find "$base/$method" -maxdepth 1 -type f -name '*.json' 2>/dev/null | sort)
+  [[ "${#hits[@]}" -eq 1 ]] || { echo "[ckpt][error] expected one JSON: $base/$method got ${#hits[@]}" >&2; return 2; }
+  printf '%s\n' "${hits[0]}"
+}
+
+for agg in normal fedalt hydralora; do
+  for seed in 42 43 44; do
+    json=$(baseline_result_json "$agg" "$seed") \
+      && ckpt=$(python scripts/Analysis/checkpoint_manifest.py --from_result_json "$json") \
+      && echo "[ckpt][ok] ${agg} seed=${seed} -> $ckpt" \
+      || echo "[ckpt][fail] ${agg} seed=${seed}"
+  done
+done
+```
 
 ```bash
 cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}"
 export RESULT_ROOT="$BASELINE_RESULT_ROOT" MODEL_ROOT="$BASELINE_MODEL_ROOT"
-export CKPT_SEARCH_ROOTS="$BASELINE_MODEL_ROOT $FED_RESULT_ROOT $BASELINE_RESULT_ROOT"
+export CKPT_SEARCH_ROOTS="$TRAINED_MODEL_LW_ROOT $BASELINE_MODEL_ROOT $FED_RESULT_ROOT $BASELINE_RESULT_ROOT"
+python scripts/Analysis/checkpoint_manifest.py --roots $CKPT_SEARCH_ROOTS \
+  --output "$RESULT_ROOT/analysis/checkpoint_manifest_external_baseline.json"
 
-export_baseline_adapter () {
-  local agg="$1" seed="$2"
-  local ckpt
-  ckpt=$(python scripts/Analysis/checkpoint_manifest.py --roots $CKPT_SEARCH_ROOTS --resolve \
+find_one_json () {
+  local dir="$1"
+  mapfile -t hits < <(find "$dir" -maxdepth 1 -type f -name '*.json' 2>/dev/null | sort)
+  [[ "${#hits[@]}" -eq 1 ]] || { echo "[source][error] expected one JSON: $dir, got ${#hits[@]}" >&2; return 2; }
+  printf '%s\n' "${hits[0]}"
+}
+
+resolve_baseline_ckpt () {
+  local agg="$1" seed="$2" method="" result_json=""
+  case "$agg" in
+    normal) method=OS1_normal ;;
+    fedalt) method=OS1_fedalt ;;
+    hydralora) method=OS1_hydralora ;;
+    *) echo "[export][error] unknown agg=$agg" >&2; return 2 ;;
+  esac
+  local base="$FED_RESULT_ROOT/os_20260709_baseline_35c_dir05_r1_finaleval_seed${seed}/result_logs"
+  [[ -d "$base" ]] || base="$FED_RESULT_ROOT/order_0709/os_20260709_baseline_35c_dir05_r1_finaleval_seed${seed}/result_logs"
+  result_json=$(find_one_json "$base/$method") \
+    && python scripts/Analysis/checkpoint_manifest.py --from_result_json "$result_json" \
+    && return
+  python scripts/Analysis/checkpoint_manifest.py --roots $CKPT_SEARCH_ROOTS --resolve \
     --agg_type "$agg" --seed "$seed" --model_contains SmolLM2-135M \
-    --benchmark_contains "domain_benchmark_35c_dir05/seed_${seed}")
-  CUDA_VISIBLE_DEVICES="${GPU_ID:-0}" /usr/bin/time -v python -u tasks/fed_train_sft.py \
+    --benchmark_contains "domain_benchmark_35c_dir05/seed_${seed}"
+}
+
+export_baseline_adapter_async () {
+  local agg="$1" seed="$2" gpu="${3:-${GPU_ID:-0}}"
+  local ckpt
+  ckpt=$(resolve_baseline_ckpt "$agg" "$seed") \
+    || { echo "[export][error] resolve failed ${agg} seed=${seed}" >&2; return 1; }
+  [[ -n "$ckpt" && -f "$ckpt/run_checkpoint_meta.json" ]] \
+    || { echo "[export][error] invalid ckpt ${agg} seed=${seed}: ${ckpt:-empty}" >&2; return 1; }
+  nohup env CUDA_VISIBLE_DEVICES="$gpu" /usr/bin/time -v python -u tasks/fed_train_sft.py \
     --model "$MODEL_135M" --benchmark_dir "$D1_ROOT/seed_${seed}" --agg_type "$agg" --seed "$seed" \
     --eval_only_from_checkpoint "$ckpt" \
     --metrics_output_dir "$RESULT_ROOT/external_export/${agg}_seed${seed}/metrics" \
@@ -1263,25 +1379,47 @@ export_baseline_adapter () {
     --export_eval_adapter_dir "$RESULT_ROOT/external_adapters/${agg}_seed${seed}" \
     --export_eval_adapter_only --eval_max_batches 0 --batch_size 2 --max_seq_length 256 \
     --torch_dtype bfloat16 --eval_personalization_metrics \
-    > "$RESULT_ROOT/launcher_logs/test20260725_export_${agg}_seed${seed}.log" 2>&1
-  echo "[export][ok] ${agg} seed=${seed}"
+    > "$RESULT_ROOT/launcher_logs/test20260725_export_${agg}_seed${seed}.log" 2>&1 &
+  echo $! > "$RESULT_ROOT/pids/export_${agg}_seed${seed}.pid"
+  echo "[export][launch] agg=${agg} seed=${seed} gpu=${gpu} pid=$(cat "$RESULT_ROOT/pids/export_${agg}_seed${seed}.pid")"
 }
 
 for agg in normal fedalt hydralora; do
   for seed in 42 43 44; do
-    export_baseline_adapter "$agg" "$seed"
-  done
-done
-for agg in normal fedalt hydralora; do
-  for seed in 42 43 44; do
-    test -f "$RESULT_ROOT/external_adapters/${agg}_seed${seed}/adapter_export_manifest.json" \
-      || { echo "[export][error] missing manifest ${agg} seed=${seed}"; exit 1; }
-    echo "[export][ok] ${agg} seed=${seed}"
+    export_baseline_adapter_async "$agg" "$seed" "${GPU_ID:-0}"
   done
 done
 ```
 
-### Baseline-1.3-E2 smoke 与正式 lm-eval（串行；Normal `--mode global`，FedALT/HydraLoRA `--mode both`）
+查看 adapter export 状态（不阻塞）：
+
+```bash
+for p in "$RESULT_ROOT"/pids/export_*_seed*.pid; do
+  pid=$(cat "$p")
+  tag=$(basename "$p" .pid)
+  log="$RESULT_ROOT/launcher_logs/test20260725_${tag}.log"
+  if kill -0 "$pid" 2>/dev/null; then
+    echo "[export][running] $tag pid=$pid"
+  elif grep -Eiq 'Traceback|CUDA out of memory|\\[error\\]|Exit status: [1-9]' "$log"; then
+    echo "[export][failed] $tag log=$log"
+  else
+    echo "[export][exited] $tag"
+  fi
+done
+for agg in normal fedalt hydralora; do
+  for seed in 42 43 44; do
+    test -f "$RESULT_ROOT/external_adapters/${agg}_seed${seed}/adapter_export_manifest.json" \
+      && echo "[export][ok] ${agg} seed=${seed}" \
+      || echo "[export][pending] ${agg} seed=${seed}"
+  done
+done
+```
+
+只有 9 份 manifest 都显示 `[export][ok]` 后，才执行 Baseline-1.3-E2。
+
+### Baseline-1.3-E2 smoke 与正式 lm-eval（并行 9 条后台 nohup；Normal `--mode global`，FedALT/HydraLoRA `--mode both`）
+
+smoke 仍前台跑一条（fedalt seed42）；正式 eval 9 条 **同时 nohup 启动**，命令行不阻塞。gb 用 `--batch_size 4` 勿用 auto。
 
 ```bash
 cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}"
@@ -1294,28 +1432,65 @@ CUDA_VISIBLE_DEVICES="${GPU_ID:-0}" python scripts/Analysis/run_external_lm_eval
   --hf_cache_dir "$HF_CACHE_ROOT" --output_dir "$RESULT_ROOT/external_smoke/fedalt_seed42"
 
 for seed in 42 43 44; do
-  CUDA_VISIBLE_DEVICES="${GPU_ID:-0}" /usr/bin/time -v python scripts/Analysis/run_external_lm_eval.py \
+  CUDA_VISIBLE_DEVICES="${GPU_ID:-0}" nohup /usr/bin/time -v python scripts/Analysis/run_external_lm_eval.py \
     --adapter_manifest "$RESULT_ROOT/external_adapters/normal_seed${seed}/adapter_export_manifest.json" \
     --tasks mmlu:general,pubmedqa:medical,mbpp:code --mode global --device cuda:0 --batch_size 4 \
     --hf_cache_dir "$HF_CACHE_ROOT" --confirm_run_unsafe_code \
     --output_dir "$RESULT_ROOT/external_eval/normal_seed${seed}" \
-    > "$RESULT_ROOT/launcher_logs/test20260725_external_normal_seed${seed}.log" 2>&1
+    > "$RESULT_ROOT/launcher_logs/test20260725_external_normal_seed${seed}.log" 2>&1 &
+  echo $! > "$RESULT_ROOT/pids/external_normal_seed${seed}.pid"
 done
 for seed in 42 43 44; do
-  CUDA_VISIBLE_DEVICES="${GPU_ID:-0}" /usr/bin/time -v python scripts/Analysis/run_external_lm_eval.py \
+  CUDA_VISIBLE_DEVICES="${GPU_ID:-0}" nohup /usr/bin/time -v python scripts/Analysis/run_external_lm_eval.py \
     --adapter_manifest "$RESULT_ROOT/external_adapters/fedalt_seed${seed}/adapter_export_manifest.json" \
     --tasks mmlu:general,pubmedqa:medical,mbpp:code --mode both --device cuda:0 --batch_size 4 \
     --hf_cache_dir "$HF_CACHE_ROOT" --confirm_run_unsafe_code \
     --output_dir "$RESULT_ROOT/external_eval/fedalt_seed${seed}" \
-    > "$RESULT_ROOT/launcher_logs/test20260725_external_fedalt_seed${seed}.log" 2>&1
+    > "$RESULT_ROOT/launcher_logs/test20260725_external_fedalt_seed${seed}.log" 2>&1 &
+  echo $! > "$RESULT_ROOT/pids/external_fedalt_seed${seed}.pid"
 done
 for seed in 42 43 44; do
-  CUDA_VISIBLE_DEVICES="${GPU_ID:-0}" /usr/bin/time -v python scripts/Analysis/run_external_lm_eval.py \
+  CUDA_VISIBLE_DEVICES="${GPU_ID:-0}" nohup /usr/bin/time -v python scripts/Analysis/run_external_lm_eval.py \
     --adapter_manifest "$RESULT_ROOT/external_adapters/hydralora_seed${seed}/adapter_export_manifest.json" \
     --tasks mmlu:general,pubmedqa:medical,mbpp:code --mode both --device cuda:0 --batch_size 4 \
     --hf_cache_dir "$HF_CACHE_ROOT" --confirm_run_unsafe_code \
     --output_dir "$RESULT_ROOT/external_eval/hydralora_seed${seed}" \
-    > "$RESULT_ROOT/launcher_logs/test20260725_external_hydralora_seed${seed}.log" 2>&1
+    > "$RESULT_ROOT/launcher_logs/test20260725_external_hydralora_seed${seed}.log" 2>&1 &
+  echo $! > "$RESULT_ROOT/pids/external_hydralora_seed${seed}.pid"
+done
+
+echo "[external][launch] normal42 pid=$(cat "$RESULT_ROOT/pids/external_normal_seed42.pid")"
+echo "[external][launch] normal43 pid=$(cat "$RESULT_ROOT/pids/external_normal_seed43.pid")"
+echo "[external][launch] normal44 pid=$(cat "$RESULT_ROOT/pids/external_normal_seed44.pid")"
+echo "[external][launch] fedalt42 pid=$(cat "$RESULT_ROOT/pids/external_fedalt_seed42.pid")"
+echo "[external][launch] fedalt43 pid=$(cat "$RESULT_ROOT/pids/external_fedalt_seed43.pid")"
+echo "[external][launch] fedalt44 pid=$(cat "$RESULT_ROOT/pids/external_fedalt_seed44.pid")"
+echo "[external][launch] hydralora42 pid=$(cat "$RESULT_ROOT/pids/external_hydralora_seed42.pid")"
+echo "[external][launch] hydralora43 pid=$(cat "$RESULT_ROOT/pids/external_hydralora_seed43.pid")"
+echo "[external][launch] hydralora44 pid=$(cat "$RESULT_ROOT/pids/external_hydralora_seed44.pid")"
+```
+
+查看 external eval 状态（不阻塞）：
+
+```bash
+for p in "$RESULT_ROOT"/pids/external_*_seed*.pid; do
+  pid=$(cat "$p")
+  tag=$(basename "$p" .pid)
+  log="$RESULT_ROOT/launcher_logs/test20260725_${tag}.log"
+  if kill -0 "$pid" 2>/dev/null; then
+    echo "[external][running] $tag pid=$pid"
+  elif grep -Eiq 'Traceback|CUDA out of memory|\\[error\\]|Exit status: [1-9]' "$log"; then
+    echo "[external][failed] $tag log=$log"
+  else
+    echo "[external][exited] $tag"
+  fi
+done
+for agg in normal fedalt hydralora; do
+  for seed in 42 43 44; do
+    test -f "$RESULT_ROOT/external_eval/${agg}_seed${seed}/external_eval_summary.json" \
+      && echo "[external][ok] ${agg} seed=${seed}" \
+      || echo "[external][pending] ${agg} seed=${seed}"
+  done
 done
 ```
 
@@ -1377,21 +1552,34 @@ done
 
 ## Baseline-3.1 【原 5】common-test α=0.5：Normal / FedSA-LoRA / FedALT ×9
 
-依赖 Main-3.1-prep 的 `DIR05_COMMON_ROOT`。若 `order_0723` 7.2-A 已有对应 JSON，**跳过**。
+依赖 Main-3.1-prep 的 `DIR05_COMMON_ROOT`。若 `order_0723` 7.2-A 已有对应 JSON，**跳过**。9 条 **同时 nohup 启动**，命令行立即返回。
 
 ```bash
 cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && for SEED in 42 43 44; do
   cmp -s "$DIR05_COMMON_ROOT/seed_${SEED}/test_domain.jsonl" "$IID_ROOT/seed_${SEED}/test_domain.jsonl"
 done
-# common_a05_{normal,fedsa,fedalt}_seed{42,43,44} ×9，结果根 BASELINE_RESULT_ROOT
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-0}" nohup /usr/bin/time -v python -u tasks/fed_train_sft.py --model "$MODEL_135M" --benchmark_dir "$DIR05_COMMON_ROOT/seed_42" --num_clients 35 --agg_type normal "${COMMON_SFT_ARGS[@]}" "${LORA_R8_ARGS[@]}" --client_state_dir "$BASELINE_RESULT_ROOT/common_a05_normal_seed42/result_files/client_states/N9_common_a05_normal_seed42_normal" --metrics_output_dir "$BASELINE_RESULT_ROOT/common_a05_normal_seed42/result_logs/N9_common_a05_normal_seed42_normal" --save_run_checkpoint_dir "$BASELINE_MODEL_ROOT/common_a05_normal_seed42/N9_common_a05_normal_seed42_normal" --trained_models_root "$BASELINE_MODEL_ROOT/common_a05_normal_seed42" --eval_max_batches 0 --seed 42 --force_retrain > "$BASELINE_RESULT_ROOT/launcher_logs/test20260725_baseline_common_a05_normal_seed42.log" 2>&1 &
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-0}" nohup /usr/bin/time -v python -u tasks/fed_train_sft.py --model "$MODEL_135M" --benchmark_dir "$DIR05_COMMON_ROOT/seed_43" --num_clients 35 --agg_type normal "${COMMON_SFT_ARGS[@]}" "${LORA_R8_ARGS[@]}" --client_state_dir "$BASELINE_RESULT_ROOT/common_a05_normal_seed43/result_files/client_states/N9_common_a05_normal_seed43_normal" --metrics_output_dir "$BASELINE_RESULT_ROOT/common_a05_normal_seed43/result_logs/N9_common_a05_normal_seed43_normal" --save_run_checkpoint_dir "$BASELINE_MODEL_ROOT/common_a05_normal_seed43/N9_common_a05_normal_seed43_normal" --trained_models_root "$BASELINE_MODEL_ROOT/common_a05_normal_seed43" --eval_max_batches 0 --seed 43 --force_retrain > "$BASELINE_RESULT_ROOT/launcher_logs/test20260725_baseline_common_a05_normal_seed43.log" 2>&1 &
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-0}" nohup /usr/bin/time -v python -u tasks/fed_train_sft.py --model "$MODEL_135M" --benchmark_dir "$DIR05_COMMON_ROOT/seed_44" --num_clients 35 --agg_type normal "${COMMON_SFT_ARGS[@]}" "${LORA_R8_ARGS[@]}" --client_state_dir "$BASELINE_RESULT_ROOT/common_a05_normal_seed44/result_files/client_states/N9_common_a05_normal_seed44_normal" --metrics_output_dir "$BASELINE_RESULT_ROOT/common_a05_normal_seed44/result_logs/N9_common_a05_normal_seed44_normal" --save_run_checkpoint_dir "$BASELINE_MODEL_ROOT/common_a05_normal_seed44/N9_common_a05_normal_seed44_normal" --trained_models_root "$BASELINE_MODEL_ROOT/common_a05_normal_seed44" --eval_max_batches 0 --seed 44 --force_retrain > "$BASELINE_RESULT_ROOT/launcher_logs/test20260725_baseline_common_a05_normal_seed44.log" 2>&1 &
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-0}" nohup /usr/bin/time -v python -u tasks/fed_train_sft.py --model "$MODEL_135M" --benchmark_dir "$DIR05_COMMON_ROOT/seed_42" --num_clients 35 --agg_type fedsa_lora "${COMMON_SFT_ARGS[@]}" "${LORA_R8_ARGS[@]}" --client_state_dir "$BASELINE_RESULT_ROOT/common_a05_fedsa_seed42/result_files/client_states/N9_common_a05_fedsa_seed42_fedsa_lora" --metrics_output_dir "$BASELINE_RESULT_ROOT/common_a05_fedsa_seed42/result_logs/N9_common_a05_fedsa_seed42_fedsa_lora" --save_run_checkpoint_dir "$BASELINE_MODEL_ROOT/common_a05_fedsa_seed42/N9_common_a05_fedsa_seed42_fedsa_lora" --trained_models_root "$BASELINE_MODEL_ROOT/common_a05_fedsa_seed42" --eval_max_batches 0 --seed 42 --force_retrain > "$BASELINE_RESULT_ROOT/launcher_logs/test20260725_baseline_common_a05_fedsa_seed42.log" 2>&1 &
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-0}" nohup /usr/bin/time -v python -u tasks/fed_train_sft.py --model "$MODEL_135M" --benchmark_dir "$DIR05_COMMON_ROOT/seed_43" --num_clients 35 --agg_type fedsa_lora "${COMMON_SFT_ARGS[@]}" "${LORA_R8_ARGS[@]}" --client_state_dir "$BASELINE_RESULT_ROOT/common_a05_fedsa_seed43/result_files/client_states/N9_common_a05_fedsa_seed43_fedsa_lora" --metrics_output_dir "$BASELINE_RESULT_ROOT/common_a05_fedsa_seed43/result_logs/N9_common_a05_fedsa_seed43_fedsa_lora" --save_run_checkpoint_dir "$BASELINE_MODEL_ROOT/common_a05_fedsa_seed43/N9_common_a05_fedsa_seed43_fedsa_lora" --trained_models_root "$BASELINE_MODEL_ROOT/common_a05_fedsa_seed43" --eval_max_batches 0 --seed 43 --force_retrain > "$BASELINE_RESULT_ROOT/launcher_logs/test20260725_baseline_common_a05_fedsa_seed43.log" 2>&1 &
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-0}" nohup /usr/bin/time -v python -u tasks/fed_train_sft.py --model "$MODEL_135M" --benchmark_dir "$DIR05_COMMON_ROOT/seed_44" --num_clients 35 --agg_type fedsa_lora "${COMMON_SFT_ARGS[@]}" "${LORA_R8_ARGS[@]}" --client_state_dir "$BASELINE_RESULT_ROOT/common_a05_fedsa_seed44/result_files/client_states/N9_common_a05_fedsa_seed44_fedsa_lora" --metrics_output_dir "$BASELINE_RESULT_ROOT/common_a05_fedsa_seed44/result_logs/N9_common_a05_fedsa_seed44_fedsa_lora" --save_run_checkpoint_dir "$BASELINE_MODEL_ROOT/common_a05_fedsa_seed44/N9_common_a05_fedsa_seed44_fedsa_lora" --trained_models_root "$BASELINE_MODEL_ROOT/common_a05_fedsa_seed44" --eval_max_batches 0 --seed 44 --force_retrain > "$BASELINE_RESULT_ROOT/launcher_logs/test20260725_baseline_common_a05_fedsa_seed44.log" 2>&1 &
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-0}" nohup /usr/bin/time -v python -u tasks/fed_train_sft.py --model "$MODEL_135M" --benchmark_dir "$DIR05_COMMON_ROOT/seed_42" --num_clients 35 --agg_type fedalt "${COMMON_SFT_ARGS[@]}" "${LORA_R8_ARGS[@]}" --client_state_dir "$BASELINE_RESULT_ROOT/common_a05_fedalt_seed42/result_files/client_states/N9_common_a05_fedalt_seed42_fedalt" --metrics_output_dir "$BASELINE_RESULT_ROOT/common_a05_fedalt_seed42/result_logs/N9_common_a05_fedalt_seed42_fedalt" --save_run_checkpoint_dir "$BASELINE_MODEL_ROOT/common_a05_fedalt_seed42/N9_common_a05_fedalt_seed42_fedalt" --trained_models_root "$BASELINE_MODEL_ROOT/common_a05_fedalt_seed42" --eval_max_batches 0 --seed 42 --force_retrain > "$BASELINE_RESULT_ROOT/launcher_logs/test20260725_baseline_common_a05_fedalt_seed42.log" 2>&1 &
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-0}" nohup /usr/bin/time -v python -u tasks/fed_train_sft.py --model "$MODEL_135M" --benchmark_dir "$DIR05_COMMON_ROOT/seed_43" --num_clients 35 --agg_type fedalt "${COMMON_SFT_ARGS[@]}" "${LORA_R8_ARGS[@]}" --client_state_dir "$BASELINE_RESULT_ROOT/common_a05_fedalt_seed43/result_files/client_states/N9_common_a05_fedalt_seed43_fedalt" --metrics_output_dir "$BASELINE_RESULT_ROOT/common_a05_fedalt_seed43/result_logs/N9_common_a05_fedalt_seed43_fedalt" --save_run_checkpoint_dir "$BASELINE_MODEL_ROOT/common_a05_fedalt_seed43/N9_common_a05_fedalt_seed43_fedalt" --trained_models_root "$BASELINE_MODEL_ROOT/common_a05_fedalt_seed43" --eval_max_batches 0 --seed 43 --force_retrain > "$BASELINE_RESULT_ROOT/launcher_logs/test20260725_baseline_common_a05_fedalt_seed43.log" 2>&1 &
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-0}" nohup /usr/bin/time -v python -u tasks/fed_train_sft.py --model "$MODEL_135M" --benchmark_dir "$DIR05_COMMON_ROOT/seed_44" --num_clients 35 --agg_type fedalt "${COMMON_SFT_ARGS[@]}" "${LORA_R8_ARGS[@]}" --client_state_dir "$BASELINE_RESULT_ROOT/common_a05_fedalt_seed44/result_files/client_states/N9_common_a05_fedalt_seed44_fedalt" --metrics_output_dir "$BASELINE_RESULT_ROOT/common_a05_fedalt_seed44/result_logs/N9_common_a05_fedalt_seed44_fedalt" --save_run_checkpoint_dir "$BASELINE_MODEL_ROOT/common_a05_fedalt_seed44/N9_common_a05_fedalt_seed44_fedalt" --trained_models_root "$BASELINE_MODEL_ROOT/common_a05_fedalt_seed44" --eval_max_batches 0 --seed 44 --force_retrain > "$BASELINE_RESULT_ROOT/launcher_logs/test20260725_baseline_common_a05_fedalt_seed44.log" 2>&1 &
 ```
 
 ## Baseline-3.2 【原 7】LoRA r=16：Normal / FedALT ×6
 
-若 `order_0723_sup/r16_*` 已有 JSON，**跳过**。
+若 `order_0723_sup/r16_*` 已有 JSON，**跳过**。6 条 **同时 nohup 启动**，命令行立即返回。
 
 ```bash
-# r16_{normal,fedalt}_seed{42,43,44} ×6，LORA_R16_ARGS，结果根 BASELINE_RESULT_ROOT
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-0}" nohup /usr/bin/time -v python -u tasks/fed_train_sft.py --model "$MODEL_135M" --benchmark_dir "$D1_ROOT/seed_42" --num_clients 35 --agg_type normal "${COMMON_SFT_ARGS[@]}" "${LORA_R16_ARGS[@]}" --client_state_dir "$BASELINE_RESULT_ROOT/r16_normal_seed42/result_files/client_states/N9_r16_normal_seed42_normal" --metrics_output_dir "$BASELINE_RESULT_ROOT/r16_normal_seed42/result_logs/N9_r16_normal_seed42_normal" --save_run_checkpoint_dir "$BASELINE_MODEL_ROOT/r16_normal_seed42/N9_r16_normal_seed42_normal" --trained_models_root "$BASELINE_MODEL_ROOT/r16_normal_seed42" --eval_max_batches 0 --seed 42 --force_retrain > "$BASELINE_RESULT_ROOT/launcher_logs/test20260725_baseline_r16_normal_seed42.log" 2>&1 &
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-0}" nohup /usr/bin/time -v python -u tasks/fed_train_sft.py --model "$MODEL_135M" --benchmark_dir "$D1_ROOT/seed_43" --num_clients 35 --agg_type normal "${COMMON_SFT_ARGS[@]}" "${LORA_R16_ARGS[@]}" --client_state_dir "$BASELINE_RESULT_ROOT/r16_normal_seed43/result_files/client_states/N9_r16_normal_seed43_normal" --metrics_output_dir "$BASELINE_RESULT_ROOT/r16_normal_seed43/result_logs/N9_r16_normal_seed43_normal" --save_run_checkpoint_dir "$BASELINE_MODEL_ROOT/r16_normal_seed43/N9_r16_normal_seed43_normal" --trained_models_root "$BASELINE_MODEL_ROOT/r16_normal_seed43" --eval_max_batches 0 --seed 43 --force_retrain > "$BASELINE_RESULT_ROOT/launcher_logs/test20260725_baseline_r16_normal_seed43.log" 2>&1 &
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-0}" nohup /usr/bin/time -v python -u tasks/fed_train_sft.py --model "$MODEL_135M" --benchmark_dir "$D1_ROOT/seed_44" --num_clients 35 --agg_type normal "${COMMON_SFT_ARGS[@]}" "${LORA_R16_ARGS[@]}" --client_state_dir "$BASELINE_RESULT_ROOT/r16_normal_seed44/result_files/client_states/N9_r16_normal_seed44_normal" --metrics_output_dir "$BASELINE_RESULT_ROOT/r16_normal_seed44/result_logs/N9_r16_normal_seed44_normal" --save_run_checkpoint_dir "$BASELINE_MODEL_ROOT/r16_normal_seed44/N9_r16_normal_seed44_normal" --trained_models_root "$BASELINE_MODEL_ROOT/r16_normal_seed44" --eval_max_batches 0 --seed 44 --force_retrain > "$BASELINE_RESULT_ROOT/launcher_logs/test20260725_baseline_r16_normal_seed44.log" 2>&1 &
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-0}" nohup /usr/bin/time -v python -u tasks/fed_train_sft.py --model "$MODEL_135M" --benchmark_dir "$D1_ROOT/seed_42" --num_clients 35 --agg_type fedalt "${COMMON_SFT_ARGS[@]}" "${LORA_R16_ARGS[@]}" --client_state_dir "$BASELINE_RESULT_ROOT/r16_fedalt_seed42/result_files/client_states/N9_r16_fedalt_seed42_fedalt" --metrics_output_dir "$BASELINE_RESULT_ROOT/r16_fedalt_seed42/result_logs/N9_r16_fedalt_seed42_fedalt" --save_run_checkpoint_dir "$BASELINE_MODEL_ROOT/r16_fedalt_seed42/N9_r16_fedalt_seed42_fedalt" --trained_models_root "$BASELINE_MODEL_ROOT/r16_fedalt_seed42" --eval_max_batches 0 --seed 42 --force_retrain > "$BASELINE_RESULT_ROOT/launcher_logs/test20260725_baseline_r16_fedalt_seed42.log" 2>&1 &
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-0}" nohup /usr/bin/time -v python -u tasks/fed_train_sft.py --model "$MODEL_135M" --benchmark_dir "$D1_ROOT/seed_43" --num_clients 35 --agg_type fedalt "${COMMON_SFT_ARGS[@]}" "${LORA_R16_ARGS[@]}" --client_state_dir "$BASELINE_RESULT_ROOT/r16_fedalt_seed43/result_files/client_states/N9_r16_fedalt_seed43_fedalt" --metrics_output_dir "$BASELINE_RESULT_ROOT/r16_fedalt_seed43/result_logs/N9_r16_fedalt_seed43_fedalt" --save_run_checkpoint_dir "$BASELINE_MODEL_ROOT/r16_fedalt_seed43/N9_r16_fedalt_seed43_fedalt" --trained_models_root "$BASELINE_MODEL_ROOT/r16_fedalt_seed43" --eval_max_batches 0 --seed 43 --force_retrain > "$BASELINE_RESULT_ROOT/launcher_logs/test20260725_baseline_r16_fedalt_seed43.log" 2>&1 &
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && CUDA_VISIBLE_DEVICES="${GPU_ID:-0}" nohup /usr/bin/time -v python -u tasks/fed_train_sft.py --model "$MODEL_135M" --benchmark_dir "$D1_ROOT/seed_44" --num_clients 35 --agg_type fedalt "${COMMON_SFT_ARGS[@]}" "${LORA_R16_ARGS[@]}" --client_state_dir "$BASELINE_RESULT_ROOT/r16_fedalt_seed44/result_files/client_states/N9_r16_fedalt_seed44_fedalt" --metrics_output_dir "$BASELINE_RESULT_ROOT/r16_fedalt_seed44/result_logs/N9_r16_fedalt_seed44_fedalt" --save_run_checkpoint_dir "$BASELINE_MODEL_ROOT/r16_fedalt_seed44/N9_r16_fedalt_seed44_fedalt" --trained_models_root "$BASELINE_MODEL_ROOT/r16_fedalt_seed44" --eval_max_batches 0 --seed 44 --force_retrain > "$BASELINE_RESULT_ROOT/launcher_logs/test20260725_baseline_r16_fedalt_seed44.log" 2>&1 &
 ```
 
 ## Baseline-3.3 【原 8】D1 strict held-out 最近客户端审计（0-GPU，读 Main-3.3）
@@ -1455,10 +1643,10 @@ python scripts/Analysis/summarize_fedplora_results.py "$FED_RESULT_ROOT/order_07
 
 ## Z3. 停止条件
 
-1. matched-domain 日志未出现 `max_seq_length=256` → 整批无效。  
-2. common-test / 70c 的 `cmp` 失败 → 停止 Non-IID / scale 实验。  
-3. Flower 15 fold-seed 不全或 route audit 缺字段 → 不得汇总 1-example 表。  
-4. external：cache 未 verify_only 通过 → 不得开 E2；FiQA 无稳定 task 前标未完成。  
+1. matched-domain 日志未出现 `max_seq_length=256` → 整批无效。
+2. common-test / 70c 的 `cmp` 失败 → 停止 Non-IID / scale 实验。
+3. Flower 15 fold-seed 不全或 route audit 缺字段 → 不得汇总 1-example 表。
+4. external：cache 未 verify_only 通过 → 不得开 E2；FiQA 无稳定 task 前标未完成。
 5. MBPP 非隔离环境 → 删 `mbpp:code` 与 `--confirm_run_unsafe_code`，并在 summary 注明。
 
 ## Z4. 执行顺序（与 Stage 0–7 一致，禁止跳阶段）
