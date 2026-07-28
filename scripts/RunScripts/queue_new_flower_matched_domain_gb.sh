@@ -78,18 +78,58 @@ init_dirs() {
 
 find_source_json() {
   local tag="$1"
+  local agg="${2:-}"
+  if [[ -z "$agg" ]]; then
+    case "$tag" in
+      flower_yoco_seed*) agg=yoco ;;
+      flower_ffa_seed*) agg=ffa ;;
+      flower_flora_seed*) agg=flora ;;
+      flower_flexlora_seed*) agg=flexlora ;;
+      flower_feddat_seed*) agg=feddat ;;
+      flower_hilora_seed*) agg=hilora ;;
+    esac
+  fi
+
   local root="${BASELINE_RESULT_ROOT}/${tag}/result_logs"
-  if [[ ! -d "$root" ]]; then
-    die "missing result_logs for ${tag}: ${root}"
+  local candidate dir hits=()
+  for candidate in \
+    "${root}/N9_${tag}_${agg}" \
+    "${root}/N9_${tag}"; do
+    if [[ -d "$candidate" ]]; then
+      mapfile -t hits < <(find "$candidate" -maxdepth 1 -type f -name '*.json' | sort)
+      if [[ "${#hits[@]}" -eq 1 ]]; then
+        printf '%s\n' "${hits[0]}"
+        return 0
+      fi
+    fi
+  done
+
+  if [[ -d "$root" ]]; then
+    mapfile -t hits < <(find "$root" -type f -name '*.json' | sort)
+    if [[ "${#hits[@]}" -eq 1 ]]; then
+      printf '%s\n' "${hits[0]}"
+      return 0
+    fi
   fi
-  mapfile -t hits < <(find "$root" -type f -name '*.json' | sort)
-  if [[ "${#hits[@]}" -ne 1 ]]; then
-    printf '[new-flower-md-queue][error] expected one JSON for %s, got %s under %s\n' \
-      "$tag" "${#hits[@]}" "$root" >&2
-    printf '%s\n' "${hits[@]}" >&2
-    exit 2
+
+  if [[ "$agg" == "yoco" && "$tag" =~ seed([0-9]+)$ ]]; then
+    local seed="${BASH_REMATCH[1]}"
+    local sup_root="${FED_RESULT_ROOT:-/data/yaominghao/gb/result/FedPLoRA}/order_0723_sup/yoco_flower_seed${seed}/result_logs"
+    if [[ -d "$sup_root" ]]; then
+      mapfile -t hits < <(find "$sup_root" -type f -name '*.json' | sort)
+      if [[ "${#hits[@]}" -eq 1 ]]; then
+        printf '%s\n' "${hits[0]}"
+        return 0
+      fi
+    fi
   fi
-  printf '%s\n' "${hits[0]}"
+
+  printf '[new-flower-md-queue][error] expected one JSON for %s (agg=%s), got %s candidates\n' \
+    "$tag" "$agg" "${#hits[@]}" >&2
+  printf '  checked: %s/N9_%s_%s, %s/N9_%s, %s\n' "$root" "$tag" "$agg" "$root" "$tag" "$root" >&2
+  [[ "$agg" == "yoco" ]] && printf '  yoco fallback: order_0723_sup/yoco_flower_seed*/result_logs\n' >&2
+  printf '%s\n' "${hits[@]}" >&2
+  exit 2
 }
 
 wait_one_eval() {

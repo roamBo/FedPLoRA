@@ -1096,17 +1096,105 @@ python "$MD_SUMMARIZER" "$MD_ROOT/flowertune_existing" | tee "$MD_ROOT/flower_ex
 grep -R 'max_seq_length=256' "$MD_ROOT/logs"
 ```
 
-### Baseline-1.2-B 新补 Flower baseline matched-domain ×18（后台队列串行）
+### Baseline-1.2-B 新补 Flower baseline matched-domain ×18
 
-须 **Baseline-1.1** 训练完成后再跑。不要再手粘 18 行 `launch_new_flower_md`；gb 单卡会瞬间起 18 个后台 eval，容易拖死 SSH/session。现在统一使用后台队列脚本：命令行立即返回，队列内部在 `GPU_ID` 上串行跑 18 条。
+须 **Baseline-1.1** 训练完成（或 YOCO 已在 `order_0723_sup`）后再跑。gb 上 method 目录可能是 **`N9_${tag}_${agg}`**（A100 新训）或 **`N9_${tag}`**（旧 gb 命令）；YOCO 还可能在 **`order_0723_sup/yoco_flower_seed*/`**。launch 前先用诊断块确认每个 tag 能 resolve 到 1 个 JSON。
+
+**诊断（缺 JSON 时必跑）：**
 
 ```bash
 cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}"
+export BASELINE_RESULT_ROOT=/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline
+export FED_RESULT_ROOT=/data/yaominghao/gb/result/FedPLoRA
+for tag in flower_yoco_seed42 flower_ffa_seed42 flower_flora_seed42; do
+  echo "=== $tag ==="
+  ls -d "$BASELINE_RESULT_ROOT/$tag/result_logs/"* 2>/dev/null || echo "(no result_logs)"
+  find "$FED_RESULT_ROOT/order_0723_sup/yoco_flower_seed42" -name '*.json' 2>/dev/null | head -1
+done
+```
+
+#### 方案 A：一口气后台 launch 18 条（命令行不阻塞；单卡会并行抢 GPU）
+
+```bash
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}"
+
+export CODE_DIR=/data/yaominghao/gb/FedPLoRA
+export FED_RESULT_ROOT=/data/yaominghao/gb/result/FedPLoRA
+export BASELINE_RESULT_ROOT=/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline
+export NEW_MD_ROOT="$BASELINE_RESULT_ROOT/matched_domain_new_flower"
+export GPU_ID="${GPU_ID:-0}"
+export MD_LAUNCHER="$CODE_DIR/scripts/RunScripts/launch_eval_only_matched_domain_one.sh"
+
+mkdir -p "$NEW_MD_ROOT" "$NEW_MD_ROOT/logs" "$NEW_MD_ROOT/pids" "$NEW_MD_ROOT/meta" \
+  "$BASELINE_RESULT_ROOT/launcher_logs" "$BASELINE_RESULT_ROOT/launcher_pids"
+
+find_flower_baseline_json () {
+  local tag="$1" agg="$2"
+  local root="${BASELINE_RESULT_ROOT}/${tag}/result_logs"
+  local candidate hits=()
+  for candidate in "${root}/N9_${tag}_${agg}" "${root}/N9_${tag}"; do
+    if [[ -d "$candidate" ]]; then
+      mapfile -t hits < <(find "$candidate" -maxdepth 1 -type f -name '*.json' | sort)
+      [[ "${#hits[@]}" -eq 1 ]] && { printf '%s\n' "${hits[0]}"; return 0; }
+    fi
+  done
+  if [[ -d "$root" ]]; then
+    mapfile -t hits < <(find "$root" -type f -name '*.json' | sort)
+    [[ "${#hits[@]}" -eq 1 ]] && { printf '%s\n' "${hits[0]}"; return 0; }
+  fi
+  if [[ "$agg" == "yoco" && "$tag" =~ seed([0-9]+)$ ]]; then
+    local seed="${BASH_REMATCH[1]}"
+    local sup="${FED_RESULT_ROOT}/order_0723_sup/yoco_flower_seed${seed}/result_logs"
+    if [[ -d "$sup" ]]; then
+      mapfile -t hits < <(find "$sup" -type f -name '*.json' | sort)
+      [[ "${#hits[@]}" -eq 1 ]] && { printf '%s\n' "${hits[0]}"; return 0; }
+    fi
+  fi
+  echo "[new-md][error] $tag ($agg): cannot resolve exactly one JSON" >&2
+  return 2
+}
+
+launch_new_flower_md () {
+  local tag="$1" agg="$2"
+  local src launch_log="$BASELINE_RESULT_ROOT/launcher_logs/launch_md_${tag}.log"
+  src="$(find_flower_baseline_json "$tag" "$agg")" || return 2
+  nohup env MD_ROOT="$NEW_MD_ROOT" MD_LOG_DIR="$NEW_MD_ROOT/logs" MD_PID_DIR="$NEW_MD_ROOT/pids" MD_META_DIR="$NEW_MD_ROOT/meta" \
+    bash "$MD_LAUNCHER" "md_${tag}" "$src" "$NEW_MD_ROOT" "$GPU_ID" \
+    > "$launch_log" 2>&1 &
+  echo $! > "$BASELINE_RESULT_ROOT/launcher_pids/launch_md_${tag}.pid"
+  echo "[new-md][launcher-bg] tag=${tag} src=${src} gpu=${GPU_ID}"
+}
+
+launch_new_flower_md flower_yoco_seed42 yoco
+launch_new_flower_md flower_yoco_seed43 yoco
+launch_new_flower_md flower_yoco_seed44 yoco
+launch_new_flower_md flower_ffa_seed42 ffa
+launch_new_flower_md flower_ffa_seed43 ffa
+launch_new_flower_md flower_ffa_seed44 ffa
+launch_new_flower_md flower_flora_seed42 flora
+launch_new_flower_md flower_flora_seed43 flora
+launch_new_flower_md flower_flora_seed44 flora
+launch_new_flower_md flower_flexlora_seed42 flexlora
+launch_new_flower_md flower_flexlora_seed43 flexlora
+launch_new_flower_md flower_flexlora_seed44 flexlora
+launch_new_flower_md flower_feddat_seed42 feddat
+launch_new_flower_md flower_feddat_seed43 feddat
+launch_new_flower_md flower_feddat_seed44 feddat
+launch_new_flower_md flower_hilora_seed42 hilora
+launch_new_flower_md flower_hilora_seed43 hilora
+launch_new_flower_md flower_hilora_seed44 hilora
+```
+
+#### 方案 B：单卡串行队列（命令行也不阻塞，但整体更慢）
+
+```bash
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}"
+export FED_RESULT_ROOT=/data/yaominghao/gb/result/FedPLoRA
 export GPU_ID="${GPU_ID:-0}"
 bash scripts/RunScripts/queue_new_flower_matched_domain_gb.sh launch
 ```
 
-查看队列状态（不阻塞）：
+查看状态（不阻塞）：
 
 ```bash
 cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}"
