@@ -263,6 +263,13 @@ def _pubmedqa_context(doc: dict) -> object:
     raise KeyError(f"pubmedqa doc missing context field; keys={sorted(doc.keys())}")
 
 
+def _pubmedqa_context_text(doc: dict) -> str:
+    context = _pubmedqa_context(doc)
+    if isinstance(context, str):
+        return context
+    return "\n".join(str(part) for part in context)
+
+
 def _pubmedqa_question(doc: dict) -> object:
     if "QUESTION" in doc:
         return doc["QUESTION"]
@@ -299,12 +306,22 @@ def export_pubmedqa_lm_eval_jsonl(cache_root: Path) -> dict[str, Path]:
     for split in ds.keys():
         path = out_dir / f"{split}.jsonl"
         with path.open("w", encoding="utf-8") as handle:
-            for row in ds[split]:
+            for row_idx, row in enumerate(ds[split]):
                 doc = dict(row)
-                doc["CONTEXTS"] = _pubmedqa_context(doc)
-                doc["QUESTION"] = _pubmedqa_question(doc)
-                doc["final_decision"] = _pubmedqa_final_decision(doc)
-                handle.write(json.dumps(doc, ensure_ascii=False) + "\n")
+                payload = {
+                    "CONTEXTS": _pubmedqa_context_text(doc),
+                    "QUESTION": str(_pubmedqa_question(doc)),
+                    "final_decision": _pubmedqa_final_decision(doc),
+                }
+                line = json.dumps(payload, ensure_ascii=True, allow_nan=False)
+                try:
+                    json.loads(line)
+                except json.JSONDecodeError as exc:
+                    raise SystemExit(
+                        "[external-eval][error] failed to serialize PubMedQA JSONL "
+                        f"split={split!r} row={row_idx}: {exc}"
+                    ) from exc
+                handle.write(line + "\n")
         data_files[str(split)] = path
     if not data_files:
         raise SystemExit(f"[external-eval][error] PubMedQA export has no splits: {export_dir}")
