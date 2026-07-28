@@ -7,6 +7,7 @@ import os
 from contextlib import contextmanager
 from pathlib import Path
 
+REPO_ROOT = Path(__file__).resolve().parents[2]
 MMLU_PATH = "cais/mmlu"
 MMLU_CACHE_SLUG = "cais___mmlu"
 MMLU_SKIP_CONFIGS = frozenset({"all", "auxiliary_train"})
@@ -200,6 +201,42 @@ def _load_dataset(path: str, name: str | None, *, trust_remote_code: bool = Fals
     if name is None:
         return load_dataset(path, **kwargs)
     return load_dataset(path, name, **kwargs)
+
+
+def assert_code_eval_metric_available() -> Path:
+    """Verify MBPP's required Evaluate metric before long GPU eval starts."""
+    import evaluate as hf_evaluate
+
+    metric_dir = REPO_ROOT / "code_eval"
+    metric_file = metric_dir / "code_eval.py"
+    if not metric_file.is_file():
+        raise SystemExit(
+            "[external-eval][error] MBPP requires evaluate.load('code_eval'), "
+            "but the repo-local fallback is missing.\n"
+            f"Expected: {metric_file}\n"
+            "Fix: git pull, then rerun cache verification."
+        )
+    old = os.environ.get("HF_ALLOW_CODE_EVAL")
+    try:
+        os.environ["HF_ALLOW_CODE_EVAL"] = "1"
+        metric = hf_evaluate.load(str(metric_dir))
+        score, _details = metric.compute(
+            references=["assert add(2, 3) == 5"],
+            predictions=[["def add(a, b):\n    return a + b"]],
+            k=[1],
+            timeout=1.0,
+        )
+    finally:
+        if old is None:
+            os.environ.pop("HF_ALLOW_CODE_EVAL", None)
+        else:
+            os.environ["HF_ALLOW_CODE_EVAL"] = old
+    if abs(float(score.get("pass@1", 0.0)) - 1.0) > 1e-12:
+        raise SystemExit(
+            "[external-eval][error] repo-local code_eval smoke failed: "
+            f"score={score}"
+        )
+    return metric_file
 
 
 def _resolve_preprocess_pubmedqa_source() -> Path:
@@ -417,6 +454,12 @@ def preflight_offline_tasks(task_names: list[str], env: dict[str, str], cache_ro
         try:
             with temporary_environ(env):
                 _load_dataset(path, name, trust_remote_code=False)
+                if task == "mbpp":
+                    metric_file = assert_code_eval_metric_available()
+                    print(
+                        f"[external-eval][preflight][ok] mbpp code_eval={metric_file}",
+                        flush=True,
+                    )
         except Exception as exc:
             raise SystemExit(
                 "[external-eval][error] offline cache preflight failed "

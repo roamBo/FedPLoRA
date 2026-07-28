@@ -201,6 +201,12 @@ def main():
         offline=not args.allow_hf_network,
         hf_endpoint=args.hf_endpoint,
     )
+    if args.confirm_run_unsafe_code:
+        # lm-eval forwards --confirm_run_unsafe_code in recent versions, but
+        # MBPP imports evaluate.load("code_eval") while loading the task.  Set
+        # the metric's explicit safety gate here as well so offline/local
+        # fallback code_eval behaves identically across lm-eval versions.
+        hf_env["HF_ALLOW_CODE_EVAL"] = "1"
     unique_tasks = sorted({task for task, _ in tasks})
     lm_eval_include = lm_eval_include_path_for_tasks(unique_tasks, cache_root)
     if not args.dry_run and not args.skip_dataset_preflight:
@@ -253,7 +259,7 @@ def main():
         print("[external-eval][command]", " ".join(command), flush=True)
         if args.dry_run:
             continue
-        subprocess.run(command, check=True, env=hf_env)
+        subprocess.run(command, check=True, env=hf_env, cwd=str(REPO_ROOT))
         result_path, result = _find_result(run_dir)
         completed.append({
             "task": task,
