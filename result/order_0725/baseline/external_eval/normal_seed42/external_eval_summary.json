@@ -1,0 +1,78 @@
+{
+  "schema_version": 1,
+  "adapter_manifest": "/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/external_adapters/normal_seed42/adapter_export_manifest.json",
+  "aggregation_rule": "unweighted macro mean over all routed client adapters in declared domain",
+  "runs": [
+    {
+      "task": "mmlu",
+      "domain": "general",
+      "deployment": "global",
+      "adapter": "/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/external_adapters/normal_seed42/global",
+      "result_path": "/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/external_eval/normal_seed42/mmlu/global/__data__yaominghao__gb__result__FedPLoRA__order_0725__baseline__external_adapters__normal_seed42__global/results_2026-07-28T12-01-17.759197.json",
+      "metrics": {
+        "sample_len": 14042.0,
+        "acc,none": 0.23985187295257085,
+        "acc_stderr,none": 0.00360263242230138
+      }
+    },
+    {
+      "task": "pubmedqa",
+      "domain": "medical",
+      "deployment": "global",
+      "adapter": "/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/external_adapters/normal_seed42/global",
+      "result_path": "/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/external_eval/normal_seed42/pubmedqa/global/__data__yaominghao__gb__result__FedPLoRA__order_0725__baseline__external_adapters__normal_seed42__global/results_2026-07-28T23-41-19.245811.json",
+      "metrics": {
+        "sample_len": 500.0,
+        "acc,none": 0.55,
+        "acc_stderr,none": 0.022270877485360416
+      }
+    },
+    {
+      "task": "mbpp",
+      "domain": "code",
+      "deployment": "global",
+      "adapter": "/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/external_adapters/normal_seed42/global",
+      "result_path": "/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/external_eval/normal_seed42/mbpp/global/__data__yaominghao__gb__result__FedPLoRA__order_0725__baseline__external_adapters__normal_seed42__global/results_2026-07-29T01-43-59.585898.json",
+      "metrics": {
+        "sample_len": 500.0,
+        "pass_at_1,none": 0.0,
+        "pass_at_1_stderr,none": 0.0
+      }
+    }
+  ],
+  "summaries": [
+    {
+      "task": "mbpp",
+      "domain": "code",
+      "deployment": "global",
+      "num_adapter_runs": 1,
+      "mean_metrics": {
+        "pass_at_1,none": 0.0,
+        "pass_at_1_stderr,none": 0.0,
+        "sample_len": 500.0
+      }
+    },
+    {
+      "task": "mmlu",
+      "domain": "general",
+      "deployment": "global",
+      "num_adapter_runs": 1,
+      "mean_metrics": {
+        "acc,none": 0.23985187295257085,
+        "acc_stderr,none": 0.00360263242230138,
+        "sample_len": 14042.0
+      }
+    },
+    {
+      "task": "pubmedqa",
+      "domain": "medical",
+      "deployment": "global",
+      "num_adapter_runs": 1,
+      "mean_metrics": {
+        "acc,none": 0.55,
+        "acc_stderr,none": 0.022270877485360416,
+        "sample_len": 500.0
+      }
+    }
+  ]
+}

@@ -1,0 +1,291 @@
+{
+  "schema_version": 1,
+  "adapter_manifest": "/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/external_adapters/hydralora_seed44/adapter_export_manifest.json",
+  "aggregation_rule": "unweighted macro mean over all routed client adapters in declared domain",
+  "runs": [
+    {
+      "task": "mmlu",
+      "domain": "general",
+      "deployment": "global",
+      "adapter": "/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/external_adapters/hydralora_seed44/global",
+      "result_path": "/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/external_eval/hydralora_seed44/mmlu/global/__data__yaominghao__gb__result__FedPLoRA__order_0725__baseline__external_adapters__hydralora_seed44__global/results_2026-07-28T12-00-56.494607.json",
+      "metrics": {
+        "sample_len": 14042.0,
+        "acc,none": 0.23963822817262498,
+        "acc_stderr,none": 0.0035998141868559186
+      }
+    },
+    {
+      "task": "mmlu",
+      "domain": "general",
+      "deployment": "client_015",
+      "adapter": "/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/external_adapters/hydralora_seed44/clients/client_015",
+      "result_path": "/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/external_eval/hydralora_seed44/mmlu/client_015/__data__yaominghao__gb__result__FedPLoRA__order_0725__baseline__external_adapters__hydralora_seed44__clients__client_015/results_2026-07-28T12-50-04.236082.json",
+      "metrics": {
+        "sample_len": 14042.0,
+        "acc,none": 0.23949579831932774,
+        "acc_stderr,none": 0.0036005598328250534
+      }
+    },
+    {
+      "task": "mmlu",
+      "domain": "general",
+      "deployment": "client_016",
+      "adapter": "/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/external_adapters/hydralora_seed44/clients/client_016",
+      "result_path": "/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/external_eval/hydralora_seed44/mmlu/client_016/__data__yaominghao__gb__result__FedPLoRA__order_0725__baseline__external_adapters__hydralora_seed44__clients__client_016/results_2026-07-28T13-22-39.824135.json",
+      "metrics": {
+        "sample_len": 14042.0,
+        "acc,none": 0.241347386412192,
+        "acc_stderr,none": 0.0036104459761257383
+      }
+    },
+    {
+      "task": "mmlu",
+      "domain": "general",
+      "deployment": "client_017",
+      "adapter": "/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/external_adapters/hydralora_seed44/clients/client_017",
+      "result_path": "/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/external_eval/hydralora_seed44/mmlu/client_017/__data__yaominghao__gb__result__FedPLoRA__order_0725__baseline__external_adapters__hydralora_seed44__clients__client_017/results_2026-07-28T13-53-56.533341.json",
+      "metrics": {
+        "sample_len": 14042.0,
+        "acc,none": 0.241347386412192,
+        "acc_stderr,none": 0.0036104459761257383
+      }
+    },
+    {
+      "task": "mmlu",
+      "domain": "general",
+      "deployment": "client_018",
+      "adapter": "/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/external_adapters/hydralora_seed44/clients/client_018",
+      "result_path": "/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/external_eval/hydralora_seed44/mmlu/client_018/__data__yaominghao__gb__result__FedPLoRA__order_0725__baseline__external_adapters__hydralora_seed44__clients__client_018/results_2026-07-28T14-47-34.977731.json",
+      "metrics": {
+        "sample_len": 14042.0,
+        "acc,none": 0.241347386412192,
+        "acc_stderr,none": 0.0036104459761257383
+      }
+    },
+    {
+      "task": "mmlu",
+      "domain": "general",
+      "deployment": "client_019",
+      "adapter": "/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/external_adapters/hydralora_seed44/clients/client_019",
+      "result_path": "/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/external_eval/hydralora_seed44/mmlu/client_019/__data__yaominghao__gb__result__FedPLoRA__order_0725__baseline__external_adapters__hydralora_seed44__clients__client_019/results_2026-07-28T15-54-09.270702.json",
+      "metrics": {
+        "sample_len": 14042.0,
+        "acc,none": 0.241347386412192,
+        "acc_stderr,none": 0.0036104459761257383
+      }
+    },
+    {
+      "task": "pubmedqa",
+      "domain": "medical",
+      "deployment": "global",
+      "adapter": "/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/external_adapters/hydralora_seed44/global",
+      "result_path": "/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/external_eval/hydralora_seed44/pubmedqa/global/__data__yaominghao__gb__result__FedPLoRA__order_0725__baseline__external_adapters__hydralora_seed44__global/results_2026-07-28T17-33-43.234429.json",
+      "metrics": {
+        "sample_len": 500.0,
+        "acc,none": 0.55,
+        "acc_stderr,none": 0.022270877485360416
+      }
+    },
+    {
+      "task": "pubmedqa",
+      "domain": "medical",
+      "deployment": "client_030",
+      "adapter": "/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/external_adapters/hydralora_seed44/clients/client_030",
+      "result_path": "/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/external_eval/hydralora_seed44/pubmedqa/client_030/__data__yaominghao__gb__result__FedPLoRA__order_0725__baseline__external_adapters__hydralora_seed44__clients__client_030/results_2026-07-28T17-36-29.279592.json",
+      "metrics": {
+        "sample_len": 500.0,
+        "acc,none": 0.562,
+        "acc_stderr,none": 0.022210326363977392
+      }
+    },
+    {
+      "task": "pubmedqa",
+      "domain": "medical",
+      "deployment": "client_031",
+      "adapter": "/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/external_adapters/hydralora_seed44/clients/client_031",
+      "result_path": "/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/external_eval/hydralora_seed44/pubmedqa/client_031/__data__yaominghao__gb__result__FedPLoRA__order_0725__baseline__external_adapters__hydralora_seed44__clients__client_031/results_2026-07-28T17-39-11.951751.json",
+      "metrics": {
+        "sample_len": 500.0,
+        "acc,none": 0.562,
+        "acc_stderr,none": 0.022210326363977392
+      }
+    },
+    {
+      "task": "pubmedqa",
+      "domain": "medical",
+      "deployment": "client_032",
+      "adapter": "/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/external_adapters/hydralora_seed44/clients/client_032",
+      "result_path": "/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/external_eval/hydralora_seed44/pubmedqa/client_032/__data__yaominghao__gb__result__FedPLoRA__order_0725__baseline__external_adapters__hydralora_seed44__clients__client_032/results_2026-07-28T17-41-55.834722.json",
+      "metrics": {
+        "sample_len": 500.0,
+        "acc,none": 0.562,
+        "acc_stderr,none": 0.022210326363977392
+      }
+    },
+    {
+      "task": "pubmedqa",
+      "domain": "medical",
+      "deployment": "client_033",
+      "adapter": "/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/external_adapters/hydralora_seed44/clients/client_033",
+      "result_path": "/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/external_eval/hydralora_seed44/pubmedqa/client_033/__data__yaominghao__gb__result__FedPLoRA__order_0725__baseline__external_adapters__hydralora_seed44__clients__client_033/results_2026-07-28T17-44-40.804064.json",
+      "metrics": {
+        "sample_len": 500.0,
+        "acc,none": 0.562,
+        "acc_stderr,none": 0.022210326363977392
+      }
+    },
+    {
+      "task": "pubmedqa",
+      "domain": "medical",
+      "deployment": "client_034",
+      "adapter": "/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/external_adapters/hydralora_seed44/clients/client_034",
+      "result_path": "/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/external_eval/hydralora_seed44/pubmedqa/client_034/__data__yaominghao__gb__result__FedPLoRA__order_0725__baseline__external_adapters__hydralora_seed44__clients__client_034/results_2026-07-28T17-47-28.759134.json",
+      "metrics": {
+        "sample_len": 500.0,
+        "acc,none": 0.562,
+        "acc_stderr,none": 0.022210326363977392
+      }
+    },
+    {
+      "task": "mbpp",
+      "domain": "code",
+      "deployment": "global",
+      "adapter": "/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/external_adapters/hydralora_seed44/global",
+      "result_path": "/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/external_eval/hydralora_seed44/mbpp/global/__data__yaominghao__gb__result__FedPLoRA__order_0725__baseline__external_adapters__hydralora_seed44__global/results_2026-07-29T01-43-22.338957.json",
+      "metrics": {
+        "sample_len": 500.0,
+        "pass_at_1,none": 0.0,
+        "pass_at_1_stderr,none": 0.0
+      }
+    },
+    {
+      "task": "mbpp",
+      "domain": "code",
+      "deployment": "client_000",
+      "adapter": "/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/external_adapters/hydralora_seed44/clients/client_000",
+      "result_path": "/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/external_eval/hydralora_seed44/mbpp/client_000/__data__yaominghao__gb__result__FedPLoRA__order_0725__baseline__external_adapters__hydralora_seed44__clients__client_000/results_2026-07-29T03-19-31.541988.json",
+      "metrics": {
+        "sample_len": 500.0,
+        "pass_at_1,none": 0.0,
+        "pass_at_1_stderr,none": 0.0
+      }
+    },
+    {
+      "task": "mbpp",
+      "domain": "code",
+      "deployment": "client_001",
+      "adapter": "/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/external_adapters/hydralora_seed44/clients/client_001",
+      "result_path": "/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/external_eval/hydralora_seed44/mbpp/client_001/__data__yaominghao__gb__result__FedPLoRA__order_0725__baseline__external_adapters__hydralora_seed44__clients__client_001/results_2026-07-29T04-53-13.749991.json",
+      "metrics": {
+        "sample_len": 500.0,
+        "pass_at_1,none": 0.0,
+        "pass_at_1_stderr,none": 0.0
+      }
+    },
+    {
+      "task": "mbpp",
+      "domain": "code",
+      "deployment": "client_002",
+      "adapter": "/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/external_adapters/hydralora_seed44/clients/client_002",
+      "result_path": "/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/external_eval/hydralora_seed44/mbpp/client_002/__data__yaominghao__gb__result__FedPLoRA__order_0725__baseline__external_adapters__hydralora_seed44__clients__client_002/results_2026-07-29T06-26-49.919615.json",
+      "metrics": {
+        "sample_len": 500.0,
+        "pass_at_1,none": 0.0,
+        "pass_at_1_stderr,none": 0.0
+      }
+    },
+    {
+      "task": "mbpp",
+      "domain": "code",
+      "deployment": "client_003",
+      "adapter": "/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/external_adapters/hydralora_seed44/clients/client_003",
+      "result_path": "/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/external_eval/hydralora_seed44/mbpp/client_003/__data__yaominghao__gb__result__FedPLoRA__order_0725__baseline__external_adapters__hydralora_seed44__clients__client_003/results_2026-07-29T08-00-17.659502.json",
+      "metrics": {
+        "sample_len": 500.0,
+        "pass_at_1,none": 0.0,
+        "pass_at_1_stderr,none": 0.0
+      }
+    },
+    {
+      "task": "mbpp",
+      "domain": "code",
+      "deployment": "client_004",
+      "adapter": "/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/external_adapters/hydralora_seed44/clients/client_004",
+      "result_path": "/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/external_eval/hydralora_seed44/mbpp/client_004/__data__yaominghao__gb__result__FedPLoRA__order_0725__baseline__external_adapters__hydralora_seed44__clients__client_004/results_2026-07-29T09-53-49.473092.json",
+      "metrics": {
+        "sample_len": 500.0,
+        "pass_at_1,none": 0.0,
+        "pass_at_1_stderr,none": 0.0
+      }
+    }
+  ],
+  "summaries": [
+    {
+      "task": "mbpp",
+      "domain": "code",
+      "deployment": "domain_clients_macro",
+      "num_adapter_runs": 5,
+      "mean_metrics": {
+        "pass_at_1,none": 0.0,
+        "pass_at_1_stderr,none": 0.0,
+        "sample_len": 500.0
+      }
+    },
+    {
+      "task": "mbpp",
+      "domain": "code",
+      "deployment": "global",
+      "num_adapter_runs": 1,
+      "mean_metrics": {
+        "pass_at_1,none": 0.0,
+        "pass_at_1_stderr,none": 0.0,
+        "sample_len": 500.0
+      }
+    },
+    {
+      "task": "mmlu",
+      "domain": "general",
+      "deployment": "domain_clients_macro",
+      "num_adapter_runs": 5,
+      "mean_metrics": {
+        "acc,none": 0.24097706879361916,
+        "acc_stderr,none": 0.0036084687474656012,
+        "sample_len": 14042.0
+      }
+    },
+    {
+      "task": "mmlu",
+      "domain": "general",
+      "deployment": "global",
+      "num_adapter_runs": 1,
+      "mean_metrics": {
+        "acc,none": 0.23963822817262498,
+        "acc_stderr,none": 0.0035998141868559186,
+        "sample_len": 14042.0
+      }
+    },
+    {
+      "task": "pubmedqa",
+      "domain": "medical",
+      "deployment": "domain_clients_macro",
+      "num_adapter_runs": 5,
+      "mean_metrics": {
+        "acc,none": 0.562,
+        "acc_stderr,none": 0.022210326363977392,
+        "sample_len": 500.0
+      }
+    },
+    {
+      "task": "pubmedqa",
+      "domain": "medical",
+      "deployment": "global",
+      "num_adapter_runs": 1,
+      "mean_metrics": {
+        "acc,none": 0.55,
+        "acc_stderr,none": 0.022270877485360416,
+        "sample_len": 500.0
+      }
+    }
+  ]
+}
