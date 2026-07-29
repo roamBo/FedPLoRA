@@ -289,7 +289,7 @@ SmolLM2-135M is the primary backbone, and its model family is documented in the 
 
 #### Baselines and Comparison Protocol
 
-We compare against twelve baselines spanning four design families: (i) global-update and rank-heterogeneous aggregation - FedAvg-LoRA, FLoRA, and FlexLoRA; (ii) factor-selective and communication-efficient aggregation - FFA-LoRA, EcoLoRA, and FedSA-LoRA; (iii) heterogeneity-aware or native one-shot adaptation - FedDAT and YOCO; and (iv) personalized and expert-based adaptation - FedALT, HydraLoRA, HiLoRA, and FedLEASE [1,15-22,28,30,33 done:1]. All methods receive the same backbone, tokenizer, LoRA capacity, data split, optimizer, local epoch, and evaluation routine.
+We compare against twelve baselines spanning four design families: (i) global-update and rank-heterogeneous aggregation - FedAvg-LoRA, FLoRA, and FlexLoRA; (ii) factor-selective and communication-efficient aggregation - FFA-LoRA, EcoLoRA, and FedSA-LoRA; (iii) heterogeneity-aware or native one-shot adaptation - FedDAT and YOCO; and (iv) personalized and expert-based adaptation - FedALT, HydraLoRA, HiLoRA, and FedLEASE [1,15-22,28,30,33]. All methods receive the same backbone, tokenizer, LoRA capacity, data split, optimizer, local epoch, and evaluation routine.
 
 #### Implementation and Metrics
 

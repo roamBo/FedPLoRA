@@ -1,0 +1,7 @@
+tag=md_flower_feddat_seed44
+source_json=/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/flower_feddat_seed44/result_logs/N9_flower_feddat_seed44/feddat_SmolLM2-135M_seed_44_r1_e1_seed44.json
+output_dir=/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/matched_domain_new_flower
+gpu=0
+runner=/data/yaominghao/gb/FedPLoRA/scripts/RunScripts/run_eval_only_matched_domain.sh
+log=/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/matched_domain_new_flower/logs/md_flower_feddat_seed44.log
+launched_at=2026-07-28T15:43:53+0800

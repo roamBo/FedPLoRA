@@ -1,0 +1,128 @@
+[new-flower-md-queue][start] root=/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/matched_domain_new_flower gpu=0 tags=18
+[new-flower-md-queue][time] 2026-07-28T09:41:11+0800
+[new-flower-md-queue][launch] tag=flower_yoco_seed42 source=/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/flower_yoco_seed42/result_logs/N9_flower_yoco_seed42/yoco_SmolLM2-135M_seed_42_r1_e1_seed42.json
+[launch-md][ok] tag=md_flower_yoco_seed42 pid=1173489
+[launch-md][log] /data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/matched_domain_new_flower/logs/md_flower_yoco_seed42.log
+[launch-md][pid] /data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/matched_domain_new_flower/pids/md_flower_yoco_seed42.pid
+[new-flower-md-queue][wait] tag=flower_yoco_seed42 pid=1173489 log=/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/matched_domain_new_flower/logs/md_flower_yoco_seed42.log
+[new-flower-md-queue][ok] tag=flower_yoco_seed42
+[new-flower-md-queue][launch] tag=flower_yoco_seed43 source=/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/flower_yoco_seed43/result_logs/N9_flower_yoco_seed43/yoco_SmolLM2-135M_seed_43_r1_e1_seed43.json
+[launch-md][ok] tag=md_flower_yoco_seed43 pid=1178189
+[launch-md][log] /data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/matched_domain_new_flower/logs/md_flower_yoco_seed43.log
+[launch-md][pid] /data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/matched_domain_new_flower/pids/md_flower_yoco_seed43.pid
+[new-flower-md-queue][wait] tag=flower_yoco_seed43 pid=1178189 log=/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/matched_domain_new_flower/logs/md_flower_yoco_seed43.log
+[new-flower-md-queue][ok] tag=flower_yoco_seed43
+[new-flower-md-queue][launch] tag=flower_yoco_seed44 source=/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/flower_yoco_seed44/result_logs/N9_flower_yoco_seed44/yoco_SmolLM2-135M_seed_44_r1_e1_seed44.json
+[launch-md][ok] tag=md_flower_yoco_seed44 pid=1183045
+[launch-md][log] /data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/matched_domain_new_flower/logs/md_flower_yoco_seed44.log
+[launch-md][pid] /data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/matched_domain_new_flower/pids/md_flower_yoco_seed44.pid
+[new-flower-md-queue][wait] tag=flower_yoco_seed44 pid=1183045 log=/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/matched_domain_new_flower/logs/md_flower_yoco_seed44.log
+[new-flower-md-queue][ok] tag=flower_yoco_seed44
+[new-flower-md-queue][launch] tag=flower_ffa_seed42 source=/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/flower_ffa_seed42/result_logs/N9_flower_ffa_seed42/ffa_SmolLM2-135M_seed_42_r1_e1_seed42.json
+[launch-md][skip] tag=md_flower_ffa_seed42 already running pid=1184097 log=/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/matched_domain_new_flower/logs/md_flower_ffa_seed42.log
+[new-flower-md-queue][wait] tag=flower_ffa_seed42 pid=1184097 log=/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/matched_domain_new_flower/logs/md_flower_ffa_seed42.log
+[new-flower-md-queue][ok] tag=flower_ffa_seed42
+[new-flower-md-queue][launch] tag=flower_ffa_seed43 source=/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/flower_ffa_seed43/result_logs/N9_flower_ffa_seed43/ffa_SmolLM2-135M_seed_43_r1_e1_seed43.json
+[launch-md][ok] tag=md_flower_ffa_seed43 pid=1242249
+[launch-md][log] /data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/matched_domain_new_flower/logs/md_flower_ffa_seed43.log
+[launch-md][pid] /data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/matched_domain_new_flower/pids/md_flower_ffa_seed43.pid
+[new-flower-md-queue][wait] tag=flower_ffa_seed43 pid=1242249 log=/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/matched_domain_new_flower/logs/md_flower_ffa_seed43.log
+[new-flower-md-queue][ok] tag=flower_ffa_seed43
+[new-flower-md-queue][launch] tag=flower_ffa_seed44 source=/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/flower_ffa_seed44/result_logs/N9_flower_ffa_seed44/ffa_SmolLM2-135M_seed_44_r1_e1_seed44.json
+[launch-md][ok] tag=md_flower_ffa_seed44 pid=1335400
+[launch-md][log] /data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/matched_domain_new_flower/logs/md_flower_ffa_seed44.log
+[launch-md][pid] /data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/matched_domain_new_flower/pids/md_flower_ffa_seed44.pid
+[new-flower-md-queue][wait] tag=flower_ffa_seed44 pid=1335400 log=/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/matched_domain_new_flower/logs/md_flower_ffa_seed44.log
+[new-flower-md-queue][ok] tag=flower_ffa_seed44
+[new-flower-md-queue][launch] tag=flower_flora_seed42 source=/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/flower_flora_seed42/result_logs/N9_flower_flora_seed42/flora_SmolLM2-135M_seed_42_r1_e1_seed42.json
+[launch-md][ok] tag=md_flower_flora_seed42 pid=1597499
+[launch-md][log] /data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/matched_domain_new_flower/logs/md_flower_flora_seed42.log
+[launch-md][pid] /data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/matched_domain_new_flower/pids/md_flower_flora_seed42.pid
+[new-flower-md-queue][wait] tag=flower_flora_seed42 pid=1597499 log=/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/matched_domain_new_flower/logs/md_flower_flora_seed42.log
+[new-flower-md-queue][ok] tag=flower_flora_seed42
+[new-flower-md-queue][launch] tag=flower_flora_seed43 source=/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/flower_flora_seed43/result_logs/N9_flower_flora_seed43/flora_SmolLM2-135M_seed_43_r1_e1_seed43.json
+[launch-md][ok] tag=md_flower_flora_seed43 pid=1858358
+[launch-md][log] /data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/matched_domain_new_flower/logs/md_flower_flora_seed43.log
+[launch-md][pid] /data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/matched_domain_new_flower/pids/md_flower_flora_seed43.pid
+[new-flower-md-queue][wait] tag=flower_flora_seed43 pid=1858358 log=/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/matched_domain_new_flower/logs/md_flower_flora_seed43.log
+[new-flower-md-queue][ok] tag=flower_flora_seed43
+[new-flower-md-queue][launch] tag=flower_flora_seed44 source=/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/flower_flora_seed44/result_logs/N9_flower_flora_seed44/flora_SmolLM2-135M_seed_44_r1_e1_seed44.json
+[launch-md][ok] tag=md_flower_flora_seed44 pid=2048905
+[launch-md][log] /data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/matched_domain_new_flower/logs/md_flower_flora_seed44.log
+[launch-md][pid] /data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/matched_domain_new_flower/pids/md_flower_flora_seed44.pid
+[new-flower-md-queue][wait] tag=flower_flora_seed44 pid=2048905 log=/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/matched_domain_new_flower/logs/md_flower_flora_seed44.log
+[new-flower-md-queue][ok] tag=flower_flora_seed44
+[new-flower-md-queue][launch] tag=flower_flexlora_seed42 source=/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/flower_flexlora_seed42/result_logs/N9_flower_flexlora_seed42/flexlora_SmolLM2-135M_seed_42_r1_e1_seed42.json
+[launch-md][ok] tag=md_flower_flexlora_seed42 pid=2403273
+[launch-md][log] /data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/matched_domain_new_flower/logs/md_flower_flexlora_seed42.log
+[launch-md][pid] /data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/matched_domain_new_flower/pids/md_flower_flexlora_seed42.pid
+[new-flower-md-queue][wait] tag=flower_flexlora_seed42 pid=2403273 log=/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/matched_domain_new_flower/logs/md_flower_flexlora_seed42.log
+[new-flower-md-queue][ok] tag=flower_flexlora_seed42
+[new-flower-md-queue][launch] tag=flower_flexlora_seed43 source=/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/flower_flexlora_seed43/result_logs/N9_flower_flexlora_seed43/flexlora_SmolLM2-135M_seed_43_r1_e1_seed43.json
+[launch-md][ok] tag=md_flower_flexlora_seed43 pid=2552565
+[launch-md][log] /data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/matched_domain_new_flower/logs/md_flower_flexlora_seed43.log
+[launch-md][pid] /data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/matched_domain_new_flower/pids/md_flower_flexlora_seed43.pid
+[new-flower-md-queue][wait] tag=flower_flexlora_seed43 pid=2552565 log=/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/matched_domain_new_flower/logs/md_flower_flexlora_seed43.log
+[new-flower-md-queue][ok] tag=flower_flexlora_seed43
+[new-flower-md-queue][launch] tag=flower_flexlora_seed44 source=/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/flower_flexlora_seed44/result_logs/N9_flower_flexlora_seed44/flexlora_SmolLM2-135M_seed_44_r1_e1_seed44.json
+[launch-md][ok] tag=md_flower_flexlora_seed44 pid=2739334
+[launch-md][log] /data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/matched_domain_new_flower/logs/md_flower_flexlora_seed44.log
+[launch-md][pid] /data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/matched_domain_new_flower/pids/md_flower_flexlora_seed44.pid
+[new-flower-md-queue][wait] tag=flower_flexlora_seed44 pid=2739334 log=/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/matched_domain_new_flower/logs/md_flower_flexlora_seed44.log
+[new-flower-md-queue][ok] tag=flower_flexlora_seed44
+[new-flower-md-queue][launch] tag=flower_feddat_seed42 source=/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/flower_feddat_seed42/result_logs/N9_flower_feddat_seed42/feddat_SmolLM2-135M_seed_42_r1_e1_seed42.json
+[launch-md][ok] tag=md_flower_feddat_seed42 pid=2914309
+[launch-md][log] /data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/matched_domain_new_flower/logs/md_flower_feddat_seed42.log
+[launch-md][pid] /data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/matched_domain_new_flower/pids/md_flower_feddat_seed42.pid
+[new-flower-md-queue][wait] tag=flower_feddat_seed42 pid=2914309 log=/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/matched_domain_new_flower/logs/md_flower_feddat_seed42.log
+[new-flower-md-queue][ok] tag=flower_feddat_seed42
+[new-flower-md-queue][launch] tag=flower_feddat_seed43 source=/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/flower_feddat_seed43/result_logs/N9_flower_feddat_seed43/feddat_SmolLM2-135M_seed_43_r1_e1_seed43.json
+[launch-md][ok] tag=md_flower_feddat_seed43 pid=2999149
+[launch-md][log] /data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/matched_domain_new_flower/logs/md_flower_feddat_seed43.log
+[launch-md][pid] /data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/matched_domain_new_flower/pids/md_flower_feddat_seed43.pid
+[new-flower-md-queue][wait] tag=flower_feddat_seed43 pid=2999149 log=/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/matched_domain_new_flower/logs/md_flower_feddat_seed43.log
+[new-flower-md-queue][ok] tag=flower_feddat_seed43
+[new-flower-md-queue][launch] tag=flower_feddat_seed44 source=/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/flower_feddat_seed44/result_logs/N9_flower_feddat_seed44/feddat_SmolLM2-135M_seed_44_r1_e1_seed44.json
+[launch-md][ok] tag=md_flower_feddat_seed44 pid=3036729
+[launch-md][log] /data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/matched_domain_new_flower/logs/md_flower_feddat_seed44.log
+[launch-md][pid] /data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/matched_domain_new_flower/pids/md_flower_feddat_seed44.pid
+[new-flower-md-queue][wait] tag=flower_feddat_seed44 pid=3036729 log=/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/matched_domain_new_flower/logs/md_flower_feddat_seed44.log
+[new-flower-md-queue][ok] tag=flower_feddat_seed44
+[new-flower-md-queue][launch] tag=flower_hilora_seed42 source=/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/flower_hilora_seed42/result_logs/N9_flower_hilora_seed42/hilora_SmolLM2-135M_seed_42_r1_e1_seed42.json
+[launch-md][ok] tag=md_flower_hilora_seed42 pid=3072224
+[launch-md][log] /data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/matched_domain_new_flower/logs/md_flower_hilora_seed42.log
+[launch-md][pid] /data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/matched_domain_new_flower/pids/md_flower_hilora_seed42.pid
+[new-flower-md-queue][wait] tag=flower_hilora_seed42 pid=3072224 log=/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/matched_domain_new_flower/logs/md_flower_hilora_seed42.log
+[new-flower-md-queue][ok] tag=flower_hilora_seed42
+[new-flower-md-queue][launch] tag=flower_hilora_seed43 source=/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/flower_hilora_seed43/result_logs/N9_flower_hilora_seed43/hilora_SmolLM2-135M_seed_43_r1_e1_seed43.json
+[launch-md][ok] tag=md_flower_hilora_seed43 pid=3097973
+[launch-md][log] /data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/matched_domain_new_flower/logs/md_flower_hilora_seed43.log
+[launch-md][pid] /data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/matched_domain_new_flower/pids/md_flower_hilora_seed43.pid
+[new-flower-md-queue][wait] tag=flower_hilora_seed43 pid=3097973 log=/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/matched_domain_new_flower/logs/md_flower_hilora_seed43.log
+[new-flower-md-queue][ok] tag=flower_hilora_seed43
+[new-flower-md-queue][launch] tag=flower_hilora_seed44 source=/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/flower_hilora_seed44/result_logs/N9_flower_hilora_seed44/hilora_SmolLM2-135M_seed_44_r1_e1_seed44.json
+[launch-md][ok] tag=md_flower_hilora_seed44 pid=3123398
+[launch-md][log] /data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/matched_domain_new_flower/logs/md_flower_hilora_seed44.log
+[launch-md][pid] /data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/matched_domain_new_flower/pids/md_flower_hilora_seed44.pid
+[new-flower-md-queue][wait] tag=flower_hilora_seed44 pid=3123398 log=/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/matched_domain_new_flower/logs/md_flower_hilora_seed44.log
+[new-flower-md-queue][ok] tag=flower_hilora_seed44
+[new-flower-md-queue][done] all 18 jobs finished
+[md-status][ok] tag=md_flower_feddat_seed42 log=/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/matched_domain_new_flower/logs/md_flower_feddat_seed42.log
+[md-status][ok] tag=md_flower_feddat_seed43 log=/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/matched_domain_new_flower/logs/md_flower_feddat_seed43.log
+[md-status][ok] tag=md_flower_feddat_seed44 log=/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/matched_domain_new_flower/logs/md_flower_feddat_seed44.log
+[md-status][ok] tag=md_flower_ffa_seed42 log=/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/matched_domain_new_flower/logs/md_flower_ffa_seed42.log
+[md-status][ok] tag=md_flower_ffa_seed43 log=/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/matched_domain_new_flower/logs/md_flower_ffa_seed43.log
+[md-status][ok] tag=md_flower_ffa_seed44 log=/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/matched_domain_new_flower/logs/md_flower_ffa_seed44.log
+[md-status][ok] tag=md_flower_flexlora_seed42 log=/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/matched_domain_new_flower/logs/md_flower_flexlora_seed42.log
+[md-status][ok] tag=md_flower_flexlora_seed43 log=/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/matched_domain_new_flower/logs/md_flower_flexlora_seed43.log
+[md-status][ok] tag=md_flower_flexlora_seed44 log=/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/matched_domain_new_flower/logs/md_flower_flexlora_seed44.log
+[md-status][ok] tag=md_flower_flora_seed42 log=/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/matched_domain_new_flower/logs/md_flower_flora_seed42.log
+[md-status][ok] tag=md_flower_flora_seed43 log=/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/matched_domain_new_flower/logs/md_flower_flora_seed43.log
+[md-status][ok] tag=md_flower_flora_seed44 log=/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/matched_domain_new_flower/logs/md_flower_flora_seed44.log
+[md-status][ok] tag=md_flower_hilora_seed42 log=/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/matched_domain_new_flower/logs/md_flower_hilora_seed42.log
+[md-status][ok] tag=md_flower_hilora_seed43 log=/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/matched_domain_new_flower/logs/md_flower_hilora_seed43.log
+[md-status][ok] tag=md_flower_hilora_seed44 log=/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/matched_domain_new_flower/logs/md_flower_hilora_seed44.log
+[md-status][ok] tag=md_flower_yoco_seed42 log=/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/matched_domain_new_flower/logs/md_flower_yoco_seed42.log
+[md-status][ok] tag=md_flower_yoco_seed43 log=/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/matched_domain_new_flower/logs/md_flower_yoco_seed43.log
+[md-status][ok] tag=md_flower_yoco_seed44 log=/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/matched_domain_new_flower/logs/md_flower_yoco_seed44.log
+[md-status][summary] running=0 ok=18 failed=0 unknown=0 matched_json=18

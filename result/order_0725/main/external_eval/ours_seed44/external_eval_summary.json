@@ -1,0 +1,291 @@
+{
+  "schema_version": 1,
+  "adapter_manifest": "/data/yaominghao/gb/result/FedPLoRA/order_0725/main/external_adapters/ours_seed44/adapter_export_manifest.json",
+  "aggregation_rule": "unweighted macro mean over all routed client adapters in declared domain",
+  "runs": [
+    {
+      "task": "mmlu",
+      "domain": "general",
+      "deployment": "global",
+      "adapter": "/data/yaominghao/gb/result/FedPLoRA/order_0725/main/external_adapters/ours_seed44/global",
+      "result_path": "/data/yaominghao/gb/result/FedPLoRA/order_0725/main/external_eval/ours_seed44/mmlu/global/__data__yaominghao__gb__result__FedPLoRA__order_0725__main__external_adapters__ours_seed44__global/results_2026-07-28T11-12-32.945279.json",
+      "metrics": {
+        "sample_len": 14042.0,
+        "acc,none": 0.24042159236575986,
+        "acc_stderr,none": 0.0036044919813301296
+      }
+    },
+    {
+      "task": "mmlu",
+      "domain": "general",
+      "deployment": "client_015",
+      "adapter": "/data/yaominghao/gb/result/FedPLoRA/order_0725/main/external_adapters/ours_seed44/clients/client_015",
+      "result_path": "/data/yaominghao/gb/result/FedPLoRA/order_0725/main/external_eval/ours_seed44/mmlu/client_015/__data__yaominghao__gb__result__FedPLoRA__order_0725__main__external_adapters__ours_seed44__clients__client_015/results_2026-07-28T12-31-19.760510.json",
+      "metrics": {
+        "sample_len": 14042.0,
+        "acc,none": 0.23992308787921948,
+        "acc_stderr,none": 0.0036031321810849905
+      }
+    },
+    {
+      "task": "mmlu",
+      "domain": "general",
+      "deployment": "client_016",
+      "adapter": "/data/yaominghao/gb/result/FedPLoRA/order_0725/main/external_adapters/ours_seed44/clients/client_016",
+      "result_path": "/data/yaominghao/gb/result/FedPLoRA/order_0725/main/external_eval/ours_seed44/mmlu/client_016/__data__yaominghao__gb__result__FedPLoRA__order_0725__main__external_adapters__ours_seed44__clients__client_016/results_2026-07-28T13-10-06.912460.json",
+      "metrics": {
+        "sample_len": 14042.0,
+        "acc,none": 0.2388548639794901,
+        "acc_stderr,none": 0.0035974035419610354
+      }
+    },
+    {
+      "task": "mmlu",
+      "domain": "general",
+      "deployment": "client_017",
+      "adapter": "/data/yaominghao/gb/result/FedPLoRA/order_0725/main/external_adapters/ours_seed44/clients/client_017",
+      "result_path": "/data/yaominghao/gb/result/FedPLoRA/order_0725/main/external_eval/ours_seed44/mmlu/client_017/__data__yaominghao__gb__result__FedPLoRA__order_0725__main__external_adapters__ours_seed44__clients__client_017/results_2026-07-28T13-39-49.757016.json",
+      "metrics": {
+        "sample_len": 14042.0,
+        "acc,none": 0.2388548639794901,
+        "acc_stderr,none": 0.0035974035419610354
+      }
+    },
+    {
+      "task": "mmlu",
+      "domain": "general",
+      "deployment": "client_018",
+      "adapter": "/data/yaominghao/gb/result/FedPLoRA/order_0725/main/external_adapters/ours_seed44/clients/client_018",
+      "result_path": "/data/yaominghao/gb/result/FedPLoRA/order_0725/main/external_eval/ours_seed44/mmlu/client_018/__data__yaominghao__gb__result__FedPLoRA__order_0725__main__external_adapters__ours_seed44__clients__client_018/results_2026-07-28T14-13-57.580024.json",
+      "metrics": {
+        "sample_len": 14042.0,
+        "acc,none": 0.2388548639794901,
+        "acc_stderr,none": 0.0035974035419610354
+      }
+    },
+    {
+      "task": "mmlu",
+      "domain": "general",
+      "deployment": "client_019",
+      "adapter": "/data/yaominghao/gb/result/FedPLoRA/order_0725/main/external_adapters/ours_seed44/clients/client_019",
+      "result_path": "/data/yaominghao/gb/result/FedPLoRA/order_0725/main/external_eval/ours_seed44/mmlu/client_019/__data__yaominghao__gb__result__FedPLoRA__order_0725__main__external_adapters__ours_seed44__clients__client_019/results_2026-07-28T15-14-49.135337.json",
+      "metrics": {
+        "sample_len": 14042.0,
+        "acc,none": 0.2388548639794901,
+        "acc_stderr,none": 0.0035974035419610354
+      }
+    },
+    {
+      "task": "pubmedqa",
+      "domain": "medical",
+      "deployment": "global",
+      "adapter": "/data/yaominghao/gb/result/FedPLoRA/order_0725/main/external_adapters/ours_seed44/global",
+      "result_path": "/data/yaominghao/gb/result/FedPLoRA/order_0725/main/external_eval/ours_seed44/pubmedqa/global/__data__yaominghao__gb__result__FedPLoRA__order_0725__main__external_adapters__ours_seed44__global/results_2026-07-28T17-20-45.882386.json",
+      "metrics": {
+        "sample_len": 500.0,
+        "acc,none": 0.546,
+        "acc_stderr,none": 0.02228814759117696
+      }
+    },
+    {
+      "task": "pubmedqa",
+      "domain": "medical",
+      "deployment": "client_030",
+      "adapter": "/data/yaominghao/gb/result/FedPLoRA/order_0725/main/external_adapters/ours_seed44/clients/client_030",
+      "result_path": "/data/yaominghao/gb/result/FedPLoRA/order_0725/main/external_eval/ours_seed44/pubmedqa/client_030/__data__yaominghao__gb__result__FedPLoRA__order_0725__main__external_adapters__ours_seed44__clients__client_030/results_2026-07-28T17-23-23.600206.json",
+      "metrics": {
+        "sample_len": 500.0,
+        "acc,none": 0.566,
+        "acc_stderr,none": 0.022187215803029042
+      }
+    },
+    {
+      "task": "pubmedqa",
+      "domain": "medical",
+      "deployment": "client_031",
+      "adapter": "/data/yaominghao/gb/result/FedPLoRA/order_0725/main/external_adapters/ours_seed44/clients/client_031",
+      "result_path": "/data/yaominghao/gb/result/FedPLoRA/order_0725/main/external_eval/ours_seed44/pubmedqa/client_031/__data__yaominghao__gb__result__FedPLoRA__order_0725__main__external_adapters__ours_seed44__clients__client_031/results_2026-07-28T17-26-13.332803.json",
+      "metrics": {
+        "sample_len": 500.0,
+        "acc,none": 0.566,
+        "acc_stderr,none": 0.022187215803029042
+      }
+    },
+    {
+      "task": "pubmedqa",
+      "domain": "medical",
+      "deployment": "client_032",
+      "adapter": "/data/yaominghao/gb/result/FedPLoRA/order_0725/main/external_adapters/ours_seed44/clients/client_032",
+      "result_path": "/data/yaominghao/gb/result/FedPLoRA/order_0725/main/external_eval/ours_seed44/pubmedqa/client_032/__data__yaominghao__gb__result__FedPLoRA__order_0725__main__external_adapters__ours_seed44__clients__client_032/results_2026-07-28T17-28-47.207078.json",
+      "metrics": {
+        "sample_len": 500.0,
+        "acc,none": 0.566,
+        "acc_stderr,none": 0.022187215803029042
+      }
+    },
+    {
+      "task": "pubmedqa",
+      "domain": "medical",
+      "deployment": "client_033",
+      "adapter": "/data/yaominghao/gb/result/FedPLoRA/order_0725/main/external_adapters/ours_seed44/clients/client_033",
+      "result_path": "/data/yaominghao/gb/result/FedPLoRA/order_0725/main/external_eval/ours_seed44/pubmedqa/client_033/__data__yaominghao__gb__result__FedPLoRA__order_0725__main__external_adapters__ours_seed44__clients__client_033/results_2026-07-28T17-31-20.767675.json",
+      "metrics": {
+        "sample_len": 500.0,
+        "acc,none": 0.566,
+        "acc_stderr,none": 0.022187215803029042
+      }
+    },
+    {
+      "task": "pubmedqa",
+      "domain": "medical",
+      "deployment": "client_034",
+      "adapter": "/data/yaominghao/gb/result/FedPLoRA/order_0725/main/external_adapters/ours_seed44/clients/client_034",
+      "result_path": "/data/yaominghao/gb/result/FedPLoRA/order_0725/main/external_eval/ours_seed44/pubmedqa/client_034/__data__yaominghao__gb__result__FedPLoRA__order_0725__main__external_adapters__ours_seed44__clients__client_034/results_2026-07-28T17-34-12.190354.json",
+      "metrics": {
+        "sample_len": 500.0,
+        "acc,none": 0.566,
+        "acc_stderr,none": 0.022187215803029042
+      }
+    },
+    {
+      "task": "mbpp",
+      "domain": "code",
+      "deployment": "global",
+      "adapter": "/data/yaominghao/gb/result/FedPLoRA/order_0725/main/external_adapters/ours_seed44/global",
+      "result_path": "/data/yaominghao/gb/result/FedPLoRA/order_0725/main/external_eval/ours_seed44/mbpp/global/__data__yaominghao__gb__result__FedPLoRA__order_0725__main__external_adapters__ours_seed44__global/results_2026-07-29T01-40-51.420264.json",
+      "metrics": {
+        "sample_len": 500.0,
+        "pass_at_1,none": 0.0,
+        "pass_at_1_stderr,none": 0.0
+      }
+    },
+    {
+      "task": "mbpp",
+      "domain": "code",
+      "deployment": "client_000",
+      "adapter": "/data/yaominghao/gb/result/FedPLoRA/order_0725/main/external_adapters/ours_seed44/clients/client_000",
+      "result_path": "/data/yaominghao/gb/result/FedPLoRA/order_0725/main/external_eval/ours_seed44/mbpp/client_000/__data__yaominghao__gb__result__FedPLoRA__order_0725__main__external_adapters__ours_seed44__clients__client_000/results_2026-07-29T03-09-53.842722.json",
+      "metrics": {
+        "sample_len": 500.0,
+        "pass_at_1,none": 0.0,
+        "pass_at_1_stderr,none": 0.0
+      }
+    },
+    {
+      "task": "mbpp",
+      "domain": "code",
+      "deployment": "client_001",
+      "adapter": "/data/yaominghao/gb/result/FedPLoRA/order_0725/main/external_adapters/ours_seed44/clients/client_001",
+      "result_path": "/data/yaominghao/gb/result/FedPLoRA/order_0725/main/external_eval/ours_seed44/mbpp/client_001/__data__yaominghao__gb__result__FedPLoRA__order_0725__main__external_adapters__ours_seed44__clients__client_001/results_2026-07-29T04-39-31.008874.json",
+      "metrics": {
+        "sample_len": 500.0,
+        "pass_at_1,none": 0.0,
+        "pass_at_1_stderr,none": 0.0
+      }
+    },
+    {
+      "task": "mbpp",
+      "domain": "code",
+      "deployment": "client_002",
+      "adapter": "/data/yaominghao/gb/result/FedPLoRA/order_0725/main/external_adapters/ours_seed44/clients/client_002",
+      "result_path": "/data/yaominghao/gb/result/FedPLoRA/order_0725/main/external_eval/ours_seed44/mbpp/client_002/__data__yaominghao__gb__result__FedPLoRA__order_0725__main__external_adapters__ours_seed44__clients__client_002/results_2026-07-29T06-12-04.151348.json",
+      "metrics": {
+        "sample_len": 500.0,
+        "pass_at_1,none": 0.0,
+        "pass_at_1_stderr,none": 0.0
+      }
+    },
+    {
+      "task": "mbpp",
+      "domain": "code",
+      "deployment": "client_003",
+      "adapter": "/data/yaominghao/gb/result/FedPLoRA/order_0725/main/external_adapters/ours_seed44/clients/client_003",
+      "result_path": "/data/yaominghao/gb/result/FedPLoRA/order_0725/main/external_eval/ours_seed44/mbpp/client_003/__data__yaominghao__gb__result__FedPLoRA__order_0725__main__external_adapters__ours_seed44__clients__client_003/results_2026-07-29T07-45-15.162326.json",
+      "metrics": {
+        "sample_len": 500.0,
+        "pass_at_1,none": 0.0,
+        "pass_at_1_stderr,none": 0.0
+      }
+    },
+    {
+      "task": "mbpp",
+      "domain": "code",
+      "deployment": "client_004",
+      "adapter": "/data/yaominghao/gb/result/FedPLoRA/order_0725/main/external_adapters/ours_seed44/clients/client_004",
+      "result_path": "/data/yaominghao/gb/result/FedPLoRA/order_0725/main/external_eval/ours_seed44/mbpp/client_004/__data__yaominghao__gb__result__FedPLoRA__order_0725__main__external_adapters__ours_seed44__clients__client_004/results_2026-07-29T09-36-07.673647.json",
+      "metrics": {
+        "sample_len": 500.0,
+        "pass_at_1,none": 0.0,
+        "pass_at_1_stderr,none": 0.0
+      }
+    }
+  ],
+  "summaries": [
+    {
+      "task": "mbpp",
+      "domain": "code",
+      "deployment": "domain_clients_macro",
+      "num_adapter_runs": 5,
+      "mean_metrics": {
+        "pass_at_1,none": 0.0,
+        "pass_at_1_stderr,none": 0.0,
+        "sample_len": 500.0
+      }
+    },
+    {
+      "task": "mbpp",
+      "domain": "code",
+      "deployment": "global",
+      "num_adapter_runs": 1,
+      "mean_metrics": {
+        "pass_at_1,none": 0.0,
+        "pass_at_1_stderr,none": 0.0,
+        "sample_len": 500.0
+      }
+    },
+    {
+      "task": "mmlu",
+      "domain": "general",
+      "deployment": "domain_clients_macro",
+      "num_adapter_runs": 5,
+      "mean_metrics": {
+        "acc,none": 0.23906850875943597,
+        "acc_stderr,none": 0.0035985492697858264,
+        "sample_len": 14042.0
+      }
+    },
+    {
+      "task": "mmlu",
+      "domain": "general",
+      "deployment": "global",
+      "num_adapter_runs": 1,
+      "mean_metrics": {
+        "acc,none": 0.24042159236575986,
+        "acc_stderr,none": 0.0036044919813301296,
+        "sample_len": 14042.0
+      }
+    },
+    {
+      "task": "pubmedqa",
+      "domain": "medical",
+      "deployment": "domain_clients_macro",
+      "num_adapter_runs": 5,
+      "mean_metrics": {
+        "acc,none": 0.566,
+        "acc_stderr,none": 0.022187215803029042,
+        "sample_len": 500.0
+      }
+    },
+    {
+      "task": "pubmedqa",
+      "domain": "medical",
+      "deployment": "global",
+      "num_adapter_runs": 1,
+      "mean_metrics": {
+        "acc,none": 0.546,
+        "acc_stderr,none": 0.02228814759117696,
+        "sample_len": 500.0
+      }
+    }
+  ]
+}

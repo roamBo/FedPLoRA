@@ -1,0 +1,216 @@
+{
+  "schema_version": 1,
+  "checkpoint": "/data/yaominghao/gb/models/trained_models_LW/os_20260709_baseline_35c_dir05_r1_finaleval_seed42/OS1_normal_SmolLM2-135M_dir05_r1_e1_lr0.0002_seed42",
+  "agg_type": "normal",
+  "model": "/data/yaominghao/gb/models/SmolLM2-135M",
+  "global_adapter_dir": "/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/external_adapters/normal_seed42/global",
+  "global_deployment_basis": "reconstructed_server_global",
+  "global_tensor_bytes": 9768960,
+  "clients": {
+    "0": {
+      "domain": "code",
+      "adapter_dir": "/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/external_adapters/normal_seed42/clients/client_000",
+      "deployment_basis": "global",
+      "tensor_bytes": 9768960
+    },
+    "1": {
+      "domain": "code",
+      "adapter_dir": "/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/external_adapters/normal_seed42/clients/client_001",
+      "deployment_basis": "global",
+      "tensor_bytes": 9768960
+    },
+    "2": {
+      "domain": "code",
+      "adapter_dir": "/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/external_adapters/normal_seed42/clients/client_002",
+      "deployment_basis": "global",
+      "tensor_bytes": 9768960
+    },
+    "3": {
+      "domain": "code",
+      "adapter_dir": "/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/external_adapters/normal_seed42/clients/client_003",
+      "deployment_basis": "global",
+      "tensor_bytes": 9768960
+    },
+    "4": {
+      "domain": "code",
+      "adapter_dir": "/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/external_adapters/normal_seed42/clients/client_004",
+      "deployment_basis": "global",
+      "tensor_bytes": 9768960
+    },
+    "5": {
+      "domain": "education",
+      "adapter_dir": "/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/external_adapters/normal_seed42/clients/client_005",
+      "deployment_basis": "global",
+      "tensor_bytes": 9768960
+    },
+    "6": {
+      "domain": "education",
+      "adapter_dir": "/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/external_adapters/normal_seed42/clients/client_006",
+      "deployment_basis": "global",
+      "tensor_bytes": 9768960
+    },
+    "7": {
+      "domain": "education",
+      "adapter_dir": "/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/external_adapters/normal_seed42/clients/client_007",
+      "deployment_basis": "global",
+      "tensor_bytes": 9768960
+    },
+    "8": {
+      "domain": "education",
+      "adapter_dir": "/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/external_adapters/normal_seed42/clients/client_008",
+      "deployment_basis": "global",
+      "tensor_bytes": 9768960
+    },
+    "9": {
+      "domain": "finance",
+      "adapter_dir": "/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/external_adapters/normal_seed42/clients/client_009",
+      "deployment_basis": "global",
+      "tensor_bytes": 9768960
+    },
+    "10": {
+      "domain": "finance",
+      "adapter_dir": "/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/external_adapters/normal_seed42/clients/client_010",
+      "deployment_basis": "global",
+      "tensor_bytes": 9768960
+    },
+    "11": {
+      "domain": "finance",
+      "adapter_dir": "/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/external_adapters/normal_seed42/clients/client_011",
+      "deployment_basis": "global",
+      "tensor_bytes": 9768960
+    },
+    "12": {
+      "domain": "finance",
+      "adapter_dir": "/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/external_adapters/normal_seed42/clients/client_012",
+      "deployment_basis": "global",
+      "tensor_bytes": 9768960
+    },
+    "13": {
+      "domain": "finance",
+      "adapter_dir": "/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/external_adapters/normal_seed42/clients/client_013",
+      "deployment_basis": "global",
+      "tensor_bytes": 9768960
+    },
+    "14": {
+      "domain": "general",
+      "adapter_dir": "/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/external_adapters/normal_seed42/clients/client_014",
+      "deployment_basis": "global",
+      "tensor_bytes": 9768960
+    },
+    "15": {
+      "domain": "general",
+      "adapter_dir": "/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/external_adapters/normal_seed42/clients/client_015",
+      "deployment_basis": "global",
+      "tensor_bytes": 9768960
+    },
+    "16": {
+      "domain": "general",
+      "adapter_dir": "/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/external_adapters/normal_seed42/clients/client_016",
+      "deployment_basis": "global",
+      "tensor_bytes": 9768960
+    },
+    "17": {
+      "domain": "general",
+      "adapter_dir": "/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/external_adapters/normal_seed42/clients/client_017",
+      "deployment_basis": "global",
+      "tensor_bytes": 9768960
+    },
+    "18": {
+      "domain": "general",
+      "adapter_dir": "/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/external_adapters/normal_seed42/clients/client_018",
+      "deployment_basis": "global",
+      "tensor_bytes": 9768960
+    },
+    "19": {
+      "domain": "legal",
+      "adapter_dir": "/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/external_adapters/normal_seed42/clients/client_019",
+      "deployment_basis": "global",
+      "tensor_bytes": 9768960
+    },
+    "20": {
+      "domain": "legal",
+      "adapter_dir": "/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/external_adapters/normal_seed42/clients/client_020",
+      "deployment_basis": "global",
+      "tensor_bytes": 9768960
+    },
+    "21": {
+      "domain": "legal",
+      "adapter_dir": "/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/external_adapters/normal_seed42/clients/client_021",
+      "deployment_basis": "global",
+      "tensor_bytes": 9768960
+    },
+    "22": {
+      "domain": "legal",
+      "adapter_dir": "/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/external_adapters/normal_seed42/clients/client_022",
+      "deployment_basis": "global",
+      "tensor_bytes": 9768960
+    },
+    "23": {
+      "domain": "legal",
+      "adapter_dir": "/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/external_adapters/normal_seed42/clients/client_023",
+      "deployment_basis": "global",
+      "tensor_bytes": 9768960
+    },
+    "24": {
+      "domain": "math",
+      "adapter_dir": "/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/external_adapters/normal_seed42/clients/client_024",
+      "deployment_basis": "global",
+      "tensor_bytes": 9768960
+    },
+    "25": {
+      "domain": "math",
+      "adapter_dir": "/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/external_adapters/normal_seed42/clients/client_025",
+      "deployment_basis": "global",
+      "tensor_bytes": 9768960
+    },
+    "26": {
+      "domain": "math",
+      "adapter_dir": "/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/external_adapters/normal_seed42/clients/client_026",
+      "deployment_basis": "global",
+      "tensor_bytes": 9768960
+    },
+    "27": {
+      "domain": "math",
+      "adapter_dir": "/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/external_adapters/normal_seed42/clients/client_027",
+      "deployment_basis": "global",
+      "tensor_bytes": 9768960
+    },
+    "28": {
+      "domain": "math",
+      "adapter_dir": "/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/external_adapters/normal_seed42/clients/client_028",
+      "deployment_basis": "global",
+      "tensor_bytes": 9768960
+    },
+    "29": {
+      "domain": "medical",
+      "adapter_dir": "/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/external_adapters/normal_seed42/clients/client_029",
+      "deployment_basis": "global",
+      "tensor_bytes": 9768960
+    },
+    "30": {
+      "domain": "medical",
+      "adapter_dir": "/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/external_adapters/normal_seed42/clients/client_030",
+      "deployment_basis": "global",
+      "tensor_bytes": 9768960
+    },
+    "31": {
+      "domain": "medical",
+      "adapter_dir": "/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/external_adapters/normal_seed42/clients/client_031",
+      "deployment_basis": "global",
+      "tensor_bytes": 9768960
+    },
+    "32": {
+      "domain": "medical",
+      "adapter_dir": "/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/external_adapters/normal_seed42/clients/client_032",
+      "deployment_basis": "global",
+      "tensor_bytes": 9768960
+    },
+    "33": {
+      "domain": "medical",
+      "adapter_dir": "/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/external_adapters/normal_seed42/clients/client_033",
+      "deployment_basis": "global",
+      "tensor_bytes": 9768960
+    }
+  },
+  "external_evaluation_rule": "Report global separately. For routed deployment, evaluate every client adapter in the task's declared domain and macro-average; do not select the best client."
+}

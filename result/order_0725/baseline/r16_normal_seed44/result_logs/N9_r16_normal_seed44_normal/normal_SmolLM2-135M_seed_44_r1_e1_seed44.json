@@ -1,0 +1,1282 @@
+{
+  "args": {
+    "model": "/data/yaominghao/gb/models/SmolLM2-135M",
+    "benchmark_dir": "/data/yaominghao/gb/FedPLoRA/data/domain_benchmark_35c_dir05/seed_44",
+    "benchmark_jsonl": "",
+    "build_benchmark": false,
+    "benchmark_output_dir": "data/domain_benchmark",
+    "num_clients_per_domain": 5,
+    "min_samples_per_client": 50,
+    "agg_type": "normal",
+    "rounds": 1,
+    "num_clients": 35,
+    "local_epochs": 1,
+    "lr": 0.0002,
+    "lora_r": 16,
+    "lora_alpha": 32,
+    "lora_dropout": 0.05,
+    "rslora": false,
+    "batch_size": 2,
+    "warmup_ratio": 0.03,
+    "max_seq_length": 256,
+    "seed": 44,
+    "gradient_checkpointing": true,
+    "trust_remote_code": false,
+    "torch_dtype": "bfloat16",
+    "target_modules": "q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj",
+    "client_state_dir": "/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/r16_normal_seed44/result_files/client_states/N9_r16_normal_seed44_normal",
+    "save_client_state_to_disk": true,
+    "metrics_output_dir": "/data/yaominghao/gb/result/FedPLoRA/order_0725/baseline/r16_normal_seed44/result_logs/N9_r16_normal_seed44_normal",
+    "save_run_checkpoint_dir": "/data/yaominghao/gb/models/trained_models_LW/order_0725/baseline/r16_normal_seed44/N9_r16_normal_seed44_normal",
+    "skip_post_agg_snapshots": true,
+    "trained_models_root": "/data/yaominghao/gb/models/trained_models_LW/order_0725/baseline/r16_normal_seed44",
+    "no_auto_save_run_checkpoint": false,
+    "force_retrain": true,
+    "eval_only_from_checkpoint": "",
+    "eval_only_matched_domain": false,
+    "export_eval_adapter_dir": "",
+    "export_eval_adapter_only": false,
+    "gp_align_lambda": 0.01,
+    "gp_prox_lambda": 0.001,
+    "gp_orth_lambda": 0.0001,
+    "gp_consensus_power": 2.0,
+    "gp_agg_momentum": 0.5,
+    "yoco_sparse_lambda": 0.0001,
+    "yoco_pcwa_components": 3,
+    "yoco_aggregate_mode": "conflict",
+    "yoco_conflict_method": "avgm",
+    "yoco_sign_lambda": 0.01,
+    "yoco_eval_use_local_clients": false,
+    "memory_agg_eval_use_local_clients": false,
+    "flora_svd_device": "auto",
+    "oneshot_consensus_power": 2.0,
+    "oneshot_importance_power": 1.0,
+    "oneshot_importance_clip": 5.0,
+    "oneshot_conflict_threshold": 0.35,
+    "oneshot_conflict_blend": 1.0,
+    "oneshot_scale_clip_ratio": 0.0,
+    "oneshot_anchor_lambda": 0.0001,
+    "oneshot_prox_lambda": 0.0,
+    "oneshot_no_keep_init_on_conflict": false,
+    "oneshot_orthogonalize": false,
+    "oneshot_ablation_plain_fedavg": false,
+    "v3_conflict_quantile": 0.8,
+    "v3_gate_temperature": 0.05,
+    "v3_conflict_blend": 1.0,
+    "v3_residual_norm_power": 1.0,
+    "v3_residual_eps": 1e-07,
+    "v3_cluster_mode": "domain_prior",
+    "v3_cluster_lambda_min": 0.2,
+    "v3_cluster_lambda_max": 1.0,
+    "v3_rpca_rank": 1,
+    "v3_sparse_quantile": 0.8,
+    "v3_domain_cluster_map": "",
+    "v6_dcr_mode": "",
+    "v6_dcr_rc_policy": "auto",
+    "v6_dcr_shared_rank": 0,
+    "v6_dcr_min_shared_rank": 1,
+    "v6_dcr_max_shared_rank": 0,
+    "v6_dcr_energy_tau": 0.8,
+    "v6_dcr_conflict_strength": 1.0,
+    "v6_dcr_importance_power": 0.0,
+    "v6_dcr_importance_clip": 5.0,
+    "v7_b_mode": "mean",
+    "expert_cluster_mode": "auto",
+    "expert_cluster_k": 0,
+    "expert_max_clusters": 0,
+    "expert_b_mode": "",
+    "expert_top_m": 0,
+    "expert_router_temperature": 0.2,
+    "expert_freeze_a": false,
+    "v8_a_warmup_rounds": 1,
+    "v8_a_refresh_interval": 5,
+    "v8_cache_shared_a_downlink": true,
+    "v9_mix_lambda": 0.5,
+    "v10_a_correction_alpha": 0.35,
+    "v10_a_anchor_lambda": 0.001,
+    "v10_a_prox_lambda": 0.0005,
+    "v10_b_prox_lambda": 0.0001,
+    "v10_a_sketch_rank": 2,
+    "v10_a_norm_clip_ratio": 1.5,
+    "v11_global_b_mix_mu": 0.4,
+    "v12_mu_start": 0.4,
+    "v12_mu_end": 0.6,
+    "v12_mu_schedule": "linear",
+    "v12_mu_warmup_rounds": 0,
+    "v12_nmi_guard_threshold": 0.75,
+    "v12_nmi_guard_low_mu": 0.4,
+    "v12_nmi_guard_high_mu": 0.55,
+    "hilora_leaf_blend": 0.25,
+    "ecolora_keep_ratio": 0.25,
+    "ecolora_mask_mode": "round_robin",
+    "feddat_teacher_lambda": 0.01,
+    "v5m_keep_ratio": 0.2,
+    "v5m_dare_p": 0.3,
+    "v5m_rank_policy": "fixed",
+    "v5m_rank_cap": 64,
+    "v5m_energy_tau": 0.95,
+    "v5m_knots_normalize": 1,
+    "v5m_basis_energy_tau": 0.9999,
+    "v5m_chunk_rows": 2048,
+    "v5m_device": "auto",
+    "eval_max_batches": 0,
+    "eval_batch_size": 0,
+    "eval_interval": 1,
+    "eval_final_only": true,
+    "train_max_steps_per_client": 0,
+    "max_train_samples_per_client": 0,
+    "dataloader_num_workers": 0,
+    "eval_dataloader_num_workers": 0,
+    "dataloader_pin_memory": true,
+    "dataloader_persistent_workers": false,
+    "attn_implementation": "",
+    "tokenizer_use_fast": true,
+    "eval_personalization_metrics": true,
+    "fedplora_ablation_no_consensus": false,
+    "fedplora_ablation_no_momentum": false,
+    "_benchmark_fingerprint": {
+      "fingerprint_version": 1,
+      "split_dir": "/data/yaominghao/gb/FedPLoRA/data/domain_benchmark_35c_dir05/seed_44",
+      "combined_sha256": "411b37995668e3561ad4e0dda838f3e99168e06d0c6cb72fa67b3966ab329c3b",
+      "files_sha256": {
+        "clients.json": "5e4e98655c70f5b44a6fa052a43e2d95db50867ee9f3b9386cac06f7188f7654",
+        "domain_stats.json": "c55fb87f7605fb8e141190203edc728f7ff077c2033495ded325f2d10092c030",
+        "train.jsonl": "021d3239128666b7762912d66016258a91a7f08206c9a3ce90cd22171f7cd1a5",
+        "val.jsonl": "d7b4d765af1d692bc6b245c8ca0192314ec1721cf1e7def2e6800dd1f19c7672",
+        "test_local.jsonl": "4cfb953cc0dd9e0a7c21fafea91dd74700a4e93edaf0d0c620c90fecc6311194",
+        "test_domain.jsonl": "273e86f61eafe6881830570668138a18a2495def3f058f605c3fe9a0ef5814d6",
+        "test_global.jsonl": "273e86f61eafe6881830570668138a18a2495def3f058f605c3fe9a0ef5814d6"
+      },
+      "file_sizes": {
+        "clients.json": 3970,
+        "domain_stats.json": 806,
+        "train.jsonl": 15062180,
+        "val.jsonl": 1843931,
+        "test_local.jsonl": 1983117,
+        "test_domain.jsonl": 2079774,
+        "test_global.jsonl": 2079774
+      },
+      "split_counts": {
+        "train": 9012,
+        "val": 1107,
+        "test_local": 1107,
+        "test_domain": 1247,
+        "test_global": 1247
+      },
+      "clients": {
+        "num_clients": 35,
+        "domain_counts": {
+          "code": 5,
+          "education": 5,
+          "finance": 5,
+          "general": 5,
+          "legal": 5,
+          "math": 5,
+          "medical": 5
+        },
+        "total_n_train_manifest": 9012,
+        "total_n_val_manifest": 1107,
+        "total_n_local_test_manifest": 1107,
+        "min_n_train": 40,
+        "median_n_train": 224.0,
+        "max_n_train": 1020,
+        "per_client_manifest": {
+          "0": {
+            "domain": "code",
+            "n_train": 195,
+            "n_val": 24,
+            "n_local_test": 24
+          },
+          "1": {
+            "domain": "code",
+            "n_train": 289,
+            "n_val": 35,
+            "n_local_test": 35
+          },
+          "2": {
+            "domain": "code",
+            "n_train": 463,
+            "n_val": 57,
+            "n_local_test": 57
+          },
+          "3": {
+            "domain": "code",
+            "n_train": 409,
+            "n_val": 50,
+            "n_local_test": 50
+          },
+          "4": {
+            "domain": "code",
+            "n_train": 90,
+            "n_val": 11,
+            "n_local_test": 11
+          },
+          "5": {
+            "domain": "education",
+            "n_train": 60,
+            "n_val": 7,
+            "n_local_test": 7
+          },
+          "6": {
+            "domain": "education",
+            "n_train": 40,
+            "n_val": 5,
+            "n_local_test": 5
+          },
+          "7": {
+            "domain": "education",
+            "n_train": 79,
+            "n_val": 9,
+            "n_local_test": 9
+          },
+          "8": {
+            "domain": "education",
+            "n_train": 86,
+            "n_val": 10,
+            "n_local_test": 10
+          },
+          "9": {
+            "domain": "education",
+            "n_train": 81,
+            "n_val": 9,
+            "n_local_test": 9
+          },
+          "10": {
+            "domain": "finance",
+            "n_train": 305,
+            "n_val": 38,
+            "n_local_test": 38
+          },
+          "11": {
+            "domain": "finance",
+            "n_train": 275,
+            "n_val": 34,
+            "n_local_test": 34
+          },
+          "12": {
+            "domain": "finance",
+            "n_train": 152,
+            "n_val": 18,
+            "n_local_test": 18
+          },
+          "13": {
+            "domain": "finance",
+            "n_train": 145,
+            "n_val": 17,
+            "n_local_test": 17
+          },
+          "14": {
+            "domain": "finance",
+            "n_train": 569,
+            "n_val": 70,
+            "n_local_test": 70
+          },
+          "15": {
+            "domain": "general",
+            "n_train": 136,
+            "n_val": 17,
+            "n_local_test": 17
+          },
+          "16": {
+            "domain": "general",
+            "n_train": 539,
+            "n_val": 67,
+            "n_local_test": 67
+          },
+          "17": {
+            "domain": "general",
+            "n_train": 363,
+            "n_val": 45,
+            "n_local_test": 45
+          },
+          "18": {
+            "domain": "general",
+            "n_train": 180,
+            "n_val": 22,
+            "n_local_test": 22
+          },
+          "19": {
+            "domain": "general",
+            "n_train": 224,
+            "n_val": 28,
+            "n_local_test": 28
+          },
+          "20": {
+            "domain": "legal",
+            "n_train": 232,
+            "n_val": 29,
+            "n_local_test": 29
+          },
+          "21": {
+            "domain": "legal",
+            "n_train": 1020,
+            "n_val": 127,
+            "n_local_test": 127
+          },
+          "22": {
+            "domain": "legal",
+            "n_train": 40,
+            "n_val": 5,
+            "n_local_test": 5
+          },
+          "23": {
+            "domain": "legal",
+            "n_train": 40,
+            "n_val": 5,
+            "n_local_test": 5
+          },
+          "24": {
+            "domain": "legal",
+            "n_train": 110,
+            "n_val": 13,
+            "n_local_test": 13
+          },
+          "25": {
+            "domain": "math",
+            "n_train": 388,
+            "n_val": 48,
+            "n_local_test": 48
+          },
+          "26": {
+            "domain": "math",
+            "n_train": 408,
+            "n_val": 50,
+            "n_local_test": 50
+          },
+          "27": {
+            "domain": "math",
+            "n_train": 278,
+            "n_val": 34,
+            "n_local_test": 34
+          },
+          "28": {
+            "domain": "math",
+            "n_train": 192,
+            "n_val": 23,
+            "n_local_test": 23
+          },
+          "29": {
+            "domain": "math",
+            "n_train": 180,
+            "n_val": 22,
+            "n_local_test": 22
+          },
+          "30": {
+            "domain": "medical",
+            "n_train": 385,
+            "n_val": 48,
+            "n_local_test": 48
+          },
+          "31": {
+            "domain": "medical",
+            "n_train": 249,
+            "n_val": 30,
+            "n_local_test": 30
+          },
+          "32": {
+            "domain": "medical",
+            "n_train": 347,
+            "n_val": 43,
+            "n_local_test": 43
+          },
+          "33": {
+            "domain": "medical",
+            "n_train": 158,
+            "n_val": 19,
+            "n_local_test": 19
+          },
+          "34": {
+            "domain": "medical",
+            "n_train": 305,
+            "n_val": 38,
+            "n_local_test": 38
+          }
+        }
+      },
+      "row_counts_by_client": {
+        "train": {
+          "0": 195,
+          "1": 289,
+          "2": 463,
+          "3": 409,
+          "4": 90,
+          "5": 60,
+          "6": 40,
+          "7": 79,
+          "8": 86,
+          "9": 81,
+          "10": 305,
+          "11": 275,
+          "12": 152,
+          "13": 145,
+          "14": 569,
+          "15": 136,
+          "16": 539,
+          "17": 363,
+          "18": 180,
+          "19": 224,
+          "20": 232,
+          "21": 1020,
+          "22": 40,
+          "23": 40,
+          "24": 110,
+          "25": 388,
+          "26": 408,
+          "27": 278,
+          "28": 192,
+          "29": 180,
+          "30": 385,
+          "31": 249,
+          "32": 347,
+          "33": 158,
+          "34": 305
+        },
+        "val": {
+          "0": 24,
+          "1": 35,
+          "2": 57,
+          "3": 50,
+          "4": 11,
+          "5": 7,
+          "6": 5,
+          "7": 9,
+          "8": 10,
+          "9": 9,
+          "10": 38,
+          "11": 34,
+          "12": 18,
+          "13": 17,
+          "14": 70,
+          "15": 17,
+          "16": 67,
+          "17": 45,
+          "18": 22,
+          "19": 28,
+          "20": 29,
+          "21": 127,
+          "22": 5,
+          "23": 5,
+          "24": 13,
+          "25": 48,
+          "26": 50,
+          "27": 34,
+          "28": 23,
+          "29": 22,
+          "30": 48,
+          "31": 30,
+          "32": 43,
+          "33": 19,
+          "34": 38
+        },
+        "test_local": {
+          "0": 24,
+          "1": 35,
+          "2": 57,
+          "3": 50,
+          "4": 11,
+          "5": 7,
+          "6": 5,
+          "7": 9,
+          "8": 10,
+          "9": 9,
+          "10": 38,
+          "11": 34,
+          "12": 18,
+          "13": 17,
+          "14": 70,
+          "15": 17,
+          "16": 67,
+          "17": 45,
+          "18": 22,
+          "19": 28,
+          "20": 29,
+          "21": 127,
+          "22": 5,
+          "23": 5,
+          "24": 13,
+          "25": 48,
+          "26": 50,
+          "27": 34,
+          "28": 23,
+          "29": 22,
+          "30": 48,
+          "31": 30,
+          "32": 43,
+          "33": 19,
+          "34": 38
+        },
+        "test_domain": {},
+        "test_global": {}
+      },
+      "row_counts_by_domain": {
+        "train": {
+          "code": 1446,
+          "education": 346,
+          "finance": 1446,
+          "general": 1442,
+          "legal": 1442,
+          "math": 1446,
+          "medical": 1444
+        },
+        "val": {
+          "code": 177,
+          "education": 40,
+          "finance": 177,
+          "general": 179,
+          "legal": 179,
+          "math": 177,
+          "medical": 178
+        },
+        "test_local": {
+          "code": 177,
+          "education": 40,
+          "finance": 177,
+          "general": 179,
+          "legal": 179,
+          "math": 177,
+          "medical": 178
+        },
+        "test_domain": {
+          "code": 200,
+          "education": 47,
+          "finance": 200,
+          "general": 200,
+          "legal": 200,
+          "math": 200,
+          "medical": 200
+        },
+        "test_global": {
+          "code": 200,
+          "education": 47,
+          "finance": 200,
+          "general": 200,
+          "legal": 200,
+          "math": 200,
+          "medical": 200
+        }
+      }
+    },
+    "_runtime_client_sizes": [
+      195,
+      289,
+      463,
+      409,
+      90,
+      60,
+      40,
+      79,
+      86,
+      81,
+      305,
+      275,
+      152,
+      145,
+      569,
+      136,
+      539,
+      363,
+      180,
+      224,
+      232,
+      1020,
+      40,
+      40,
+      110,
+      388,
+      408,
+      278,
+      192,
+      180,
+      385,
+      249,
+      347,
+      158,
+      305
+    ],
+    "_fedplora_client_domains": {
+      "0": "code",
+      "1": "code",
+      "2": "code",
+      "3": "code",
+      "4": "code",
+      "5": "education",
+      "6": "education",
+      "7": "education",
+      "8": "education",
+      "9": "education",
+      "10": "finance",
+      "11": "finance",
+      "12": "finance",
+      "13": "finance",
+      "14": "finance",
+      "15": "general",
+      "16": "general",
+      "17": "general",
+      "18": "general",
+      "19": "general",
+      "20": "legal",
+      "21": "legal",
+      "22": "legal",
+      "23": "legal",
+      "24": "legal",
+      "25": "math",
+      "26": "math",
+      "27": "math",
+      "28": "math",
+      "29": "math",
+      "30": "medical",
+      "31": "medical",
+      "32": "medical",
+      "33": "medical",
+      "34": "medical"
+    },
+    "_fedplora_round_client_ids": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      30,
+      31,
+      32,
+      33,
+      34
+    ]
+  },
+  "benchmark_dir": "/data/yaominghao/gb/FedPLoRA/data/domain_benchmark_35c_dir05/seed_44",
+  "benchmark_fingerprint": {
+    "fingerprint_version": 1,
+    "split_dir": "/data/yaominghao/gb/FedPLoRA/data/domain_benchmark_35c_dir05/seed_44",
+    "combined_sha256": "411b37995668e3561ad4e0dda838f3e99168e06d0c6cb72fa67b3966ab329c3b",
+    "files_sha256": {
+      "clients.json": "5e4e98655c70f5b44a6fa052a43e2d95db50867ee9f3b9386cac06f7188f7654",
+      "domain_stats.json": "c55fb87f7605fb8e141190203edc728f7ff077c2033495ded325f2d10092c030",
+      "train.jsonl": "021d3239128666b7762912d66016258a91a7f08206c9a3ce90cd22171f7cd1a5",
+      "val.jsonl": "d7b4d765af1d692bc6b245c8ca0192314ec1721cf1e7def2e6800dd1f19c7672",
+      "test_local.jsonl": "4cfb953cc0dd9e0a7c21fafea91dd74700a4e93edaf0d0c620c90fecc6311194",
+      "test_domain.jsonl": "273e86f61eafe6881830570668138a18a2495def3f058f605c3fe9a0ef5814d6",
+      "test_global.jsonl": "273e86f61eafe6881830570668138a18a2495def3f058f605c3fe9a0ef5814d6"
+    },
+    "file_sizes": {
+      "clients.json": 3970,
+      "domain_stats.json": 806,
+      "train.jsonl": 15062180,
+      "val.jsonl": 1843931,
+      "test_local.jsonl": 1983117,
+      "test_domain.jsonl": 2079774,
+      "test_global.jsonl": 2079774
+    },
+    "split_counts": {
+      "train": 9012,
+      "val": 1107,
+      "test_local": 1107,
+      "test_domain": 1247,
+      "test_global": 1247
+    },
+    "clients": {
+      "num_clients": 35,
+      "domain_counts": {
+        "code": 5,
+        "education": 5,
+        "finance": 5,
+        "general": 5,
+        "legal": 5,
+        "math": 5,
+        "medical": 5
+      },
+      "total_n_train_manifest": 9012,
+      "total_n_val_manifest": 1107,
+      "total_n_local_test_manifest": 1107,
+      "min_n_train": 40,
+      "median_n_train": 224.0,
+      "max_n_train": 1020,
+      "per_client_manifest": {
+        "0": {
+          "domain": "code",
+          "n_train": 195,
+          "n_val": 24,
+          "n_local_test": 24
+        },
+        "1": {
+          "domain": "code",
+          "n_train": 289,
+          "n_val": 35,
+          "n_local_test": 35
+        },
+        "2": {
+          "domain": "code",
+          "n_train": 463,
+          "n_val": 57,
+          "n_local_test": 57
+        },
+        "3": {
+          "domain": "code",
+          "n_train": 409,
+          "n_val": 50,
+          "n_local_test": 50
+        },
+        "4": {
+          "domain": "code",
+          "n_train": 90,
+          "n_val": 11,
+          "n_local_test": 11
+        },
+        "5": {
+          "domain": "education",
+          "n_train": 60,
+          "n_val": 7,
+          "n_local_test": 7
+        },
+        "6": {
+          "domain": "education",
+          "n_train": 40,
+          "n_val": 5,
+          "n_local_test": 5
+        },
+        "7": {
+          "domain": "education",
+          "n_train": 79,
+          "n_val": 9,
+          "n_local_test": 9
+        },
+        "8": {
+          "domain": "education",
+          "n_train": 86,
+          "n_val": 10,
+          "n_local_test": 10
+        },
+        "9": {
+          "domain": "education",
+          "n_train": 81,
+          "n_val": 9,
+          "n_local_test": 9
+        },
+        "10": {
+          "domain": "finance",
+          "n_train": 305,
+          "n_val": 38,
+          "n_local_test": 38
+        },
+        "11": {
+          "domain": "finance",
+          "n_train": 275,
+          "n_val": 34,
+          "n_local_test": 34
+        },
+        "12": {
+          "domain": "finance",
+          "n_train": 152,
+          "n_val": 18,
+          "n_local_test": 18
+        },
+        "13": {
+          "domain": "finance",
+          "n_train": 145,
+          "n_val": 17,
+          "n_local_test": 17
+        },
+        "14": {
+          "domain": "finance",
+          "n_train": 569,
+          "n_val": 70,
+          "n_local_test": 70
+        },
+        "15": {
+          "domain": "general",
+          "n_train": 136,
+          "n_val": 17,
+          "n_local_test": 17
+        },
+        "16": {
+          "domain": "general",
+          "n_train": 539,
+          "n_val": 67,
+          "n_local_test": 67
+        },
+        "17": {
+          "domain": "general",
+          "n_train": 363,
+          "n_val": 45,
+          "n_local_test": 45
+        },
+        "18": {
+          "domain": "general",
+          "n_train": 180,
+          "n_val": 22,
+          "n_local_test": 22
+        },
+        "19": {
+          "domain": "general",
+          "n_train": 224,
+          "n_val": 28,
+          "n_local_test": 28
+        },
+        "20": {
+          "domain": "legal",
+          "n_train": 232,
+          "n_val": 29,
+          "n_local_test": 29
+        },
+        "21": {
+          "domain": "legal",
+          "n_train": 1020,
+          "n_val": 127,
+          "n_local_test": 127
+        },
+        "22": {
+          "domain": "legal",
+          "n_train": 40,
+          "n_val": 5,
+          "n_local_test": 5
+        },
+        "23": {
+          "domain": "legal",
+          "n_train": 40,
+          "n_val": 5,
+          "n_local_test": 5
+        },
+        "24": {
+          "domain": "legal",
+          "n_train": 110,
+          "n_val": 13,
+          "n_local_test": 13
+        },
+        "25": {
+          "domain": "math",
+          "n_train": 388,
+          "n_val": 48,
+          "n_local_test": 48
+        },
+        "26": {
+          "domain": "math",
+          "n_train": 408,
+          "n_val": 50,
+          "n_local_test": 50
+        },
+        "27": {
+          "domain": "math",
+          "n_train": 278,
+          "n_val": 34,
+          "n_local_test": 34
+        },
+        "28": {
+          "domain": "math",
+          "n_train": 192,
+          "n_val": 23,
+          "n_local_test": 23
+        },
+        "29": {
+          "domain": "math",
+          "n_train": 180,
+          "n_val": 22,
+          "n_local_test": 22
+        },
+        "30": {
+          "domain": "medical",
+          "n_train": 385,
+          "n_val": 48,
+          "n_local_test": 48
+        },
+        "31": {
+          "domain": "medical",
+          "n_train": 249,
+          "n_val": 30,
+          "n_local_test": 30
+        },
+        "32": {
+          "domain": "medical",
+          "n_train": 347,
+          "n_val": 43,
+          "n_local_test": 43
+        },
+        "33": {
+          "domain": "medical",
+          "n_train": 158,
+          "n_val": 19,
+          "n_local_test": 19
+        },
+        "34": {
+          "domain": "medical",
+          "n_train": 305,
+          "n_val": 38,
+          "n_local_test": 38
+        }
+      }
+    },
+    "row_counts_by_client": {
+      "train": {
+        "0": 195,
+        "1": 289,
+        "2": 463,
+        "3": 409,
+        "4": 90,
+        "5": 60,
+        "6": 40,
+        "7": 79,
+        "8": 86,
+        "9": 81,
+        "10": 305,
+        "11": 275,
+        "12": 152,
+        "13": 145,
+        "14": 569,
+        "15": 136,
+        "16": 539,
+        "17": 363,
+        "18": 180,
+        "19": 224,
+        "20": 232,
+        "21": 1020,
+        "22": 40,
+        "23": 40,
+        "24": 110,
+        "25": 388,
+        "26": 408,
+        "27": 278,
+        "28": 192,
+        "29": 180,
+        "30": 385,
+        "31": 249,
+        "32": 347,
+        "33": 158,
+        "34": 305
+      },
+      "val": {
+        "0": 24,
+        "1": 35,
+        "2": 57,
+        "3": 50,
+        "4": 11,
+        "5": 7,
+        "6": 5,
+        "7": 9,
+        "8": 10,
+        "9": 9,
+        "10": 38,
+        "11": 34,
+        "12": 18,
+        "13": 17,
+        "14": 70,
+        "15": 17,
+        "16": 67,
+        "17": 45,
+        "18": 22,
+        "19": 28,
+        "20": 29,
+        "21": 127,
+        "22": 5,
+        "23": 5,
+        "24": 13,
+        "25": 48,
+        "26": 50,
+        "27": 34,
+        "28": 23,
+        "29": 22,
+        "30": 48,
+        "31": 30,
+        "32": 43,
+        "33": 19,
+        "34": 38
+      },
+      "test_local": {
+        "0": 24,
+        "1": 35,
+        "2": 57,
+        "3": 50,
+        "4": 11,
+        "5": 7,
+        "6": 5,
+        "7": 9,
+        "8": 10,
+        "9": 9,
+        "10": 38,
+        "11": 34,
+        "12": 18,
+        "13": 17,
+        "14": 70,
+        "15": 17,
+        "16": 67,
+        "17": 45,
+        "18": 22,
+        "19": 28,
+        "20": 29,
+        "21": 127,
+        "22": 5,
+        "23": 5,
+        "24": 13,
+        "25": 48,
+        "26": 50,
+        "27": 34,
+        "28": 23,
+        "29": 22,
+        "30": 48,
+        "31": 30,
+        "32": 43,
+        "33": 19,
+        "34": 38
+      },
+      "test_domain": {},
+      "test_global": {}
+    },
+    "row_counts_by_domain": {
+      "train": {
+        "code": 1446,
+        "education": 346,
+        "finance": 1446,
+        "general": 1442,
+        "legal": 1442,
+        "math": 1446,
+        "medical": 1444
+      },
+      "val": {
+        "code": 177,
+        "education": 40,
+        "finance": 177,
+        "general": 179,
+        "legal": 179,
+        "math": 177,
+        "medical": 178
+      },
+      "test_local": {
+        "code": 177,
+        "education": 40,
+        "finance": 177,
+        "general": 179,
+        "legal": 179,
+        "math": 177,
+        "medical": 178
+      },
+      "test_domain": {
+        "code": 200,
+        "education": 47,
+        "finance": 200,
+        "general": 200,
+        "legal": 200,
+        "math": 200,
+        "medical": 200
+      },
+      "test_global": {
+        "code": 200,
+        "education": 47,
+        "finance": 200,
+        "general": 200,
+        "legal": 200,
+        "math": 200,
+        "medical": 200
+      }
+    }
+  },
+  "effective_hparams": {
+    "agg_type": "normal",
+    "rounds": 1,
+    "local_epochs": 1,
+    "lr": 0.0002,
+    "seed": 44,
+    "lora_r": 16,
+    "lora_alpha": 32,
+    "lora_dropout": 0.05,
+    "target_modules": "q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj",
+    "global_b_mix_mu": 0.0,
+    "global_b_mix_mu_note": "inactive_for_this_agg"
+  },
+  "recommended_primary_metrics": [
+    "domain_macro_token_accuracy",
+    "domain_macro_perplexity",
+    "worst_domain_token_accuracy",
+    "worst_domain_perplexity"
+  ],
+  "communication": {
+    "agg_type": "normal",
+    "down_bytes_per_client": 19537920,
+    "up_bytes_per_client": 19537920,
+    "effective_down_bytes_per_client": 19537920,
+    "effective_up_bytes_per_client": 19537920,
+    "downlink_policy": "raw",
+    "v8_a_refresh_rounds": 0,
+    "v8_a_refresh_fraction": 0.0
+  },
+  "rounds": [
+    {
+      "round": 1,
+      "domain_macro_token_accuracy": 0.5946341644604044,
+      "best_domain_macro_token_accuracy": 0.5946341644604044,
+      "worst_domain_token_accuracy": 0.46977816550348955,
+      "best_worst_domain_token_accuracy": 0.46977816550348955,
+      "domain_macro_perplexity": 6.590281753705953,
+      "best_domain_macro_perplexity": 6.590281753705953,
+      "worst_domain_perplexity": 10.742654471203641,
+      "best_worst_domain_perplexity": 10.742654471203641,
+      "domain_macro_loss": 1.8165246569464184,
+      "best_domain_macro_loss": 1.8165246569464184,
+      "worst_domain_loss": 2.3742222160100943,
+      "best_worst_domain_loss": 2.3742222160100943,
+      "domain_metrics": {
+        "code": {
+          "loss": 1.2765876355891428,
+          "token_accuracy": 0.7024616209180354,
+          "perplexity": 3.5843875964246803
+        },
+        "education": {
+          "loss": 1.8596352546111397,
+          "token_accuracy": 0.5977154209088653,
+          "perplexity": 6.421394170314951
+        },
+        "finance": {
+          "loss": 2.3742222160100943,
+          "token_accuracy": 0.46977816550348955,
+          "perplexity": 10.742654471203641
+        },
+        "general": {
+          "loss": 1.965192719300588,
+          "token_accuracy": 0.6026608673404118,
+          "perplexity": 7.1362877580290105
+        },
+        "legal": {
+          "loss": 2.033215758564708,
+          "token_accuracy": 0.5353335965258588,
+          "perplexity": 7.638610833461224
+        },
+        "math": {
+          "loss": 1.2386157882213593,
+          "token_accuracy": 0.6968711774930793,
+          "perplexity": 3.4508334729260453
+        },
+        "medical": {
+          "loss": 1.9682032263278963,
+          "token_accuracy": 0.5576183025330907,
+          "perplexity": 7.157803973582121
+        }
+      },
+      "client_local_macro_token_accuracy": 0.5873748391538242,
+      "client_local_macro_perplexity": 6.972657818767748,
+      "client_local_macro_loss": 1.8495706494223514,
+      "off_domain_macro_token_accuracy": 0.5946341644604044,
+      "off_domain_macro_perplexity": 6.590281753705954,
+      "off_domain_macro_loss": 1.8165246569464184,
+      "in_domain_domain_test_macro_token_accuracy": 0.5946341644604043,
+      "in_domain_domain_test_macro_perplexity": 6.590281753705954,
+      "in_domain_domain_test_macro_loss": 1.8165246569464182,
+      "in_domain_domain_test_metrics": {
+        "code": {
+          "loss": 1.2765876355891426,
+          "token_accuracy": 0.7024616209180353,
+          "perplexity": 3.5843875964246807,
+          "num_clients": 5
+        },
+        "education": {
+          "loss": 1.8596352546111397,
+          "token_accuracy": 0.5977154209088652,
+          "perplexity": 6.421394170314952,
+          "num_clients": 5
+        },
+        "finance": {
+          "loss": 2.374222216010094,
+          "token_accuracy": 0.46977816550348955,
+          "perplexity": 10.74265447120364,
+          "num_clients": 5
+        },
+        "general": {
+          "loss": 1.9651927193005883,
+          "token_accuracy": 0.6026608673404119,
+          "perplexity": 7.136287758029011,
+          "num_clients": 5
+        },
+        "legal": {
+          "loss": 2.033215758564708,
+          "token_accuracy": 0.5353335965258587,
+          "perplexity": 7.638610833461226,
+          "num_clients": 5
+        },
+        "math": {
+          "loss": 1.2386157882213593,
+          "token_accuracy": 0.6968711774930793,
+          "perplexity": 3.450833472926045,
+          "num_clients": 5
+        },
+        "medical": {
+          "loss": 1.9682032263278963,
+          "token_accuracy": 0.5576183025330909,
+          "perplexity": 7.157803973582121,
+          "num_clients": 5
+        }
+      },
+      "in_domain_domain_test_worst_token_accuracy": 0.46977816550348955,
+      "in_domain_domain_test_worst_perplexity": 10.74265447120364,
+      "in_domain_domain_test_worst_loss": 2.374222216010094,
+      "personalization_gap_token_accuracy": -0.007259325306580244,
+      "personalization_gap_perplexity": -0.382376065061794,
+      "personalization_gap_loss": -0.033045992475932984
+    }
+  ],
+  "recommended_kpis": {
+    "token_accuracy": [
+      "domain_macro_token_accuracy",
+      "worst_domain_token_accuracy",
+      "client_local_macro_token_accuracy",
+      "in_domain_domain_test_macro_token_accuracy",
+      "in_domain_domain_test_worst_token_accuracy",
+      "off_domain_macro_token_accuracy"
+    ],
+    "perplexity": [
+      "domain_macro_perplexity",
+      "worst_domain_perplexity",
+      "client_local_macro_perplexity",
+      "in_domain_domain_test_macro_perplexity",
+      "in_domain_domain_test_worst_perplexity",
+      "off_domain_macro_perplexity"
+    ],
+    "communication": {
+      "path": "communication",
+      "fields": [
+        "down_bytes_per_client",
+        "up_bytes_per_client",
+        "agg_type"
+      ]
+    },
+    "fedplora_oneshot_conflict": {
+      "path": "rounds[i].fedplora_oneshot_conflict",
+      "note": "Present after FedPLoRA-Oneshot server aggregation; typically mean_conflict, max_conflict, high_conflict_row_frac, mean_init_gate. Other agg_type: omit or {}. Eval-only reload uses checkpoint meta when available."
+    },
+    "personalization_gaps": [
+      "personalization_gap_token_accuracy",
+      "personalization_gap_perplexity"
+    ]
+  },
+  "recommended_primary_personalization_metrics": [
+    "client_local_macro_token_accuracy",
+    "client_local_macro_perplexity",
+    "in_domain_domain_test_macro_token_accuracy",
+    "in_domain_domain_test_macro_perplexity",
+    "in_domain_domain_test_worst_token_accuracy",
+    "in_domain_domain_test_worst_perplexity",
+    "off_domain_macro_token_accuracy",
+    "off_domain_macro_perplexity",
+    "personalization_gap_token_accuracy",
+    "personalization_gap_perplexity"
+  ]
+}
