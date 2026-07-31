@@ -4,7 +4,7 @@
 
 【命令介绍】
 
-本文件把 `claude/idea_unlearning_dividend_protocol_20260730.md` 中的 Phase 0 证伪实验落成可执行命令。核心流程分三步：
+本文件把 Phase 0 证伪实验落成可执行命令。核心流程分三步：
 
 1. 从已有正式 checkpoint 读取 shared A 与各 client LoRA-B，生成 A1–A6/A7 synthetic eval-only checkpoints。
 2. 用后台队列脚本逐个评测 synthetic checkpoint；父脚本一个 nohup 日志，每个子实验一个 pid 与一个运行日志。
