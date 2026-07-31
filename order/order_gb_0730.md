@@ -1,0 +1,406 @@
+# FedPLoRA 产物同步与零重复运行门禁（gb 服务器）
+
+> 由 `order/order_20260730.md` 适配。章节与审计逻辑保持原文；仅换 gb 路径、conda，并补充 gb 上「仓库 result/ vs 运行时 FED_RESULT_ROOT」口径。
+
+######### FedPLoRA AAAI-27 产物核验命令-20260730（gb · 审计后修订版） #########
+
+## 【命令介绍】
+
+本文件是对 2026-07-30 初版实验清单完成 GitHub 与本地产物审计后的 **gb 服务器执行版**。
+
+**结论：当前没有需要合作者补跑的 GPU 训练或 GPU 评测。** GitHub `origin/main` 已包含初版清单涉及的 common-test、70-client、`r=16`、external evaluation，以及 D1/FlowerTune 的 256 matched-domain 正式结果。M0/M1/RM1/gauge 补充实验已在 `172.26.191.30` 完成；gb 节点**不需要**也**不应**重复这些 GPU 作业。
+
+本文件只保留三类 0-GPU 命令：
+
+1. 同步 GitHub 最新结果到 gb 代码仓；
+2. 执行严格完整性审计；
+3. 打包已有 JSON 产物交付。
+
+## 【路径对照（minghao A100 / mac 协作机 → gb）】
+
+| 项 | order_20260730.md | order_gb_20260730.md |
+|---|---|---|
+| conda | `FedRepo2` | `fedplora` |
+| 代码 | `/data2/minghao/code/FedPLoRA-main` | `/data/yaominghao/gb/FedPLoRA` |
+| GitHub 同步后的正式 result | mac: `A100_Result/result/` | **仓库内** `/data/yaominghao/gb/FedPLoRA/result/` |
+| gb 本地 GPU 运行时 result | — | `/data/yaominghao/gb/result/FedPLoRA/` |
+| 172 补充消融 | mac: `supplement_20260730_d1_9k_gpu0/` | gb **不存放**；审计不依赖 |
+| 打包输出 | 同 gb | `/data/yaominghao/gb/result/FedPLoRA/artifact_export_20260730.*` |
+
+**gb 口径：**
+
+```text
+1. 完整性审计只读仓库内 result/（git 同步后的 GitHub 正式产物）。
+2. FED_RESULT_ROOT=/data/yaominghao/gb/result/FedPLoRA 是历史 GPU 运行目录；
+   若与仓库 result/ 不一致，以 GitHub 同步后的仓库 result/ 为准，不得据此判定「实验缺失」。
+3. 每条命令前：cd /data/yaominghao/gb/FedPLoRA && export PATH=.../fedplora/bin
+4. 本文件 0 GPU；禁止从旧 order 复制 --force_retrain。
+```
+
+## 【命令目的】
+
+- 防止因 gb 本地 `FED_RESULT_ROOT` 旧快照或尚未 `git pull` 造成误判和重复训练。
+- 让 gb 节点只同步已提交的正式结果，不再占用 GPU。
+- 对方法、seed、rank、`max_seq_length`、正式任务列表逐项验收，而不是仅看文件名。
+
+## 【本次实测审计结果】
+
+GitHub 基线：
+
+```text
+repository: https://github.com/minghaoyao-tech/FedPLoRA
+branch: main
+commit: 7a9a64cf6b75ed96fe266041cb3f2efdc1c13ea4
+```
+
+| 产物 | GitHub 正式覆盖 | 结论 |
+|---|---:|---|
+| D1 主表训练 | 13 methods × 3 seeds = 39 cells | 完整，不重训 |
+| FlowerTune 主表训练 | 13 × 3 = 39 cells | 完整，不重训 |
+| D1 matched-domain，`max_seq_length=256` | 13 × 3 = 39 cells | 完整，不重评 |
+| Flower matched-domain，`max_seq_length=256` | 13 × 3 = 39 cells | 完整，不重评 |
+| common-test `alpha=0.5` | 4 methods × 3 seeds = 12 cells | 完整，不重训 |
+| 70-client frozen-test | 3 × 3 = 9 cells | 完整，不重训 |
+| LoRA `r=16` | 3 × 3 = 9 cells | 完整，不重训 |
+| external eval | 4 × 3 = 12 summaries | 完整，不重评 |
+| external tasks | MMLU + PubMedQA + MBPP | 每个 summary 均完整 |
+| M0 shared vs independent | 3 seeds | 已在 172 完成 |
+| M1 hard vs soft routing | 3 seeds | 已在 172 完成 |
+| RM1 route metric | 3 seeds | 已在 172 完成 |
+| gauge stress | 20 trials × 3 conditions | 已在 172 完成 |
+
+GitHub 中 matched-domain 256 正式结果来源：
+
+```text
+result/order_0725/eval_only_baseline_20260725/d1/                  # D1 baseline 36
+result/order_0725/eval_only_main_20260725/d1/                      # D1 ours 3
+result/order_0725/eval_only_baseline_20260725/flowertune_existing/ # Flower existing 18
+result/order_0725/baseline/matched_domain_new_flower/              # Flower new baseline 18
+result/order_0725/eval_only_main_20260725/flowertune/              # Flower ours 3
+```
+
+GitHub 中其他正式结果来源：
+
+```text
+result/order_0723/70c_*/
+result/order_0723/r16_*/
+result/order_0725/main/common_a05_*/
+result/order_0725/baseline/common_a05_*/
+result/order_0725/main/external_eval/ours_seed*/
+result/order_0725/baseline/external_eval/{normal,fedalt,hydralora}_seed*/
+```
+
+## 【gb 本地产物位置】
+
+GitHub 轻量 JSON/CSV/Markdown/日志同步后，应出现在 **代码仓库内**：
+
+```text
+/data/yaominghao/gb/FedPLoRA/result/order_0723/
+/data/yaominghao/gb/FedPLoRA/result/order_0725/
+```
+
+gb 历史 GPU 运行时目录（可能与仓库 result/ 部分重叠；**审计不以它为准**）：
+
+```text
+/data/yaominghao/gb/result/FedPLoRA/order_0723/
+/data/yaominghao/gb/result/FedPLoRA/order_0725/
+```
+
+172 补充消融（M0/M1/RM1/gauge）仅在协作机/mac 侧维护；gb **无需**拉取 `supplement_20260730_d1_9k_gpu0/`，也不纳入本节打包。
+
+## 【运行涉及场景】
+
+```text
+本文件不运行实验；仅执行 GitHub 同步、结果完整性审计和产物打包。
+GPU 数量: 0
+conda: fedplora
+```
+
+---
+
+# 第零部分：gb 环境（每个新 shell 粘贴一次）
+
+```bash
+cd /data/yaominghao/gb/FedPLoRA && export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}" && exec bash
+
+export CODE_DIR=/data/yaominghao/gb/FedPLoRA
+export FED_RESULT_ROOT=/data/yaominghao/gb/result/FedPLoRA
+export REPO_RESULT_ROOT="$CODE_DIR/result"
+export ORDER_0723_ROOT="$REPO_RESULT_ROOT/order_0723"
+export ORDER_0725_ROOT="$REPO_RESULT_ROOT/order_0725"
+
+mkdir -p "$FED_RESULT_ROOT" "$REPO_RESULT_ROOT"
+cd "$CODE_DIR"
+```
+
+---
+
+# 第一部分：gb 节点同步 GitHub（0 GPU）
+
+## 1.1 检查并同步
+
+```bash
+set -euo pipefail
+cd /data/yaominghao/gb/FedPLoRA
+export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}"
+
+git fetch origin main --prune
+
+echo "[git] local=$(git rev-parse HEAD)"
+echo "[git] origin=$(git rev-parse origin/main)"
+
+if [[ "$(git rev-parse HEAD)" != "$(git rev-parse origin/main)" ]]; then
+  if [[ -n "$(git status --short)" ]]; then
+    echo "[git][stop] 工作区有未提交改动，禁止自动覆盖；先由代码维护者处理。" >&2
+    return 1 2>/dev/null || exit 1
+  fi
+  git merge --ff-only origin/main
+fi
+
+test "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)"
+echo "[git][ok] $(git rev-parse HEAD)"
+```
+
+如果 `git pull` 后看到 `$REPO_RESULT_ROOT/order_0723` 或 `order_0725` 不存在，不代表实验缺失；先完成本节同步，再进行第二部分审计。
+
+可选：查看仓库 result 与 FED_RESULT_ROOT 是否都有内容（仅诊断，不作审计依据）：
+
+```bash
+echo "[diag] repo order_0723 json=$(find "$ORDER_0723_ROOT" -name '*.json' 2>/dev/null | wc -l)"
+echo "[diag] repo order_0725 json=$(find "$ORDER_0725_ROOT" -name '*.json' 2>/dev/null | wc -l)"
+echo "[diag] fed  order_0723 json=$(find "$FED_RESULT_ROOT/order_0723" -name '*.json' 2>/dev/null | wc -l)"
+echo "[diag] fed  order_0725 json=$(find "$FED_RESULT_ROOT/order_0725" -name '*.json' 2>/dev/null | wc -l)"
+```
+
+---
+
+# 第二部分：正式产物完整性审计（0 GPU）
+
+下列脚本只读取 **仓库内** `$REPO_RESULT_ROOT`，不会启动训练。最终必须打印 `[artifact-audit][ok] all required cells are present`。
+
+```bash
+set -euo pipefail
+cd /data/yaominghao/gb/FedPLoRA
+export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}"
+export REPO_RESULT_ROOT="$PWD/result"
+
+python - <<'PY'
+import json
+import pathlib
+
+root = pathlib.Path("result")
+assert root.is_dir(), root
+
+seeds = (42, 43, 44)
+all_methods = (
+    "normal", "ffa", "flora", "flexlora", "ecolora", "fedsa_lora",
+    "feddat", "yoco", "fedalt", "hydralora", "hilora", "fedlease",
+    "fedplora_v13a_os",
+)
+required = {
+    "common": ("normal", "fedsa_lora", "fedalt", "fedplora_v13a_os"),
+    "70c": ("normal", "fedalt", "fedplora_v13a_os"),
+    "r16": ("normal", "fedalt", "fedplora_v13a_os"),
+}
+
+training = {key: set() for key in required}
+matched = {"d1": set(), "flower": set()}
+
+for path in root.rglob("*.json"):
+    low = str(path).lower()
+    try:
+        row = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        continue
+    if not isinstance(row, dict):
+        continue
+    args = row.get("args") or row.get("effective_hparams") or {}
+    if not isinstance(args, dict):
+        continue
+    agg = str(args.get("agg_type", ""))
+    try:
+        seed = int(args.get("seed", -1))
+    except Exception:
+        continue
+    benchmark = str(args.get("benchmark_dir") or row.get("benchmark_dir") or "").lower()
+
+    if path.name.endswith("_matched_domain.json"):
+        if agg not in all_methods or seed not in seeds:
+            continue
+        if int(args.get("max_seq_length", -1)) != 256:
+            continue
+        if int(args.get("eval_max_batches", 0)) != 0:
+            continue
+        dataset = "flower" if "flowertune" in benchmark else "d1"
+        matched[dataset].add((agg, seed))
+        continue
+
+    if any(token in low for token in ("smoke", "debug", "matched_domain")):
+        continue
+    if not (row.get("rounds") or row.get("final_eval")):
+        continue
+    if int(args.get("max_seq_length", -1)) != 256:
+        continue
+    if int(args.get("eval_max_batches", 0)) != 0:
+        continue
+    if "common_test" in benchmark and agg in required["common"] and seed in seeds:
+        training["common"].add((agg, seed))
+    if "70c" in benchmark and agg in required["70c"] and seed in seeds:
+        training["70c"].add((agg, seed))
+    if int(args.get("lora_r", -1)) == 16 and "domain_benchmark_35c_dir05" in benchmark \
+            and agg in required["r16"] and seed in seeds:
+        training["r16"].add((agg, seed))
+
+missing = []
+for family, methods in required.items():
+    expected = {(method, seed) for method in methods for seed in seeds}
+    absent = sorted(expected - training[family])
+    print(f"[artifact-audit] {family}: {len(training[family])}/{len(expected)}")
+    missing.extend((family, method, seed) for method, seed in absent)
+
+for dataset in ("d1", "flower"):
+    expected = {(method, seed) for method in all_methods for seed in seeds}
+    absent = sorted(expected - matched[dataset])
+    print(f"[artifact-audit] matched_256_{dataset}: {len(matched[dataset])}/{len(expected)}")
+    missing.extend((f"matched_256_{dataset}", method, seed) for method, seed in absent)
+
+external_expected = {
+    (label, seed)
+    for label in ("ours", "normal", "fedalt", "hydralora")
+    for seed in seeds
+}
+external_found = set()
+external_bad = []
+for path in root.rglob("external_eval_summary.json"):
+    if "smoke" in str(path).lower():
+        continue
+    parts = str(path).lower()
+    label = next((x for x in ("ours", "normal", "fedalt", "hydralora") if f"{x}_seed" in parts), None)
+    seed = next((x for x in seeds if f"seed{x}" in parts), None)
+    if label is None or seed is None:
+        continue
+    row = json.loads(path.read_text(encoding="utf-8"))
+    tasks = {str(x.get("task", "")) for x in (row.get("summaries") or [])}
+    if not {"mmlu", "pubmedqa", "mbpp"} <= tasks:
+        external_bad.append((str(path), sorted(tasks)))
+        continue
+    external_found.add((label, seed))
+
+print(f"[artifact-audit] external: {len(external_found)}/{len(external_expected)}")
+missing.extend(("external", label, seed) for label, seed in sorted(external_expected - external_found))
+
+if external_bad:
+    for row in external_bad:
+        print("[artifact-audit][bad-external]", row)
+if missing:
+    for row in missing:
+        print("[artifact-audit][missing]", row)
+    raise SystemExit(f"[artifact-audit][stop] missing={len(missing)}; first verify git sync, do not start training")
+
+print("[artifact-audit][ok] all required cells are present")
+PY
+```
+
+预期输出：
+
+```text
+[artifact-audit] common: 12/12
+[artifact-audit] 70c: 9/9
+[artifact-audit] r16: 9/9
+[artifact-audit] matched_256_d1: 39/39
+[artifact-audit] matched_256_flower: 39/39
+[artifact-audit] external: 12/12
+[artifact-audit][ok] all required cells are present
+```
+
+若这里显示缺失，第一反应必须是确认 `HEAD == origin/main`、Git LFS/稀疏检出和 **仓库内** `$REPO_RESULT_ROOT` 是否完整；**不得直接训练**。
+
+---
+
+# 第三部分：已有结果打包（0 GPU）
+
+只打包论文分析需要的 JSON/CSV/Markdown/日志，不包含 adapter 权重和 checkpoint。
+
+gb 最终需要提供的两个文件路径固定为：
+
+```text
+压缩包:
+/data/yaominghao/gb/result/FedPLoRA/artifact_export_20260730.tar.gz
+
+SHA256:
+/data/yaominghao/gb/result/FedPLoRA/artifact_export_20260730.tar.gz.sha256
+```
+
+下面整块可以直接复制执行。它只会覆盖同名的 `artifact_export_20260730` 生成目录和压缩包，不会删除原始 `$REPO_RESULT_ROOT/order_0723`、`order_0725`，也不会动 `$FED_RESULT_ROOT` 下的 GPU 运行目录：
+
+```bash
+set -euo pipefail
+export PATH="/data/yaominghao/miniconda3/envs/fedplora/bin:${PATH}"
+export CODE_DIR=/data/yaominghao/gb/FedPLoRA
+export SOURCE_RESULT_ROOT="$CODE_DIR/result"
+export PACKAGE_DIR=/data/yaominghao/gb/result/FedPLoRA/artifact_export_20260730
+export PACKAGE_TAR=/data/yaominghao/gb/result/FedPLoRA/artifact_export_20260730.tar.gz
+export PACKAGE_SHA=/data/yaominghao/gb/result/FedPLoRA/artifact_export_20260730.tar.gz.sha256
+
+cd "$CODE_DIR"
+test -d "$SOURCE_RESULT_ROOT/order_0723"
+test -d "$SOURCE_RESULT_ROOT/order_0725"
+
+# 只清理本命令以前生成的固定打包目录；不动任何原始实验目录。
+rm -rf "$PACKAGE_DIR"
+rm -f "$PACKAGE_TAR" "$PACKAGE_SHA"
+mkdir -p "$PACKAGE_DIR/order_0723" "$PACKAGE_DIR/order_0725"
+
+rsync -a --prune-empty-dirs \
+  --include='*/' \
+  --include='*.json' --include='*.csv' --include='*.md' --include='*.log' --include='*.txt' \
+  --exclude='*' \
+  "$SOURCE_RESULT_ROOT/order_0723/" "$PACKAGE_DIR/order_0723/"
+
+rsync -a --prune-empty-dirs \
+  --include='*/' \
+  --include='*.json' --include='*.csv' --include='*.md' --include='*.log' --include='*.txt' \
+  --exclude='*' \
+  "$SOURCE_RESULT_ROOT/order_0725/" "$PACKAGE_DIR/order_0725/"
+
+test "$(find "$PACKAGE_DIR" -type f -name '*.json' | wc -l)" -gt 0
+
+tar -C /data/yaominghao/gb/result/FedPLoRA \
+  -czf "$PACKAGE_TAR" artifact_export_20260730
+sha256sum "$PACKAGE_TAR" > "$PACKAGE_SHA"
+
+cd /data/yaominghao/gb/result/FedPLoRA
+sha256sum -c "$(basename "$PACKAGE_SHA")"
+
+echo "[artifact-export][files] $(find "$PACKAGE_DIR" -type f | wc -l)"
+du -sh "$PACKAGE_DIR" "$PACKAGE_TAR"
+ls -lh "$PACKAGE_TAR" "$PACKAGE_SHA"
+echo "[artifact-export][ok] package=$PACKAGE_TAR"
+echo "[artifact-export][ok] sha256=$PACKAGE_SHA"
+```
+
+执行成功后最后两行必须精确打印上述绝对路径。本节只复制 GitHub 已有文件，不运行任何实验。
+
+---
+
+## 【smoke 与正式运行说明】
+
+- 本文件无 smoke：相关程序已经产生完整正式结果，再跑 smoke 没有新增证据。
+- 本文件无正式 GPU 命令：所有目标单元已覆盖。
+- gb 节点只需执行第零、第一、第二、第三部分的 0-GPU 同步/审计/打包。
+
+## 【串并行逻辑】
+
+```text
+gb 环境变量 -> GitHub 同步 -> 完整性审计 -> 结果打包
+```
+
+四个阶段依次执行，均为短时 CPU/磁盘操作；不需要 `nohup`、tmux 或 GPU。
+
+## 【注意事项】
+
+1. 不要从 `order_gb_0725.md` 或其他旧文档复制任何 `--force_retrain` 命令。
+2. GitHub 有结果但 gb 仓库内 `result/` 暂时没有时，应先 `git merge --ff-only origin/main`，不能把「尚未 pull」当作「实验尚未跑」。
+3. gb 本地 `$FED_RESULT_ROOT` 可能是旧快照或只含部分 GPU 运行目录；**不能**用它替代仓库内 `$REPO_RESULT_ROOT` 做缺口判定。
+4. D1 历史 2048 matched-domain 仍存在，但正式统计只读取 `max_seq_length=256` 的 39 个单元。
+5. 172 的 M0/M1/RM1/gauge 补充实验不在 gb 打包范围内；论文侧由协作机维护 `supplement_20260730_d1_9k_gpu0/`。
